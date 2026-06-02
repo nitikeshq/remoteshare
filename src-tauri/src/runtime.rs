@@ -651,12 +651,16 @@ impl RuntimeStore {
             cleaned_endpoints = sanitize_persisted_endpoints(&mut state.persisted).changed;
             state.discovery.manual_endpoint = state.persisted.settings.manual_endpoint.clone();
             let private_network_only = state.persisted.settings.private_network_only;
+            let health_count = state.connection_health.len();
             state.connection_health.retain(|_, health| {
                 private_guard_allows_endpoint(&health.endpoint, private_network_only)
             });
+            cleaned_endpoints |= state.connection_health.len() != health_count;
+            let failure_count = state.connection_failures.len();
             state.connection_failures.retain(|_, failure| {
                 private_guard_allows_endpoint(&failure.endpoint, private_network_only)
             });
+            cleaned_endpoints |= state.connection_failures.len() != failure_count;
         }
 
         match state.persisted.save() {
@@ -3424,6 +3428,74 @@ mod tests {
             restored.trusted_reconnect_targets()[0].endpoints,
             vec!["192.168.1.50:44777".to_string()]
         );
+    }
+
+    #[test]
+    fn enabling_private_network_guard_reports_transient_public_endpoint_cleanup() {
+        crate::identity::set_test_config_dir(unique_test_dir("private-guard-clears-transient"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "8.8.4.4:44777".to_string(),
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+            state.connection_failures.insert(
+                "trusted-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "1.1.1.1:44777".to_string(),
+                    failed_at_ms: now_ms(),
+                    message: "connection refused".to_string(),
+                },
+            );
+        }
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(true),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok, "{}", action.message);
+        assert_eq!(
+            action.message,
+            "Settings saved. Public or invalid saved endpoints were removed."
+        );
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert_eq!(
+            state.persisted.trusted_devices[0].last_endpoint.as_deref(),
+            Some("192.168.1.50:44777")
+        );
+        assert!(state.connection_health.is_empty());
+        assert!(state.connection_failures.is_empty());
     }
 
     #[test]
