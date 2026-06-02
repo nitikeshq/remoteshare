@@ -594,6 +594,18 @@ impl RuntimeStore {
         }
 
         let mut state = self.state.lock().expect("runtime state poisoned");
+        let next_role = request
+            .role
+            .clone()
+            .unwrap_or_else(|| state.persisted.settings.role.clone());
+        if request.allow_incoming_control == Some(true) && !next_role.can_receive_input() {
+            return NetworkAction {
+                ok: false,
+                message: "Set this computer role to Client or Both before enabling receive."
+                    .to_string(),
+            };
+        }
+
         if let Some(auto_start) = request.auto_start {
             state.persisted.settings.auto_start = auto_start;
         }
@@ -608,6 +620,12 @@ impl RuntimeStore {
         }
         if let Some(allow_incoming_control) = request.allow_incoming_control {
             state.persisted.settings.allow_incoming_control = allow_incoming_control;
+        }
+        if !state.persisted.settings.role.can_receive_input() {
+            state.persisted.settings.allow_incoming_control = false;
+            for device in &mut state.persisted.trusted_devices {
+                device.allow_incoming_control = false;
+            }
         }
 
         match state.persisted.save() {
@@ -2403,6 +2421,79 @@ mod tests {
         assert!(action.ok);
         assert_eq!(store.status().mode, ComputerRole::Both);
         assert_eq!(store.local_announcement().role, ComputerRole::Both);
+    }
+
+    #[test]
+    fn global_receive_requires_receive_role() {
+        crate::identity::set_test_config_dir(unique_test_dir("global-receive-role"));
+
+        let store = RuntimeStore::load_or_init();
+        assert_eq!(store.status().mode, ComputerRole::Main);
+
+        let rejected = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: Some(true),
+        });
+
+        assert!(!rejected.ok);
+        assert_eq!(
+            rejected.message,
+            "Set this computer role to Client or Both before enabling receive."
+        );
+        assert!(!store.status().allow_incoming_control);
+
+        let accepted = store.update_settings(super::SettingsUpdateRequest {
+            role: Some(ComputerRole::Client),
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: Some(true),
+        });
+
+        assert!(accepted.ok);
+        assert_eq!(store.status().mode, ComputerRole::Client);
+        assert!(store.status().allow_incoming_control);
+    }
+
+    #[test]
+    fn changing_to_main_clears_receive_permissions() {
+        crate::identity::set_test_config_dir(unique_test_dir("main-clears-receive"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.settings.allow_incoming_control = true;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: true,
+            });
+        }
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: Some(ComputerRole::Main),
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(action.ok);
+        let status = store.status();
+        assert_eq!(status.mode, ComputerRole::Main);
+        assert!(!status.allow_incoming_control);
+        assert!(!status.devices[0].allow_incoming_control);
     }
 
     #[test]

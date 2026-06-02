@@ -1132,7 +1132,7 @@ function App() {
               <strong>
                 {status.capture.active
                   ? "Capturing"
-                  : status.allowIncomingControl
+                  : receiveRoleReady && status.allowIncomingControl
                     ? "Receive on"
                     : reachableTrustedDevices.length > 0
                       ? "Send ready"
@@ -1766,6 +1766,12 @@ function App() {
             <input
               type="checkbox"
               checked={status.allowIncomingControl}
+              disabled={!receiveRoleReady}
+              title={
+                receiveRoleReady
+                  ? undefined
+                  : "Set this computer role to Client or Both before enabling receive."
+              }
               onChange={(event) => updateSetting("allowIncomingControl", event.target.checked)}
             />
           </label>
