@@ -30,6 +30,8 @@ const lanSmokeVerifierPath = "scripts/verify-lan-smoke-report.mjs";
 const lanSmokeVerifier = fs.readFileSync(lanSmokeVerifierPath, "utf8");
 const releaseReadinessVerifierPath = "scripts/verify-release-readiness.mjs";
 const releaseReadinessVerifier = fs.readFileSync(releaseReadinessVerifierPath, "utf8");
+const githubReleaseAssetVerifierPath = "scripts/verify-github-release-assets.mjs";
+const githubReleaseAssetVerifier = fs.readFileSync(githubReleaseAssetVerifierPath, "utf8");
 const lanSmokePreparerPath = "scripts/prepare-lan-smoke-report.mjs";
 const lanSmokePreparer = fs.readFileSync(lanSmokePreparerPath, "utf8");
 const smokeReportRowsPath = "scripts/smoke-report-release-rows.mjs";
@@ -89,6 +91,8 @@ const expectedScripts = [
   "test:release-candidate-summary",
   "verify:release-readiness",
   "test:release-readiness",
+  "verify:github-release-assets",
+  "test:github-release-assets",
   "release:summary",
   "verify:release-scripts",
   "verify:release"
@@ -128,6 +132,7 @@ check("Release workflow runs LAN smoke report verifier tests", workflow.includes
 check("Release workflow runs LAN smoke report preparation tests", workflow.includes("npm run test:prepare-lan-smoke-report"));
 check("Release workflow runs smoke report release row tests", workflow.includes("npm run test:smoke-rows"));
 check("Release workflow runs release readiness verifier tests", workflow.includes("npm run test:release-readiness"));
+check("Release workflow runs GitHub release asset verifier tests", workflow.includes("npm run test:github-release-assets"));
 check("Release workflow runs package doctor", workflow.includes("npm run doctor"));
 check("Release workflow runs Rust unit tests before native build", workflow.indexOf("npm run check:rust") < workflow.indexOf("npm run test:rust") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run build"));
 check("Release workflow annotates Rust check and test failures", workflow.includes("ci-run-with-annotation.mjs \"Rust check\"") && workflow.includes("ci-run-with-annotation.mjs \"Rust tests\""));
@@ -148,6 +153,7 @@ check("Release workflow prints LAN smoke report rows before publish", workflow.i
 check("Release workflow publishes flat release assets", workflow.includes("release-assets/*.dmg") && workflow.includes("release-assets/*.exe") && workflow.includes("release-assets/*.deb") && workflow.includes("release-assets/SHA256SUMS.txt") && workflow.includes("release-assets/RELEASE-MANIFEST.json"));
 check("Release workflow attaches LAN smoke report", workflow.includes("release-assets/lan-smoke-report.md"));
 check("Release workflow attaches release candidate summary", workflow.includes("release-assets/release-candidate-summary.md"));
+check("Release workflow verifies uploaded GitHub release assets", workflow.includes("gh release view \"${GITHUB_REF_NAME}\" --json tagName,isDraft,assets > github-release.json") && workflow.includes("npm run verify:github-release-assets -- github-release.json release-assets"));
 check("Release workflow assembles release assets for manual runs", workflow.includes("name: Assemble Release Assets") && workflow.includes("if: github.event_name == 'workflow_dispatch'") && workflow.includes("name: remoteshare-release-assets"));
 check("Manual release asset assembly verifies before upload", assembleJobIncludesBefore("npm run verify:publish-artifacts -- release-artifacts", "npm run prepare:release-assets -- release-artifacts release-assets") && assembleJobIncludesBefore("npm run prepare:release-assets -- release-artifacts release-assets", "npm run verify:release-manifest -- release-assets") && assembleJobIncludesBefore("npm run verify:release-manifest -- release-assets", "npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md") && assembleJobIncludesBefore("npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md", "npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md") && assembleJobIncludesBefore("npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md", "cat release-assets/release-candidate-summary.md >> \"$GITHUB_STEP_SUMMARY\"") && assembleJobIncludesBefore("cat release-assets/release-candidate-summary.md >> \"$GITHUB_STEP_SUMMARY\"", "npm run release:smoke-rows -- release-assets") && assembleJobIncludesBefore("npm run release:smoke-rows -- release-assets", "name: remoteshare-release-assets"));
 check("Release workflow does not mask macOS build failures", !workflow.includes("Build macOS app with DMG fallback"));
@@ -249,6 +255,10 @@ check("Release readiness verifier matches smoke checksums to manifest", releaseR
 check("Release readiness verifier matches smoke version to package version", releaseReadinessVerifier.includes("RemoteShare version/tag") && releaseReadinessVerifier.includes("package version"));
 check("Release readiness verifier fixture test exists", fs.existsSync("scripts/test-release-readiness-verifier.mjs"));
 check("Release readiness verifier tests missing manifest, prefilled smoke report, candidate summary, failed smoke report, mismatched installers, mismatched version, and mismatched hashes", fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing release manifest should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing prefilled LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched prefilled LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing release candidate summary should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched release candidate summary should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("failed LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke installer should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke Linux installer should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke version should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke checksum should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke Linux checksum should fail"));
+check("GitHub release asset verifier script exists", fs.existsSync(githubReleaseAssetVerifierPath));
+check("GitHub release asset verifier matches draft tag, manifest files, asset sizes, and digests", githubReleaseAssetVerifier.includes("GitHub release must stay draft") && githubReleaseAssetVerifier.includes("release.tagName") && githubReleaseAssetVerifier.includes("RELEASE-MANIFEST.json") && githubReleaseAssetVerifier.includes("SHA256SUMS.txt") && githubReleaseAssetVerifier.includes("lan-smoke-report.md") && githubReleaseAssetVerifier.includes("release-candidate-summary.md") && githubReleaseAssetVerifier.includes("asset.size !== localSize") && githubReleaseAssetVerifier.includes("asset.digest && asset.digest !== localDigest"));
+check("GitHub release asset verifier fixture test exists", fs.existsSync("scripts/test-github-release-assets-verifier.mjs"));
+check("GitHub release asset verifier tests missing, unexpected, size, digest, tag, and draft failures", fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("missing exe should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("unexpected asset should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("size mismatch should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("digest mismatch should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("wrong tag should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("published release should fail before LAN smoke"));
 check("Release checklist exists", fs.existsSync("docs/release-checklist.md"));
 check("Release checklist documents native installer platforms", releaseChecklist.includes("macOS `.dmg`") && releaseChecklist.includes("Windows `.exe`") && releaseChecklist.includes("Linux `.deb`"));
 check("Release checklist documents Rust unit test gate", releaseChecklist.includes("npm run test:rust") && releaseChecklist.includes("Rust unit tests") && releaseChecklist.includes("single-threaded `cargo test`"));
@@ -512,6 +522,7 @@ check("verify:release-scripts tests LAN smoke report preparation helper", packag
 check("verify:release-scripts tests smoke report release rows helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:smoke-rows"));
 check("verify:release-scripts tests release candidate summary helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-candidate-summary"));
 check("verify:release-scripts tests release readiness verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-readiness"));
+check("verify:release-scripts tests GitHub release asset verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:github-release-assets"));
 check("verify:release-scripts tests rustfmt checker", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:rustfmt"));
 check("verify:release-scripts tests CI annotation helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:ci-annotation"));
 check("verify:release-scripts runs release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run release:summary"));

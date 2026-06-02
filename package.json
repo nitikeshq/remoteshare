@@ -41,10 +41,12 @@
     "test:release-candidate-summary": "node scripts/test-release-candidate-summary.mjs",
     "verify:release-readiness": "node scripts/verify-release-readiness.mjs",
     "test:release-readiness": "node scripts/test-release-readiness-verifier.mjs",
+    "verify:github-release-assets": "node scripts/verify-github-release-assets.mjs",
+    "test:github-release-assets": "node scripts/test-github-release-assets-verifier.mjs",
     "release:summary": "node scripts/release-summary.mjs",
     "check:disk": "node scripts/check-disk-space.mjs",
     "verify": "npm run typecheck && npm run check:rust && npm run build:frontend",
-    "verify:release-scripts": "npm run test:checksums && npm run test:installers && npm run test:publish-artifacts && npm run test:release-assets && npm run test:release-manifest && npm run test:release-artifacts-lib && npm run test:clean-debug-cache && npm run test:disk && npm run test:release-summary && npm run test:lan-smoke-report && npm run test:prepare-lan-smoke-report && npm run test:smoke-rows && npm run test:release-candidate-summary && npm run test:release-readiness && npm run test:rustfmt && npm run test:ci-annotation && npm run release:summary && npm run doctor",
+    "verify:release-scripts": "npm run test:checksums && npm run test:installers && npm run test:publish-artifacts && npm run test:release-assets && npm run test:release-manifest && npm run test:release-artifacts-lib && npm run test:clean-debug-cache && npm run test:disk && npm run test:release-summary && npm run test:lan-smoke-report && npm run test:prepare-lan-smoke-report && npm run test:smoke-rows && npm run test:release-candidate-summary && npm run test:release-readiness && npm run test:github-release-assets && npm run test:rustfmt && npm run test:ci-annotation && npm run release:summary && npm run doctor",
     "verify:release": "npm run check:disk && npm run verify && npm run verify:release-scripts"
   },
   "dependencies": {

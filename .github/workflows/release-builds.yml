@@ -92,6 +92,9 @@ jobs:
       - name: Test release readiness verifier
         run: npm run test:release-readiness
 
+      - name: Test GitHub release asset verifier
+        run: npm run test:github-release-assets
+
       - name: Typecheck frontend
         run: npm run typecheck
 
@@ -265,3 +268,10 @@ jobs:
             release-assets/RELEASE-MANIFEST.json
             release-assets/lan-smoke-report.md
             release-assets/release-candidate-summary.md
+
+      - name: Verify GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" --json tagName,isDraft,assets > github-release.json
+          npm run verify:github-release-assets -- github-release.json release-assets
