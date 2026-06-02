@@ -59,6 +59,20 @@ try {
   );
   runSummary(staleChecksumRoot, ["Stale checksum entries: dmg/stale.dmg"]);
 
+  const checksumMismatchRoot = fixture("checksum-mismatch", [
+    [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
+  ]);
+  fs.writeFileSync(
+    path.join(checksumMismatchRoot, `dmg/RemoteShare_${packageVersion}_aarch64.dmg`),
+    "changed dmg"
+  );
+  runSummary(checksumMismatchRoot, [
+    `dmg/RemoteShare_${packageVersion}_aarch64.dmg`,
+    "checksum mismatch",
+    "macOS DMG: present (1; 1 checksum mismatch)",
+    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; macOS DMG checksum mismatch)."
+  ]);
+
   const completeRoot = fixture("complete", [
     [`dmg/RemoteShare_${packageVersion}_aarch64.DMG`, "valid dmg"],
     [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],

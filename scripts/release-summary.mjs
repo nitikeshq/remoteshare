@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 
 const root = process.argv[2] ?? "src-tauri/target/release/bundle";
@@ -22,10 +23,11 @@ if (installers.length === 0) {
   for (const file of installers) {
     const relativePath = path.relative(root, file).replaceAll(path.sep, "/");
     const size = fs.statSync(file).size;
+    const checksumState = checksumStatus(file, relativePath);
     const states = [
       formatBytes(size),
       size === 0 ? "empty artifact" : "non-empty",
-      checksums.has(relativePath) ? "checksum ok" : "checksum missing",
+      checksumState,
       packageVersionMatches(file) ? "version ok" : `version mismatch: expected ${packageVersion}`
     ];
     console.log(`- ${relativePath} (${states.join(", ")})`);
@@ -37,6 +39,7 @@ const missingPlatforms = [];
 const duplicatePlatforms = [];
 const emptyPlatforms = [];
 const checksumMissingPlatforms = [];
+const checksumMismatchPlatforms = [];
 const versionMismatchPlatforms = [];
 
 for (const artifact of platformArtifacts) {
@@ -47,15 +50,25 @@ for (const artifact of platformArtifacts) {
       const relativePath = path.relative(root, file).replaceAll(path.sep, "/");
       return !checksums.has(relativePath);
     }).length;
+    const checksumMismatchCount = files.filter((file) => {
+      const relativePath = path.relative(root, file).replaceAll(path.sep, "/");
+      const expected = checksums.get(relativePath);
+      return Boolean(expected) && sha256File(file) !== expected;
+    }).length;
     const versionMismatchCount = files.filter((file) => !packageVersionMatches(file)).length;
     const emptyNote = emptyCount > 0 ? `; ${emptyCount} empty` : "";
     const checksumNote = checksumMissingCount > 0 ? `; ${checksumMissingCount} checksum missing` : "";
+    const checksumMismatchNote =
+      checksumMismatchCount > 0 ? `; ${checksumMismatchCount} checksum mismatch` : "";
     const versionNote = versionMismatchCount > 0 ? `; ${versionMismatchCount} version mismatch` : "";
     if (files.length > 1) duplicatePlatforms.push(`${artifact.name} has ${files.length} artifacts`);
     if (emptyCount > 0) emptyPlatforms.push(artifact.name);
     if (checksumMissingCount > 0) checksumMissingPlatforms.push(artifact.name);
+    if (checksumMismatchCount > 0) checksumMismatchPlatforms.push(artifact.name);
     if (versionMismatchCount > 0) versionMismatchPlatforms.push(artifact.name);
-    console.log(`- ${artifact.name}: present (${files.length}${emptyNote}${checksumNote}${versionNote})`);
+    console.log(
+      `- ${artifact.name}: present (${files.length}${emptyNote}${checksumNote}${checksumMismatchNote}${versionNote})`
+    );
   } else {
     missingPlatforms.push(artifact.name);
     console.log(`- ${artifact.name}: missing; build on ${artifact.nativeRunner} runner`);
@@ -67,6 +80,7 @@ const readinessIssues = [
   ...duplicatePlatforms,
   ...emptyPlatforms.map((name) => `${name} empty`),
   ...checksumMissingPlatforms.map((name) => `${name} checksum missing`),
+  ...checksumMismatchPlatforms.map((name) => `${name} checksum mismatch`),
   ...versionMismatchPlatforms.map((name) => `${name} version mismatch`)
 ];
 console.log(
@@ -128,4 +142,14 @@ function formatBytes(bytes) {
 
 function packageVersionMatches(file) {
   return path.basename(file).includes(`_${packageVersion}_`);
+}
+
+function checksumStatus(file, relativePath) {
+  const expected = checksums.get(relativePath);
+  if (!expected) return "checksum missing";
+  return sha256File(file) === expected ? "checksum ok" : "checksum mismatch";
+}
+
+function sha256File(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
