@@ -62,6 +62,27 @@ try {
     "Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; stale checksum dmg/stale.dmg)."
   ]);
 
+  const invalidChecksumRoot = fixture("invalid-checksum-line", [
+    [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
+  ]);
+  fs.appendFileSync(path.join(invalidChecksumRoot, "SHA256SUMS.txt"), "not-a-checksum-line\n");
+  runSummary(invalidChecksumRoot, [
+    "Invalid checksum lines: not-a-checksum-line",
+    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; invalid checksum line not-a-checksum-line)."
+  ]);
+
+  const duplicateChecksumRoot = fixture("duplicate-checksum-entry", [
+    [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
+  ]);
+  fs.appendFileSync(
+    path.join(duplicateChecksumRoot, "SHA256SUMS.txt"),
+    `${"0".repeat(64)}  dmg/RemoteShare_${packageVersion}_aarch64.dmg\n`
+  );
+  runSummary(duplicateChecksumRoot, [
+    `Duplicate checksum entries: dmg/RemoteShare_${packageVersion}_aarch64.dmg`,
+    `Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; duplicate checksum dmg/RemoteShare_${packageVersion}_aarch64.dmg).`
+  ]);
+
   const checksumMismatchRoot = fixture("checksum-mismatch", [
     [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
   ]);

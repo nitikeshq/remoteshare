@@ -6,6 +6,8 @@ const root = process.argv[2] ?? "src-tauri/target/release/bundle";
 const checksumPath = path.join(root, "SHA256SUMS.txt");
 const installerExtensions = new Set([".dmg", ".exe", ".deb"]);
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const invalidChecksumLines = [];
+const duplicateChecksumEntries = [];
 const platformArtifacts = [
   { name: "macOS DMG", extension: ".dmg", nativeRunner: "macOS" },
   { name: "Windows EXE", extension: ".exe", nativeRunner: "Windows" },
@@ -88,7 +90,9 @@ const readinessIssues = [
   ...checksumMissingPlatforms.map((name) => `${name} checksum missing`),
   ...checksumMismatchPlatforms.map((name) => `${name} checksum mismatch`),
   ...versionMismatchPlatforms.map((name) => `${name} version mismatch`),
-  ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`)
+  ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`),
+  ...invalidChecksumLines.map((line) => `invalid checksum line ${line}`),
+  ...duplicateChecksumEntries.map((entry) => `duplicate checksum ${entry}`)
 ];
 console.log(
   readinessIssues.length === 0
@@ -100,6 +104,12 @@ if (fs.existsSync(checksumPath)) {
   console.log(`Checksum file: ${checksumPath}`);
   if (staleChecksumEntries.length > 0) {
     console.log(`Stale checksum entries: ${staleChecksumEntries.join(", ")}`);
+  }
+  if (invalidChecksumLines.length > 0) {
+    console.log(`Invalid checksum lines: ${invalidChecksumLines.join(" | ")}`);
+  }
+  if (duplicateChecksumEntries.length > 0) {
+    console.log(`Duplicate checksum entries: ${duplicateChecksumEntries.join(", ")}`);
   }
 } else {
   console.log("Checksum file: missing");
@@ -131,7 +141,15 @@ function readChecksumFile(file) {
 
   for (const line of lines) {
     const match = line.match(/^([a-f0-9]{64})\s{2}(.+)$/);
-    if (match) checksums.set(match[2], match[1]);
+    if (!match) {
+      invalidChecksumLines.push(line);
+      continue;
+    }
+    if (checksums.has(match[2])) {
+      duplicateChecksumEntries.push(match[2]);
+      continue;
+    }
+    checksums.set(match[2], match[1]);
   }
 
   return checksums;
