@@ -939,6 +939,13 @@ impl RuntimeStore {
             if trusted_device.public_key_fingerprint != announcement.public_key_fingerprint {
                 return false;
             }
+            if trusted_device
+                .public_key
+                .as_ref()
+                .is_some_and(|public_key| public_key != &announcement.public_key)
+            {
+                return false;
+            }
         }
         if !peer_public_key_matches_fingerprint(
             &announcement.public_key,
@@ -4462,6 +4469,98 @@ mod tests {
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 role: ComputerRole::Client,
                 public_key: String::new(),
+                scan_request: false,
+            },
+            "192.168.1.50:44777".to_string(),
+        ));
+
+        let status = store.status();
+        let trusted = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should remain listed");
+        assert!(trusted.online);
+        assert_eq!(trusted.endpoint.as_deref(), Some("192.168.1.50:44777"));
+    }
+
+    #[test]
+    fn trusted_discovery_requires_stored_public_key_match() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-discovery-public-key"));
+
+        let (_trusted_private_key, trusted_public_key) = crate::crypto::identity_keypair();
+        let trusted_fingerprint = crate::crypto::fingerprint_from_public_key(&trusted_public_key)
+            .expect("trusted public key should fingerprint");
+        let (_other_private_key, other_public_key) = crate::crypto::identity_keypair();
+        let other_fingerprint = crate::crypto::fingerprint_from_public_key(&other_public_key)
+            .expect("other public key should fingerprint");
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: trusted_fingerprint.clone(),
+                public_key: Some(trusted_public_key.clone()),
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        assert!(!store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Missing Key Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint: trusted_fingerprint.clone(),
+                role: ComputerRole::Client,
+                public_key: String::new(),
+                scan_request: false,
+            },
+            "192.168.1.66:44777".to_string(),
+        ));
+
+        assert!(!store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Other Key Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint: other_fingerprint,
+                role: ComputerRole::Client,
+                public_key: other_public_key,
+                scan_request: false,
+            },
+            "192.168.1.67:44777".to_string(),
+        ));
+
+        let status = store.status();
+        let trusted = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should remain listed");
+        assert!(!trusted.online);
+        assert_eq!(trusted.endpoint, None);
+
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint: trusted_fingerprint,
+                role: ComputerRole::Client,
+                public_key: trusted_public_key,
                 scan_request: false,
             },
             "192.168.1.50:44777".to_string(),
