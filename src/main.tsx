@@ -361,6 +361,59 @@ function mvpInputPermissionStep(platform: string, permissions: InputPermissionSt
   };
 }
 
+function mvpDiscoveryStep(platform: string, devices: Device[]) {
+  const hasPeer = devices.some((device) => device.online || device.connection === "manual");
+
+  if (isWindowsPlatform(platform)) {
+    return {
+      label: "Find Mac sender",
+      done: hasPeer,
+      detail: "Scan LAN, or copy the Mac endpoint into Manual pair."
+    };
+  }
+
+  return {
+    label: "Find Windows client",
+    done: hasPeer,
+    detail: "Scan LAN, or copy the Windows endpoint into Manual pair."
+  };
+}
+
+function mvpReceiveStep(
+  platform: string,
+  role: ComputerRole,
+  allowIncomingControl: boolean,
+  trustedDevices: Device[]
+) {
+  if (isWindowsPlatform(platform)) {
+    return {
+      label: "Enable receive",
+      done:
+        canReceiveInput(role) &&
+        allowIncomingControl &&
+        trustedDevices.some((device) => device.allowIncomingControl),
+      detail: "Use Enable or turn on Allow incoming control and Receive for the trusted Mac row."
+    };
+  }
+
+  if (isMacPlatform(platform)) {
+    return {
+      label: "Windows receive setup",
+      done: trustedDevices.some(
+        (device) =>
+          (device.role === "client" || device.role === "both") && device.inputControlReady
+      ),
+      detail: "On Windows, use Enable or turn on Allow incoming control and Receive before Test."
+    };
+  }
+
+  return {
+    label: "Enable receive",
+    done: allowIncomingControl && trustedDevices.some((device) => device.allowIncomingControl),
+    detail: "Enable incoming control on the receiver before sending input."
+  };
+}
+
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
   if (pairing.localApproved) {
     return {
@@ -921,6 +974,20 @@ function App() {
     () => mvpInputPermissionStep(status.platform, permissions),
     [permissions, status.platform]
   );
+  const discoveryStep = useMemo(
+    () => mvpDiscoveryStep(status.platform, status.devices),
+    [status.devices, status.platform]
+  );
+  const receiveStep = useMemo(
+    () =>
+      mvpReceiveStep(
+        status.platform,
+        status.mode,
+        status.allowIncomingControl,
+        trustedDevices
+      ),
+    [status.allowIncomingControl, status.mode, status.platform, trustedDevices]
+  );
   const setupSteps = useMemo(
     () => [
       {
@@ -934,9 +1001,9 @@ function App() {
         detail: permissionStep.detail
       },
       {
-        label: "Find Windows client",
-        done: status.devices.some((device) => device.online || device.connection === "manual"),
-        detail: "Scan LAN, or copy the Windows endpoint into Manual pair."
+        label: discoveryStep.label,
+        done: discoveryStep.done,
+        detail: discoveryStep.detail
       },
       {
         label: "Trust the pair",
@@ -944,12 +1011,9 @@ function App() {
         detail: "Type the same six-digit code and confirm on both computers."
       },
       {
-        label: "Enable receive",
-        done:
-          receiveRoleReady &&
-          status.allowIncomingControl &&
-          trustedDevices.some((device) => device.allowIncomingControl),
-        detail: "Use Enable or turn on Allow incoming control and Receive for the trusted Windows row."
+        label: receiveStep.label,
+        done: receiveStep.done,
+        detail: receiveStep.detail
       },
       {
         label: "Verify input",
@@ -963,10 +1027,13 @@ function App() {
       permissionStep.detail,
       permissionStep.done,
       permissionStep.label,
-      receiveRoleReady,
-      status.allowIncomingControl,
-      status.devices,
+      discoveryStep.detail,
+      discoveryStep.done,
+      discoveryStep.label,
       status.recentInputEvents,
+      receiveStep.detail,
+      receiveStep.done,
+      receiveStep.label,
       roleStep.detail,
       roleStep.done,
       trustedDevices
