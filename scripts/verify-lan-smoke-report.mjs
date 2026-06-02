@@ -25,6 +25,8 @@ const requiredContextFields = [
   "Tester",
   "RemoteShare version/tag",
   "Input direction",
+  "macOS role shown",
+  "Windows role shown",
   "macOS model/version",
   "Windows model/version",
   "macOS installer file",
@@ -100,6 +102,7 @@ for (const field of requiredManualFields) {
 
 requireSuccess(context, "Same subnet confirmed", "Test Context");
 requireInputDirection(context);
+requireMvpRoles(context);
 requireSuccess(context, "macOS firewall status", "Test Context");
 requireSuccess(context, "Windows firewall status", "Test Context");
 requireSuccess(context, "macOS Accessibility permission", "Test Context");
@@ -193,6 +196,18 @@ function requireInputDirection(table) {
   const value = requireFilled(table, "Input direction", "Test Context").toLowerCase();
   if (!/macos.*sender.*main.*windows.*receiver.*client/.test(value)) {
     throw new Error("Test Context Input direction must be macOS sender/main -> Windows receiver/client.");
+  }
+}
+
+function requireMvpRoles(table) {
+  const macRole = requireFilled(table, "macOS role shown", "Test Context").toLowerCase();
+  if (!/(^|\W)main(\W|$)/.test(macRole)) {
+    throw new Error("Test Context macOS role shown must be Main for the first MVP smoke test.");
+  }
+
+  const windowsRole = requireFilled(table, "Windows role shown", "Test Context").toLowerCase();
+  if (!/(^|\W)client(\W|$)/.test(windowsRole)) {
+    throw new Error("Test Context Windows role shown must be Client for the first MVP smoke test.");
   }
 }
 

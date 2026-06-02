@@ -252,6 +252,32 @@ try {
     "Test Context Input direction must be macOS sender/main -> Windows receiver/client"
   );
 
+  const wrongMacRole = writeReport("wrong-mac-role.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macRole: "Client"
+  });
+  runVerifier(
+    wrongMacRole,
+    false,
+    "wrong macOS role should fail",
+    "Test Context macOS role shown must be Main"
+  );
+
+  const wrongWindowsRole = writeReport("wrong-windows-role.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    windowsRole: "Main"
+  });
+  runVerifier(
+    wrongWindowsRole,
+    false,
+    "wrong Windows role should fail",
+    "Test Context Windows role shown must be Client"
+  );
+
   const blockedFirewall = writeReport("blocked-firewall.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -433,6 +459,8 @@ function writeReport(name, options) {
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
   const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
+  const macRole = options.macRole ?? "Main shown in this computer role";
+  const windowsRole = options.windowsRole ?? "Client shown in peer role";
   const macosFirewallStatus = options.macosFirewallStatus ?? "allowed";
   const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
@@ -448,6 +476,8 @@ function writeReport(name, options) {
     "| Tester | QA |",
     `| RemoteShare version/tag | ${version} |`,
     `| Input direction | ${inputDirection} |`,
+    `| macOS role shown | ${macRole} |`,
+    `| Windows role shown | ${windowsRole} |`,
     "| macOS model/version | MacBook / macOS 15 |",
     "| Windows model/version | PC / Windows 11 |",
     `| macOS installer file | ${macInstaller} |`,
