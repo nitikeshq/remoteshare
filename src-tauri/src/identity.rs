@@ -35,7 +35,7 @@ pub struct DeviceIdentity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSettings {
-    #[serde(default = "default_trusted_device_role")]
+    #[serde(default = "default_computer_role")]
     pub role: ComputerRole,
     #[serde(default = "default_true")]
     pub auto_start: bool,
@@ -73,7 +73,7 @@ pub struct TrustedDevice {
     pub id: String,
     pub name: String,
     pub platform: String,
-    #[serde(default = "default_computer_role")]
+    #[serde(default = "default_trusted_device_role")]
     pub role: ComputerRole,
     pub public_key_fingerprint: String,
     #[serde(default)]
