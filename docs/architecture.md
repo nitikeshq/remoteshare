@@ -27,7 +27,7 @@ RemoteShare runs on every computer. One machine can act as the host that capture
 - Control payloads are versioned JSON envelopes framed with a four-byte big-endian length prefix.
 - Control frames are capped at 64 KiB and all connect/read/write operations use bounded timeouts.
 - Each device has a persisted X25519 identity keypair. Discovery and pairing expose the identity public key plus its fingerprint, while pairing exchanges separate ephemeral X25519 public keys and derives a shared control secret after the user compares the six-digit code.
-- Trusted ping, pong, pairing approval, and input messages use HMAC-SHA256 authentication; pong responses must echo the current ping challenge.
+- Trusted ping, pong, pairing approval, and input messages are wrapped in an AEAD-encrypted envelope after pairing derives a pending or trusted control secret; pong responses must echo the current ping challenge. Initial pair request/ack frames remain plaintext because no shared secret exists yet.
 - Inbound control accepts private/local remote addresses by default and rejects public remote addresses before reading a control frame.
 
 ## Startup Registration

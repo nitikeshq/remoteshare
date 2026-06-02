@@ -95,7 +95,8 @@ Current scaffold behavior:
 - Runtime status returns devices and pending pairings in deterministic order so LAN/manual pairing rows do not jump around between refreshes.
 - Trusted input and reconnect health require the trusted device ID, stored fingerprint, stored identity public key when available, and control-message authentication to match. Reconnect pong validation also rejects any non-empty advertised public key whose bytes do not hash back to the advertised fingerprint.
 - Device fingerprints are derived from persisted public identity keys instead of private random secrets. Older pre-keypair local state migrates on startup and should be re-paired with peers that still trust the old fingerprint.
-- Authenticated trusted control messages use HMAC-SHA256 with a fresh per-message nonce, and incoming trusted ping/input/pair-approval messages are rejected if the same auth tag is replayed within the replay window.
+- Shared-secret control messages are sent in an AEAD-encrypted envelope using ChaCha20-Poly1305. Initial pair request/ack frames stay plaintext because the shared secret does not exist yet, but pair approvals, trusted reconnect ping/pong, input events, and trusted acknowledgements are encrypted and authenticated once the pending or trusted shared secret is available.
+- Encrypted trusted ping/input/pair-approval messages are rejected when the envelope key ID does not match the decrypted payload device ID or when the same encrypted frame is replayed within the replay window.
 - Trusted devices created before shared control secrets were added must be re-paired before test input or capture forwarding will start; the UI offers a re-pair action when a stale trusted record still has a known endpoint.
 - Device status exposes whether input control is ready, so the UI can show stale trusted pairings as needing re-pairing instead of offering input actions that will be rejected. Per-device Receive toggles are disabled for stale trusted records until the device is re-paired and a shared input secret exists.
 - Device rows expose the stored peer fingerprint in shortened form and provide a copy button for the full fingerprint so testers can audit trusted identity after pairing.
@@ -104,7 +105,6 @@ Current scaffold behavior:
 
 Security gap to close before broader public testing:
 
-- Encrypt all future control/input messages.
 - Move persisted local identity and trusted-device shared secrets from private local JSON into OS keychain or encrypted local storage before broader public testing.
 - Consider per-interface allowlists; the MVP listener binds all interfaces but rejects non-private remote addresses by default and still relies on private-network firewall posture.
 

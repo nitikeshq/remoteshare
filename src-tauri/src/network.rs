@@ -885,7 +885,7 @@ async fn handle_control_stream(
         return;
     }
 
-    let received = match read_control_message(&mut stream).await {
+    let received = match read_inbound_control_message(&store, &mut stream).await {
         Ok(Some(received)) => received,
         Ok(None) => return,
         Err(error) => {
@@ -1554,8 +1554,9 @@ fn discovery_reply_target(sender: SocketAddr) -> SocketAddr {
 #[serde(rename_all = "camelCase")]
 struct ControlEnvelope {
     protocol_version: u16,
-    message: ControlMessage,
+    message: Option<ControlMessage>,
     auth: Option<ControlAuth>,
+    encrypted: Option<EncryptedControlMessage>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -1565,6 +1566,14 @@ struct ControlAuth {
     mac: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EncryptedControlMessage {
+    key_id: String,
+    nonce: String,
+    ciphertext: String,
+}
+
 #[derive(Debug, Default)]
 struct ReplayCache {
     seen: HashMap<String, Instant>,
@@ -1572,11 +1581,21 @@ struct ReplayCache {
 
 impl ReplayCache {
     fn accept(&mut self, auth: &ControlAuth) -> bool {
+        self.accept_key(format!("{}:{}", auth.nonce, auth.mac))
+    }
+
+    fn accept_encrypted(&mut self, encrypted: &EncryptedControlMessage) -> bool {
+        self.accept_key(format!(
+            "{}:{}:{}",
+            encrypted.key_id, encrypted.nonce, encrypted.ciphertext
+        ))
+    }
+
+    fn accept_key(&mut self, key: String) -> bool {
         let now = Instant::now();
         self.seen
             .retain(|_, seen_at| now.duration_since(*seen_at) <= AUTH_REPLAY_WINDOW);
 
-        let key = format!("{}:{}", auth.nonce, auth.mac);
         if self.seen.contains_key(&key) {
             return false;
         }
@@ -1590,6 +1609,7 @@ impl ReplayCache {
 struct ReceivedControlMessage {
     message: ControlMessage,
     auth: Option<ControlAuth>,
+    encrypted: Option<EncryptedControlMessage>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -1644,13 +1664,9 @@ async fn send_control_message_for_response_with_secret(
 ) -> std::io::Result<Option<ControlMessage>> {
     let mut stream = connect_with_timeout(endpoint).await?;
     write_control_message(&mut stream, message, shared_secret).await?;
-    let Some(received) = read_control_message(&mut stream).await? else {
+    let Some(received) = read_control_message_with_secret(&mut stream, shared_secret).await? else {
         return Ok(None);
     };
-
-    if let Some(secret) = shared_secret {
-        verify_received_message(&received, secret)?;
-    }
 
     Ok(Some(received.message))
 }
@@ -1672,16 +1688,7 @@ async fn write_control_message(
     message: &ControlMessage,
     shared_secret: Option<&str>,
 ) -> std::io::Result<()> {
-    let message_payload = serde_json::to_vec(message).map_err(std::io::Error::other)?;
-    let envelope = ControlEnvelope {
-        protocol_version: PROTOCOL_VERSION,
-        message: message.clone(),
-        auth: shared_secret.map(|secret| {
-            let nonce = crate::crypto::random_hex(16);
-            let mac = crate::crypto::control_mac(secret, &nonce, &message_payload);
-            ControlAuth { nonce, mac }
-        }),
-    };
+    let envelope = control_envelope_for_message(message, shared_secret)?;
     let payload = serde_json::to_vec(&envelope).map_err(std::io::Error::other)?;
     if payload.is_empty() || payload.len() > MAX_CONTROL_MESSAGE_SIZE {
         return Err(std::io::Error::new(
@@ -1699,9 +1706,71 @@ async fn write_control_message(
         .map_err(|_| timed_out("control frame body write timed out"))?
 }
 
-async fn read_control_message(
+fn control_envelope_for_message(
+    message: &ControlMessage,
+    shared_secret: Option<&str>,
+) -> std::io::Result<ControlEnvelope> {
+    let message_payload = serde_json::to_vec(message).map_err(std::io::Error::other)?;
+    let encrypted = match shared_secret {
+        Some(secret) => {
+            let key_id = control_message_key_id(message).ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "encrypted control message is missing a key id",
+                )
+            })?;
+            let (nonce, ciphertext) =
+                crate::crypto::encrypt_control_payload(secret, &message_payload)
+                    .map_err(std::io::Error::other)?;
+            Some(EncryptedControlMessage {
+                key_id,
+                nonce,
+                ciphertext,
+            })
+        }
+        None => None,
+    };
+    Ok(ControlEnvelope {
+        protocol_version: PROTOCOL_VERSION,
+        message: if encrypted.is_some() {
+            None
+        } else {
+            Some(message.clone())
+        },
+        auth: shared_secret.filter(|_| encrypted.is_none()).map(|secret| {
+            let nonce = crate::crypto::random_hex(16);
+            let mac = crate::crypto::control_mac(secret, &nonce, &message_payload);
+            ControlAuth { nonce, mac }
+        }),
+        encrypted,
+    })
+}
+
+async fn read_control_message_with_secret(
+    stream: &mut TcpStream,
+    shared_secret: Option<&str>,
+) -> std::io::Result<Option<ReceivedControlMessage>> {
+    let Some(envelope) = read_control_envelope(stream).await? else {
+        return Ok(None);
+    };
+    received_control_message_from_envelope(envelope, shared_secret)
+}
+
+async fn read_inbound_control_message(
+    store: &RuntimeStore,
     stream: &mut TcpStream,
 ) -> std::io::Result<Option<ReceivedControlMessage>> {
+    let Some(envelope) = read_control_envelope(stream).await? else {
+        return Ok(None);
+    };
+    let shared_secret = envelope
+        .encrypted
+        .as_ref()
+        .and_then(|encrypted| inbound_control_secret(store, &encrypted.key_id));
+    received_control_message_from_envelope(envelope, shared_secret.as_deref())
+}
+
+async fn read_control_envelope(stream: &mut TcpStream) -> std::io::Result<Option<ControlEnvelope>> {
     let mut header = [0_u8; 4];
     match timeout(CONTROL_TIMEOUT, stream.read_exact(&mut header)).await {
         Ok(Ok(_)) => {}
@@ -1732,16 +1801,61 @@ async fn read_control_message(
         ));
     }
 
-    Ok(Some(ReceivedControlMessage {
-        message: envelope.message,
-        auth: envelope.auth,
-    }))
+    Ok(Some(envelope))
+}
+
+fn received_control_message_from_envelope(
+    envelope: ControlEnvelope,
+    shared_secret: Option<&str>,
+) -> std::io::Result<Option<ReceivedControlMessage>> {
+    match (envelope.message, envelope.encrypted) {
+        (Some(message), None) => Ok(Some(ReceivedControlMessage {
+            message,
+            auth: envelope.auth,
+            encrypted: None,
+        })),
+        (None, Some(encrypted)) => {
+            let Some(shared_secret) = shared_secret else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "encrypted control message cannot be decrypted",
+                ));
+            };
+            let plaintext = crate::crypto::decrypt_control_payload(
+                shared_secret,
+                &encrypted.nonce,
+                &encrypted.ciphertext,
+            )
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+            let message = serde_json::from_slice::<ControlMessage>(&plaintext)
+                .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+            if !encrypted_key_matches_message(&encrypted.key_id, &message) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "encrypted control message key id does not match payload",
+                ));
+            }
+            Ok(Some(ReceivedControlMessage {
+                message,
+                auth: envelope.auth,
+                encrypted: Some(encrypted),
+            }))
+        }
+        _ => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "control frame must contain exactly one message payload",
+        )),
+    }
 }
 
 fn verify_received_message(
     received: &ReceivedControlMessage,
     shared_secret: &str,
 ) -> std::io::Result<()> {
+    if received.encrypted.is_some() {
+        return Ok(());
+    }
+
     let Some(auth) = &received.auth else {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -1767,6 +1881,22 @@ fn verify_received_message_with_replay(
 ) -> std::io::Result<()> {
     verify_received_message(received, shared_secret)?;
 
+    if let Some(encrypted) = &received.encrypted {
+        let mut cache = replay_cache.lock().map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "control replay cache is unavailable",
+            )
+        })?;
+        if !cache.accept_encrypted(encrypted) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "control message replay rejected",
+            ));
+        }
+        return Ok(());
+    }
+
     let Some(auth) = &received.auth else {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -1787,6 +1917,33 @@ fn verify_received_message_with_replay(
     }
 
     Ok(())
+}
+
+fn inbound_control_secret(store: &RuntimeStore, key_id: &str) -> Option<String> {
+    store
+        .pending_pairing_shared_secret(&format!("pair-{key_id}"))
+        .ok()
+        .or_else(|| store.trusted_shared_secret(key_id).ok().flatten())
+}
+
+fn control_message_key_id(message: &ControlMessage) -> Option<String> {
+    match message {
+        ControlMessage::PairAccepted { peer, .. }
+        | ControlMessage::InputEvent { source: peer, .. }
+        | ControlMessage::Ping { source: peer, .. }
+        | ControlMessage::Pong { source: peer, .. } => Some(peer.device_id.clone()),
+        ControlMessage::InputAck { .. } => Some("response".to_string()),
+        ControlMessage::PairRequest { .. }
+        | ControlMessage::PairAck { .. }
+        | ControlMessage::PairRejected { .. } => None,
+    }
+}
+
+fn encrypted_key_matches_message(key_id: &str, message: &ControlMessage) -> bool {
+    match control_message_key_id(message) {
+        Some(message_key_id) => message_key_id == key_id,
+        None => false,
+    }
 }
 
 async fn connect_with_timeout(endpoint: &str) -> std::io::Result<TcpStream> {
@@ -2049,10 +2206,18 @@ Wireless LAN adapter Wi-Fi:
         let server_secret = secret.to_string();
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("client should connect");
-            let received = super::read_control_message(&mut stream)
+            let envelope = super::read_control_envelope(&mut stream)
                 .await
                 .expect("message should read")
                 .expect("message should be present");
+            assert!(envelope.message.is_none());
+            assert!(envelope.encrypted.is_some());
+            let received = super::received_control_message_from_envelope(
+                envelope,
+                Some(&server_secret),
+            )
+            .expect("encrypted message should decrypt")
+            .expect("decrypted message should be present");
             super::verify_received_message(&received, &server_secret)
                 .expect("input event should be authenticated");
             assert!(matches!(
@@ -2092,7 +2257,7 @@ Wireless LAN adapter Wi-Fi:
         let endpoint = listener.local_addr().expect("listener should have address");
         let unsigned_server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("client should connect");
-            let _ = super::read_control_message(&mut stream)
+            let _ = super::read_control_message_with_secret(&mut stream, Some(secret))
                 .await
                 .expect("message should read");
             let ack = super::ControlMessage::InputAck {
@@ -2115,6 +2280,63 @@ Wireless LAN adapter Wi-Fi:
         unsigned_server.await.expect("server task should finish");
     }
 
+    #[test]
+    fn trusted_control_envelope_encrypts_shared_secret_messages() {
+        let secret = "shared-secret";
+        let message = super::ControlMessage::InputEvent {
+            source: peer("trusted-device", "trusted-fingerprint"),
+            event: RuntimeStore::test_input_event(),
+        };
+
+        let envelope = super::control_envelope_for_message(&message, Some(secret))
+            .expect("trusted control envelope should build");
+        assert!(envelope.message.is_none());
+        assert!(envelope.auth.is_none());
+        let encrypted = envelope
+            .encrypted
+            .as_ref()
+            .expect("trusted control message should be encrypted");
+        assert_eq!(encrypted.key_id, "trusted-device");
+        assert!(!encrypted.ciphertext.contains("key press r"));
+
+        let received = super::received_control_message_from_envelope(envelope, Some(secret))
+            .expect("encrypted envelope should decrypt")
+            .expect("decrypted envelope should contain a message");
+        assert!(received.encrypted.is_some());
+        super::verify_received_message(&received, secret)
+            .expect("encrypted message should satisfy trusted verification");
+        assert!(matches!(
+            received.message,
+            super::ControlMessage::InputEvent { .. }
+        ));
+
+        let wrong_secret_envelope = super::control_envelope_for_message(&message, Some(secret))
+            .expect("trusted control envelope should build");
+        assert!(
+            super::received_control_message_from_envelope(
+                wrong_secret_envelope,
+                Some("wrong-secret"),
+            )
+            .is_err()
+        );
+
+        let mut mismatched_key_envelope =
+            super::control_envelope_for_message(&message, Some(secret))
+                .expect("trusted control envelope should build");
+        mismatched_key_envelope
+            .encrypted
+            .as_mut()
+            .expect("trusted control message should be encrypted")
+            .key_id = "other-device".to_string();
+        assert!(
+            super::received_control_message_from_envelope(
+                mismatched_key_envelope,
+                Some(secret),
+            )
+            .is_err()
+        );
+    }
+
     #[tokio::test]
     async fn capture_forwarding_requires_receiver_acknowledgement() {
         crate::identity::set_test_config_dir(unique_test_dir("capture-input-ack"));
@@ -2134,7 +2356,10 @@ Wireless LAN adapter Wi-Fi:
         let event = RuntimeStore::test_input_event();
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("client should connect");
-            let received = super::read_control_message(&mut stream)
+            let received = super::read_control_message_with_secret(
+                &mut stream,
+                Some("shared-secret"),
+            )
                 .await
                 .expect("message should read")
                 .expect("message should be present");

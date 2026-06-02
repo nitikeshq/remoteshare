@@ -1,3 +1,7 @@
+use chacha20poly1305::{
+    aead::{Aead, KeyInit},
+    XChaCha20Poly1305, XNonce,
+};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 
@@ -95,6 +99,42 @@ pub fn control_mac(shared_secret: &str, nonce: &str, message_payload: &[u8]) -> 
     hmac_sha256_hex(shared_secret.as_bytes(), &payload)
 }
 
+pub fn encrypt_control_payload(
+    shared_secret: &str,
+    payload: &[u8],
+) -> Result<(String, String), String> {
+    let key = control_encryption_key(shared_secret);
+    let cipher = XChaCha20Poly1305::new((&key).into());
+    let mut nonce = [0_u8; 24];
+    getrandom::fill(&mut nonce)
+        .map_err(|error| format!("secure random generator failed: {error}"))?;
+    let ciphertext = cipher
+        .encrypt(XNonce::from_slice(&nonce), payload)
+        .map_err(|_| "control message encryption failed".to_string())?;
+    Ok((hex(&nonce), hex(&ciphertext)))
+}
+
+pub fn decrypt_control_payload(
+    shared_secret: &str,
+    nonce: &str,
+    ciphertext: &str,
+) -> Result<Vec<u8>, String> {
+    let key = control_encryption_key(shared_secret);
+    let cipher = XChaCha20Poly1305::new((&key).into());
+    let nonce = hex24(nonce)?;
+    let ciphertext = hex_bytes(ciphertext)?;
+    cipher
+        .decrypt(XNonce::from_slice(&nonce), ciphertext.as_slice())
+        .map_err(|_| "control message decryption failed".to_string())
+}
+
+fn control_encryption_key(shared_secret: &str) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(b"remoteshare-control-aead-v1");
+    hasher.update(shared_secret.as_bytes());
+    hasher.finalize().into()
+}
+
 fn sorted_pair<'a>(first: &'a str, second: &'a str) -> (&'a str, &'a str) {
     if first <= second {
         (first, second)
@@ -116,6 +156,30 @@ fn hex32(value: &str) -> Result<[u8; 32], String> {
         let text = std::str::from_utf8(chunk).map_err(|_| "X25519 key is not valid UTF-8.")?;
         output[index] =
             u8::from_str_radix(text, 16).map_err(|_| "X25519 key is not valid hex.".to_string())?;
+    }
+    Ok(output)
+}
+
+fn hex24(value: &str) -> Result<[u8; 24], String> {
+    if value.len() != 48 {
+        return Err("nonce must be 24 bytes encoded as hex.".to_string());
+    }
+    let bytes = hex_bytes(value)?;
+    bytes
+        .try_into()
+        .map_err(|_| "nonce must be 24 bytes encoded as hex.".to_string())
+}
+
+fn hex_bytes(value: &str) -> Result<Vec<u8>, String> {
+    if value.len() % 2 != 0 {
+        return Err("hex value must have an even length.".to_string());
+    }
+    let mut output = Vec::with_capacity(value.len() / 2);
+    for chunk in value.as_bytes().chunks_exact(2) {
+        let text = std::str::from_utf8(chunk).map_err(|_| "hex value is not valid UTF-8.")?;
+        output.push(
+            u8::from_str_radix(text, 16).map_err(|_| "hex value is not valid hex.".to_string())?,
+        );
     }
     Ok(output)
 }
@@ -152,8 +216,8 @@ fn hmac_sha256_hex(key: &[u8], payload: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        fingerprint_from_public_key, hmac_sha256_hex, pairing_code, x25519_keypair,
-        x25519_shared_secret,
+        decrypt_control_payload, encrypt_control_payload, fingerprint_from_public_key,
+        hmac_sha256_hex, pairing_code, x25519_keypair, x25519_shared_secret,
     };
 
     #[test]
@@ -210,5 +274,18 @@ mod tests {
             hmac_sha256_hex(&key, b"Hi There"),
             "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
         );
+    }
+
+    #[test]
+    fn control_payload_encryption_round_trips_and_rejects_wrong_secret() {
+        let payload = br#"{"type":"input-event","value":"secret"}"#;
+        let (nonce, ciphertext) = encrypt_control_payload("shared-secret", payload).unwrap();
+
+        assert_ne!(ciphertext, String::from_utf8_lossy(payload));
+        assert_eq!(
+            decrypt_control_payload("shared-secret", &nonce, &ciphertext).unwrap(),
+            payload
+        );
+        assert!(decrypt_control_payload("wrong-secret", &nonce, &ciphertext).is_err());
     }
 }
