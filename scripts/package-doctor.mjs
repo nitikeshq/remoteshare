@@ -151,6 +151,7 @@ check("Release workflow runs Rust unit tests before native build", workflow.inde
 check("Release workflow annotates Rust check and test failures", workflow.includes("ci-run-with-annotation.mjs \"Rust check\"") && workflow.includes("ci-run-with-annotation.mjs \"Rust tests\""));
 check("Release workflow cleans debug cache before native build", workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run build"));
 check("Release workflow cleans bundle temp files before native build", workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run clean:bundle-temp") && workflow.indexOf("npm run clean:bundle-temp") < workflow.indexOf("npm run build"));
+check("Local native build cleans bundle temp files before Tauri build", packageJson.scripts?.build?.startsWith("npm run clean:bundle-temp && ") && packageJson.scripts.build.includes("tauri build"));
 check("Release workflow publishes GitHub releases for tags", workflow.includes("Publish GitHub Release") && workflow.includes("softprops/action-gh-release@v2"));
 check("Release workflow grants publish permission", /permissions:\r?\n\s+contents:\s*write/.test(workflow));
 check("Release publish job checks out scripts before npm commands", publishJobIncludesBefore("uses: actions/checkout@v4", "npm run verify:publish-artifacts"));

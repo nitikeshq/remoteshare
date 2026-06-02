@@ -87,6 +87,8 @@ npm run clean:debug-cache
 npm run build
 ```
 
+The build command clears stale temporary DMG files before invoking Tauri. It preserves final installer artifacts and checksums.
+
 Native installer output:
 
 - macOS: `src-tauri/target/release/bundle/dmg/`

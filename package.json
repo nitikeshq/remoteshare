@@ -17,7 +17,7 @@
   "scripts": {
     "dev": "tauri dev",
     "frontend:dev": "vite --host 127.0.0.1",
-    "build": "tauri build",
+    "build": "npm run clean:bundle-temp && tauri build",
     "build:frontend": "vite build",
     "preview": "vite preview",
     "doctor": "node scripts/package-doctor.mjs",
