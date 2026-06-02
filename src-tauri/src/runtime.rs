@@ -2069,7 +2069,10 @@ fn complete_pairing_if_ready(state: &mut RuntimeState, pairing_id: &str) -> Resu
     if !private_guard_allows_endpoint(&endpoint, state.persisted.settings.private_network_only) {
         return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
     }
+    let device_id = peer.device_id.clone();
     upsert_trusted_device(&mut state.persisted, peer, endpoint, shared_secret);
+    state.connection_health.remove(&device_id);
+    state.connection_failures.remove(&device_id);
     state
         .persisted
         .save()
@@ -4338,6 +4341,106 @@ mod tests {
             .pending_pairings
             .iter()
             .any(|pairing| pairing.id == pairing_id));
+    }
+
+    #[test]
+    fn completed_repair_clears_stale_connection_state() {
+        crate::identity::set_test_config_dir(unique_test_dir("complete-repair-clears-state"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "remote-device".to_string(),
+                name: "Old Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "old-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("old-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "remote-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.20:44777".to_string(),
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+            state.connection_failures.insert(
+                "remote-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "192.168.1.30:44777".to_string(),
+                    failed_at_ms: now_ms(),
+                    message: "old stale endpoint".to_string(),
+                },
+            );
+        }
+
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.60:44777".to_string(),
+            expected_peer: None,
+        };
+        let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
+        let (_remote_private_key, remote_public_key) = crate::crypto::x25519_keypair();
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                local_private_key,
+                local_public_key,
+                remote_public_key,
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id,
+                code: "123456".to_string(),
+            })
+            .expect("local approval should be recorded");
+        assert!(store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "192.168.1.60:44777".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should complete"));
+
+        assert_eq!(
+            store.trusted_target("remote-device").unwrap().endpoint,
+            "192.168.1.60:44777"
+        );
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("remote-device").is_none());
+        assert!(state.connection_failures.get("remote-device").is_none());
+        assert_eq!(
+            state.persisted.trusted_devices[0].last_endpoint.as_deref(),
+            Some("192.168.1.60:44777")
+        );
     }
 
     #[test]
