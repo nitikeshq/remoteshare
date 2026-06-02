@@ -837,7 +837,7 @@ function App() {
       showActionMessage("Turn on Auto reconnect before checking trusted devices.", true);
       return;
     }
-    if (reachableTrustedDevices.length === 0) {
+    if (checkableTrustedDevices.length === 0) {
       showActionMessage("No trusted devices have a known endpoint for reconnect checks.", true);
       return;
     }
@@ -846,7 +846,7 @@ function App() {
     try {
       let reachableCount = 0;
       let lastFailure = "";
-      for (const device of reachableTrustedDevices) {
+      for (const device of checkableTrustedDevices) {
         const action = await invokeNetworkAction("check_trusted_device", {
           request: { deviceId: device.id }
         });
@@ -859,7 +859,7 @@ function App() {
 
       showActionMessage(
         lastFailure
-          ? `Checked ${reachableTrustedDevices.length}; ${reachableCount} reachable. Last failure: ${lastFailure}`
+          ? `Checked ${checkableTrustedDevices.length}; ${reachableCount} reachable. Last failure: ${lastFailure}`
           : `Checked ${reachableCount} trusted device${reachableCount === 1 ? "" : "s"}.`,
         Boolean(lastFailure)
       );
@@ -900,12 +900,12 @@ function App() {
     canReceiveInput(status.mode) &&
     trustedDevices.length > 0 &&
     (!status.allowIncomingControl || trustedDevicesNeedingReceive.length > 0);
-  const reachableTrustedDevices = useMemo(
+  const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
     [trustedDevices]
   );
   const reconnectChecksAvailable =
-    status.trustedReconnect && reachableTrustedDevices.length > 0;
+    status.trustedReconnect && checkableTrustedDevices.length > 0;
   const captureTarget = useMemo(
     () => trustedDevices.find((device) => device.id === status.capture.targetDeviceId),
     [status.capture.targetDeviceId, trustedDevices]
@@ -1120,7 +1120,7 @@ function App() {
               onClick={checkAllTrustedDevices}
               title={
                 status.trustedReconnect
-                  ? "Run trusted reconnect checks for all reachable trusted devices."
+                  ? "Run trusted reconnect checks for all trusted devices with a known endpoint."
                   : "Turn on Auto reconnect to run trusted checks."
               }
               type="button"
@@ -1144,7 +1144,7 @@ function App() {
                   ? "Capturing"
                   : receiveRoleReady && status.allowIncomingControl
                     ? "Receive on"
-                    : reachableTrustedDevices.length > 0
+                    : checkableTrustedDevices.length > 0
                       ? "Send ready"
                       : "Locked"}
               </strong>
@@ -1247,7 +1247,7 @@ function App() {
               </strong>
               <small>
                 {failedTrustedDevices[0]?.lastConnectionFailure?.message ??
-                  `${plural(reachableTrustedDevices.length, "trusted endpoint")} reachable`}
+                  `${plural(checkableTrustedDevices.length, "trusted endpoint")} ready for checks`}
               </small>
             </div>
           </div>
