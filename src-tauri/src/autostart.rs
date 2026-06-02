@@ -1,4 +1,6 @@
-use std::{fs, path::PathBuf};
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use std::fs;
+use std::path::PathBuf;
 
 use thiserror::Error;
 
@@ -171,6 +173,7 @@ fn linux_autostart_path() -> Result<PathBuf, AutostartError> {
         .ok_or(AutostartError::ConfigDir)
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn remove_if_exists(path: PathBuf) -> Result<(), AutostartError> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),

@@ -2146,9 +2146,13 @@ Wireless LAN adapter Wi-Fi:
         let error = super::send_input_to_target(store.clone(), target, event)
             .await
             .expect_err("receiver rejection should stop capture forwarding");
+        let expected_rejection = format!(
+            "Rejected input event: receive control is disabled.{}",
+            super::TRUSTED_ENDPOINT_RECOVERY_HINT
+        );
         assert_eq!(
             error.to_string(),
-            "Rejected input event: receive control is disabled."
+            expected_rejection
         );
         server.await.expect("server task should finish");
 
@@ -2160,10 +2164,7 @@ Wireless LAN adapter Wi-Fi:
             .and_then(|device| device.last_connection_failure.as_ref())
             .expect("receiver rejection should be visible on trusted device");
         assert_eq!(failure.endpoint, endpoint.to_string());
-        assert_eq!(
-            failure.message,
-            "Rejected input event: receive control is disabled."
-        );
+        assert_eq!(failure.message, expected_rejection);
     }
 
     #[test]
