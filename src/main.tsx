@@ -280,8 +280,8 @@ function pairingExpiryLabel(pairing: PendingPairing) {
 }
 
 function inputEventStatusLabel(event: InputEventRecord) {
-  if (event.accepted) return "accepted";
-  return event.direction === "incoming" ? "failed" : "rejected";
+  if (event.accepted) return "Accepted";
+  return event.direction === "incoming" ? "Failed" : "Rejected";
 }
 
 function inputEventDirectionLabel(event: InputEventRecord) {
