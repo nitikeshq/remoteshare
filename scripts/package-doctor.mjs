@@ -41,6 +41,10 @@ const rustfmtCheckerPath = "scripts/check-rustfmt.mjs";
 const rustfmtChecker = fs.readFileSync(rustfmtCheckerPath, "utf8");
 const rustfmtCheckerTestPath = "scripts/test-rustfmt-check.mjs";
 const rustfmtCheckerTest = fs.readFileSync(rustfmtCheckerTestPath, "utf8");
+const ciAnnotationHelperPath = "scripts/ci-run-with-annotation.mjs";
+const ciAnnotationHelper = fs.readFileSync(ciAnnotationHelperPath, "utf8");
+const ciAnnotationHelperTestPath = "scripts/test-ci-run-with-annotation.mjs";
+const ciAnnotationHelperTest = fs.readFileSync(ciAnnotationHelperTestPath, "utf8");
 const cryptoRuntime = fs.readFileSync("src-tauri/src/crypto.rs", "utf8");
 const identityRuntime = fs.readFileSync("src-tauri/src/identity.rs", "utf8");
 const networkRuntime = fs.readFileSync("src-tauri/src/network.rs", "utf8");
@@ -60,6 +64,7 @@ const expectedScripts = [
   "test:rust",
   "check:rustfmt",
   "test:rustfmt",
+  "test:ci-annotation",
   "checksums:installers",
   "test:checksums",
   "verify:installers",
@@ -125,6 +130,7 @@ check("Release workflow runs smoke report release row tests", workflow.includes(
 check("Release workflow runs release readiness verifier tests", workflow.includes("npm run test:release-readiness"));
 check("Release workflow runs package doctor", workflow.includes("npm run doctor"));
 check("Release workflow runs Rust unit tests before native build", workflow.indexOf("npm run check:rust") < workflow.indexOf("npm run test:rust") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run build"));
+check("Release workflow annotates Rust check and test failures", workflow.includes("ci-run-with-annotation.mjs \"Rust check\"") && workflow.includes("ci-run-with-annotation.mjs \"Rust tests\""));
 check("Release workflow cleans debug cache before native build", workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run build"));
 check("Release workflow publishes GitHub releases for tags", workflow.includes("Publish GitHub Release") && workflow.includes("softprops/action-gh-release@v2"));
 check("Release workflow grants publish permission", workflow.includes("permissions:\n      contents: write"));
@@ -480,6 +486,10 @@ check("Rust formatter diagnostic script exists", fs.existsSync(rustfmtCheckerPat
 check("Rust formatter diagnostic reports broken toolchains", rustfmtChecker.includes("Rust formatter is unavailable or broken.") && rustfmtChecker.includes("rustup component add rustfmt") && rustfmtChecker.includes("REMOTESHARE_RUSTFMT_COMMAND"));
 check("Rust formatter diagnostic fixture test exists", fs.existsSync(rustfmtCheckerTestPath));
 check("Rust formatter diagnostic fixture tests success and broken dylib output", rustfmtCheckerTest.includes("rustfmt 1.0.0-test") && rustfmtCheckerTest.includes("Library not loaded: librustc_driver-test.dylib") && rustfmtCheckerTest.includes("JSON array of strings"));
+check("CI annotation helper script exists", fs.existsSync(ciAnnotationHelperPath));
+check("CI annotation helper emits GitHub errors and summaries", ciAnnotationHelper.includes("::error title=") && ciAnnotationHelper.includes("GITHUB_STEP_SUMMARY") && ciAnnotationHelper.includes("slice(-80)"));
+check("CI annotation helper fixture test exists", fs.existsSync(ciAnnotationHelperTestPath));
+check("CI annotation helper fixture tests failing command output", ciAnnotationHelperTest.includes("compiler tail line") && ciAnnotationHelperTest.includes("::error title=failing command::"));
 check("Release summary script exists", fs.existsSync("scripts/release-summary.mjs"));
 check("Release summary reports platform coverage", releaseSummary.includes("Platform coverage") && releaseSummary.includes("Windows EXE") && releaseSummary.includes("Linux DEB"));
 check("Release summary handles uppercase installer extensions", releaseSummary.includes("path.extname(entry.name).toLowerCase()") && fs.readFileSync("scripts/test-release-summary.mjs", "utf8").includes("_aarch64.DMG"));
@@ -507,6 +517,7 @@ check("verify:release-scripts tests smoke report release rows helper", packageJs
 check("verify:release-scripts tests release candidate summary helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-candidate-summary"));
 check("verify:release-scripts tests release readiness verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-readiness"));
 check("verify:release-scripts tests rustfmt checker", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:rustfmt"));
+check("verify:release-scripts tests CI annotation helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:ci-annotation"));
 check("verify:release-scripts runs release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run release:summary"));
 check("verify:release-scripts runs package doctor", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run doctor"));
 check("verify:release runs scripts-only release gate", packageJson.scripts?.["verify:release"]?.includes("npm run verify:release-scripts"));

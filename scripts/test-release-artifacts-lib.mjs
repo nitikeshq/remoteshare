@@ -11,11 +11,11 @@ import {
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-artifacts-lib-"));
 
 try {
-  writeFile("mac/RemoteShare_0.1.1_aarch64.DMG", "dmg");
-  writeFile("win/RemoteShare_0.1.1_x64-setup.exe", "exe");
-  writeFile("linux/RemoteShare_0.1.1_amd64.deb", "deb");
-  writeFile("extra/RemoteShare_0.1.1_x64.msi", "msi");
-  writeFile("extra/RemoteShare_0.1.1.AppImage", "appimage");
+  writeFile("mac/RemoteShare_0.1.2_aarch64.DMG", "dmg");
+  writeFile("win/RemoteShare_0.1.2_x64-setup.exe", "exe");
+  writeFile("linux/RemoteShare_0.1.2_amd64.deb", "deb");
+  writeFile("extra/RemoteShare_0.1.2_x64.msi", "msi");
+  writeFile("extra/RemoteShare_0.1.2.AppImage", "appimage");
   writeFile("notes/readme.txt", "notes");
 
   const requiredTypes = [...requiredArtifactTypes.keys()];
@@ -33,7 +33,7 @@ try {
   const unexpected = findUnexpectedInstallerArtifacts(root);
   assertEqual(
     unexpected.map((file) => path.basename(file)).join(","),
-    "RemoteShare_0.1.1.AppImage,RemoteShare_0.1.1_x64.msi",
+    "RemoteShare_0.1.2.AppImage,RemoteShare_0.1.2_x64.msi",
     "unexpected installer artifacts"
   );
 
