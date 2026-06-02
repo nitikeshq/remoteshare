@@ -17,6 +17,8 @@ const PAIRING_TIMEOUT_MS: u128 = 120_000;
 const MAX_RECENT_TRUSTED_ENDPOINTS: usize = 4;
 pub(crate) const INVALID_ENDPOINT_MESSAGE: &str =
     "Endpoint must be a valid non-local host, host:port, IPv4, or IPv6 address.";
+pub(crate) const PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE: &str =
+    "Private network only is enabled. Use a private LAN endpoint or turn off Private network only.";
 
 #[derive(Debug, Clone)]
 pub struct RuntimeStore {
@@ -546,6 +548,12 @@ impl RuntimeStore {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
         let mut state = self.state.lock().expect("runtime state poisoned");
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+        }
         state.discovery.manual_endpoint = Some(endpoint.clone());
         state.persisted.settings.manual_endpoint = Some(endpoint);
         state
@@ -926,6 +934,12 @@ impl RuntimeStore {
         let state = self.state.lock().expect("runtime state poisoned");
 
         if let Some(endpoint) = endpoint {
+            if !private_guard_allows_endpoint(
+                &endpoint,
+                state.persisted.settings.private_network_only,
+            ) {
+                return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+            }
             let expected_peer = request
                 .device_id
                 .as_deref()
@@ -1268,6 +1282,12 @@ impl RuntimeStore {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
         let state = self.state.lock().expect("runtime state poisoned");
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+        }
         let device = state
             .persisted
             .trusted_devices
@@ -1787,6 +1807,7 @@ fn trusted_device_endpoint(state: &RuntimeState, device: &TrustedDevice) -> Opti
 fn trusted_device_endpoints(state: &RuntimeState, device: &TrustedDevice) -> Vec<String> {
     let now = now_ms();
     let mut endpoints = Vec::new();
+    let private_network_only = state.persisted.settings.private_network_only;
 
     if let Some(endpoint) = state
         .discovered_peers
@@ -1794,7 +1815,11 @@ fn trusted_device_endpoints(state: &RuntimeState, device: &TrustedDevice) -> Vec
         .filter(|peer| peer_is_fresh(peer, now) && peer_matches_trusted_device(peer, device))
         .map(|peer| peer.endpoint.clone())
     {
-        push_unique_endpoint(&mut endpoints, endpoint);
+        push_unique_endpoint_if_private_guard_allows(
+            &mut endpoints,
+            endpoint,
+            private_network_only,
+        );
     }
 
     if let Some(endpoint) = state
@@ -1803,14 +1828,28 @@ fn trusted_device_endpoints(state: &RuntimeState, device: &TrustedDevice) -> Vec
         .filter(|health| peer_is_fresh_health(health, now))
         .map(|health| health.endpoint.clone())
     {
-        push_unique_endpoint(&mut endpoints, endpoint);
+        push_unique_endpoint_if_private_guard_allows(
+            &mut endpoints,
+            endpoint,
+            private_network_only,
+        );
     }
 
     for endpoint in saved_trusted_endpoints(device) {
-        push_unique_endpoint(&mut endpoints, endpoint);
+        push_unique_endpoint_if_private_guard_allows(&mut endpoints, endpoint, private_network_only);
     }
 
     endpoints
+}
+
+fn push_unique_endpoint_if_private_guard_allows(
+    endpoints: &mut Vec<String>,
+    endpoint: String,
+    private_network_only: bool,
+) {
+    if private_guard_allows_endpoint(&endpoint, private_network_only) {
+        push_unique_endpoint(endpoints, endpoint);
+    }
 }
 
 fn push_unique_endpoint(endpoints: &mut Vec<String>, endpoint: String) {
@@ -2188,6 +2227,46 @@ fn ipv6_is_unscoped_link_local(address: std::net::Ipv6Addr) -> bool {
     (address.segments()[0] & 0xffc0) == 0xfe80
 }
 
+fn private_guard_allows_endpoint(endpoint: &str, private_network_only: bool) -> bool {
+    if !private_network_only {
+        return true;
+    }
+
+    normalized_endpoint_ip(endpoint)
+        .map(ip_address_is_private_or_local)
+        .unwrap_or(true)
+}
+
+fn normalized_endpoint_ip(endpoint: &str) -> Option<std::net::IpAddr> {
+    endpoint
+        .parse::<std::net::SocketAddr>()
+        .ok()
+        .map(|address| address.ip())
+}
+
+fn ip_address_is_private_or_local(address: std::net::IpAddr) -> bool {
+    match address {
+        std::net::IpAddr::V4(address) => {
+            address.is_private() || address.is_loopback() || address.is_link_local()
+        }
+        std::net::IpAddr::V6(address) => {
+            if let Some(mapped_address) = address.to_ipv4_mapped() {
+                return mapped_address.is_private()
+                    || mapped_address.is_loopback()
+                    || mapped_address.is_link_local();
+            }
+
+            address.is_loopback()
+                || ipv6_is_unique_local(address)
+                || ipv6_is_unscoped_link_local(address)
+        }
+    }
+}
+
+fn ipv6_is_unique_local(address: std::net::Ipv6Addr) -> bool {
+    (address.segments()[0] & 0xfe00) == 0xfc00
+}
+
 fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String> {
     let mut changed = false;
     let manual_endpoint = persisted
@@ -2289,7 +2368,10 @@ mod tests {
 
     use crate::identity::{ComputerRole, TrustedDevice};
 
-    use super::{input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE};
+    use super::{
+        input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE,
+        PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE,
+    };
     use super::{
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
         PairingDirection, PairingPeer, PairingTarget, PeerAnnouncement, PendingPairing,
@@ -3068,6 +3150,60 @@ mod tests {
     }
 
     #[test]
+    fn private_network_guard_rejects_public_manual_endpoint_literals() {
+        crate::identity::set_test_config_dir(unique_test_dir("manual-public-private-guard"));
+
+        let store = RuntimeStore::load_or_init();
+
+        let error = store
+            .pairing_target(super::PairRequest {
+                device_id: None,
+                endpoint: Some("8.8.8.8".to_string()),
+                manual_endpoint: true,
+            })
+            .expect_err("public manual endpoint should be rejected while guard is on");
+        assert_eq!(error, PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE);
+
+        let error = store
+            .remember_manual_endpoint("8.8.8.8".to_string())
+            .expect_err("public manual endpoint should not be saved while guard is on");
+        assert_eq!(error, PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE);
+
+        let allowed = store
+            .pairing_target(super::PairRequest {
+                device_id: None,
+                endpoint: Some("192.168.1.50".to_string()),
+                manual_endpoint: true,
+            })
+            .expect("private manual endpoint should be allowed");
+        assert_eq!(allowed.endpoint, "192.168.1.50:44777");
+    }
+
+    #[test]
+    fn public_manual_endpoint_literals_require_private_guard_off() {
+        crate::identity::set_test_config_dir(unique_test_dir("manual-public-guard-off"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        let target = store
+            .pairing_target(super::PairRequest {
+                device_id: None,
+                endpoint: Some("8.8.8.8".to_string()),
+                manual_endpoint: true,
+            })
+            .expect("public manual endpoint should be allowed after guard is off");
+        assert_eq!(target.endpoint, "8.8.8.8:44777");
+    }
+
+    #[test]
     fn startup_registration_health_is_reported_in_status() {
         crate::identity::set_test_config_dir(unique_test_dir("startup-registration-health"));
 
@@ -3211,6 +3347,49 @@ mod tests {
     }
 
     #[test]
+    fn private_network_guard_skips_public_trusted_endpoint_candidates() {
+        crate::identity::set_test_config_dir(unique_test_dir("skip-public-trusted-endpoints"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("8.8.8.8:44777".to_string()),
+                recent_endpoints: vec!["192.168.1.50:44777".to_string()],
+                allow_incoming_control: false,
+            });
+        }
+
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec![
+                "8.8.8.8:44777".to_string(),
+                "192.168.1.50:44777".to_string()
+            ]
+        );
+    }
+
+    #[test]
     fn saved_recent_trusted_endpoints_are_normalized_bounded_and_prioritized() {
         crate::identity::set_test_config_dir(unique_test_dir("normalize-recent-trusted-endpoints"));
 
@@ -3332,6 +3511,25 @@ mod tests {
             .trusted_target_for_endpoint("trusted-device", "localhost".to_string())
             .expect_err("local-only endpoint should be rejected");
         assert_eq!(error, INVALID_ENDPOINT_MESSAGE);
+
+        let error = store
+            .trusted_target_for_endpoint("trusted-device", "8.8.8.8".to_string())
+            .expect_err("public endpoint should be rejected while private guard is on");
+        assert_eq!(error, PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE);
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        let public_target = store
+            .trusted_target_for_endpoint("trusted-device", "8.8.8.8".to_string())
+            .expect("public endpoint should be allowed after private guard is off");
+        assert_eq!(public_target.endpoint, "8.8.8.8:44777");
     }
 
     #[test]

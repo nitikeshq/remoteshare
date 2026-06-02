@@ -104,7 +104,7 @@ Minimum pass criteria:
 
 - No LAN discovery: confirm both devices are on the same subnet and UDP `44778` is not blocked.
 - Manual pair fails: confirm TCP `44777` is reachable and the endpoint is copied from the other computer, not the same computer.
-- Manual pair rejects `localhost`, localhost aliases such as `localhost.localdomain`, loopback addresses such as `127.0.0.1` or `::1`, and unspecified bind addresses such as `0.0.0.0`; copy an endpoint from the other computer instead.
+- Manual pair rejects `localhost`, localhost aliases such as `localhost.localdomain`, loopback addresses such as `127.0.0.1` or `::1`, unspecified bind addresses such as `0.0.0.0`, and public literal IPs while `Private network only` is enabled; copy an endpoint from the other computer instead.
 - On Windows, confirm the active network profile is Private, then run `Test-NetConnection <other-computer-ip> -Port 44777` in PowerShell.
 - If ping is allowed on the network, confirm both computers can ping each other before testing manual pairing.
 - Same router but different SSID or band: this works only when the router bridges both networks into the same subnet.

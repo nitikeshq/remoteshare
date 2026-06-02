@@ -1689,7 +1689,7 @@ function App() {
                 }}
               />
               <small id="manual-endpoint-hint">
-                Missing ports use 44777. Localhost, loopback, unspecified, and link-local IPv6 endpoints are rejected.
+                Missing ports use 44777. Localhost, loopback, unspecified, and link-local IPv6 endpoints are rejected. Public IP literals are blocked while Private network only is on.
               </small>
             </div>
             <button className="secondary-button" type="submit" disabled={loading || !manualEndpoint.trim()}>
