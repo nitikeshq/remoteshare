@@ -49,6 +49,7 @@ type PendingPairing = {
   deviceId: string;
   name: string;
   platform: string;
+  role: ComputerRole;
   endpoint: string;
   code: string;
   direction: "incoming" | "outgoing";
@@ -1197,7 +1198,7 @@ function App() {
                     )}
                   </div>
                   <p>
-                    {device.platform} · {connectionLabel(device)}
+                    {device.platform} · {roleLabel(device.role)} · {connectionLabel(device)}
                   </p>
                   <p className="device-diagnostic-row">
                     {lastSeenLabel(device.lastSeenAtMs)} · {endpointDiagnostic(device)}
@@ -1402,10 +1403,14 @@ function App() {
               {trustedDevices.map((device) => (
                 <article className="audit-row" key={device.id}>
                   <div>
-                    <span>{device.platform}</span>
+                    <span>{device.platform} · {roleLabel(device.role)}</span>
                     <strong>{device.name}</strong>
                   </div>
                   <dl>
+                    <div>
+                      <dt>Role</dt>
+                      <dd>{roleLabel(device.role)}</dd>
+                    </div>
                     <div>
                       <dt>Fingerprint</dt>
                       <dd className="audit-fingerprint">
@@ -1473,8 +1478,8 @@ function App() {
                     <div>
                       <h4>{pairing.name}</h4>
                       <p>
-                        {pairing.platform} · {pairing.endpoint} · {pairing.direction} ·{" "}
-                        {pairingExpiryLabel(pairing)}
+                        {pairing.platform} · {roleLabel(pairing.role)} · {pairing.endpoint} ·{" "}
+                        {pairing.direction} · {pairingExpiryLabel(pairing)}
                       </p>
                       <div className="approval-status">
                         <span className={pairing.localApproved ? "approved" : "pending"}>

@@ -47,7 +47,7 @@ Manual endpoints accept `host`, `host:port`, IPv4, raw IPv6, and bracketed IPv6.
 
 Pairing must require explicit approval on both machines.
 
-Each computer has a local role: `Main`, `Client`, or `Both`. `Main` and `Both` can send test input and start capture forwarding. `Client` and `Both` can receive trusted input when the global receive toggle and the trusted-device receive toggle are enabled. Discovery, pairing messages, and trusted-device records carry the peer role so trusted rows keep the correct role after manual pairing, reconnect, restart, or offline fallback. The first MVP test sets macOS to `Main` and Windows to `Client`.
+Each computer has a local role: `Main`, `Client`, or `Both`. `Main` and `Both` can send test input and start capture forwarding. `Client` and `Both` can receive trusted input when the global receive toggle and the trusted-device receive toggle are enabled. Discovery, pairing messages, and trusted-device records carry the peer role so trusted rows keep the correct role after manual pairing, reconnect, restart, or offline fallback. Device, pending-pairing, and trusted-device audit rows display the peer role so testers can catch a wrong Main/Client setup before or after trust is created. The first MVP test sets macOS to `Main` and Windows to `Client`.
 
 Expected flow:
 
@@ -99,7 +99,7 @@ Current scaffold behavior:
 - Trusted devices created before shared control secrets were added must be re-paired before test input or capture forwarding will start; the UI offers a re-pair action when a stale trusted record still has a known endpoint.
 - Device status exposes whether input control is ready, so the UI can show stale trusted pairings as needing re-pairing instead of offering input actions that will be rejected. Per-device Receive toggles are disabled for stale trusted records until the device is re-paired and a shared input secret exists.
 - Device rows expose the stored peer fingerprint in shortened form and provide a copy button for the full fingerprint so testers can audit trusted identity after pairing.
-- The trusted-device audit view shows the local public-key fingerprint plus each trusted peer's full fingerprint, endpoint source, last-seen state, receive permission, input-secret readiness, last failure, and the same recovery hint shown in the device row. The local and peer fingerprints can be copied directly from the audit view for smoke-test evidence.
+- The trusted-device audit view shows the local public-key fingerprint plus each trusted peer's role, full fingerprint, endpoint source, last-seen state, receive permission, input-secret readiness, last failure, and the same recovery hint shown in the device row. The local and peer fingerprints can be copied directly from the audit view for smoke-test evidence.
 - Trusted reconnect skips legacy trusted records that do not have a shared control secret because they cannot complete authenticated ping/pong health checks.
 
 Security gap to close before broader public testing:
