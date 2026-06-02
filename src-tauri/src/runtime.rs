@@ -892,6 +892,12 @@ impl RuntimeStore {
     pub fn record_peer(&self, announcement: PeerAnnouncement, endpoint: String) -> bool {
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return false;
+        }
         if announcement.device_id == state.persisted.identity.id {
             return false;
         }
@@ -2648,6 +2654,20 @@ mod tests {
         assert!(!store.record_peer(
             PeerAnnouncement {
                 protocol_version: 1,
+                device_id: "public-discovery".to_string(),
+                name: "Public Discovery".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                role: ComputerRole::Client,
+                public_key: public_key.clone(),
+                scan_request: true,
+            },
+            "8.8.8.8:44777".to_string(),
+        ));
+        assert!(!store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
                 device_id: "bad-public-key".to_string(),
                 name: "Bad Key".to_string(),
                 platform: "windows".to_string(),
@@ -2686,6 +2706,51 @@ mod tests {
             .devices
             .iter()
             .all(|device| device.id != "bad-public-key"));
+        assert!(status
+            .devices
+            .iter()
+            .all(|device| device.id != "public-discovery"));
+    }
+
+    #[test]
+    fn public_discovery_requires_private_guard_off() {
+        crate::identity::set_test_config_dir(unique_test_dir("public-discovery-guard-off"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        let (_private_key, public_key) = crate::crypto::identity_keypair();
+        let public_key_fingerprint = crate::crypto::fingerprint_from_public_key(&public_key)
+            .expect("generated public key should fingerprint");
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "public-discovery".to_string(),
+                name: "Public Discovery".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint,
+                role: ComputerRole::Client,
+                public_key,
+                scan_request: true,
+            },
+            "8.8.8.8:44777".to_string(),
+        ));
+
+        let status = store.status();
+        let accepted = status
+            .devices
+            .iter()
+            .find(|device| device.id == "public-discovery")
+            .expect("public peer should be discovered after guard is off");
+        assert_eq!(accepted.endpoint.as_deref(), Some("8.8.8.8:44777"));
     }
 
     #[test]

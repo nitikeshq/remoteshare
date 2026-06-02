@@ -23,7 +23,7 @@ Each running app broadcasts:
 255.255.255.255:44778
 ```
 
-The beacon loop also makes a best-effort pass over local interface broadcast addresses, such as `192.168.1.255:44778`, and refreshes that target list periodically so Wi-Fi changes have a chance to recover without restarting the app. Clicking `Scan LAN` sends the local announcement immediately to the current broadcast targets with a scan request flag instead of waiting for the next background beacon. Peers answer accepted scan requests directly to the sender's UDP discovery port, so both computers can appear faster without turning every background beacon into a reply loop. A scan request must pass the same self-device, trusted fingerprint, and advertised public-key validation as normal discovery before a direct reply or UI refresh is sent. macOS/Linux read broadcast addresses from `ifconfig`; Windows computes them from `ipconfig` IPv4/subnet-mask blocks.
+The beacon loop also makes a best-effort pass over local interface broadcast addresses, such as `192.168.1.255:44778`, and refreshes that target list periodically so Wi-Fi changes have a chance to recover without restarting the app. Clicking `Scan LAN` sends the local announcement immediately to the current broadcast targets with a scan request flag instead of waiting for the next background beacon. Peers answer accepted scan requests directly to the sender's UDP discovery port, so both computers can appear faster without turning every background beacon into a reply loop. A scan request must pass the same self-device, private-network guard, trusted fingerprint, and advertised public-key validation as normal discovery before a direct reply or UI refresh is sent. macOS/Linux read broadcast addresses from `ifconfig`; Windows computes them from `ipconfig` IPv4/subnet-mask blocks.
 
 The app scaffold now stores the local identity and includes a UDP discovery supervisor plus TCP pairing over discovered endpoints.
 
@@ -67,7 +67,7 @@ Current scaffold behavior:
 - TCP control messages are versioned, length-prefixed JSON frames with a 64 KiB frame limit.
 - Control connect/read/write operations use short timeouts so stalled peers do not hang the runtime.
 - Malformed, oversized, unsupported-version, or timed-out inbound control frames are surfaced through the UI network-error status.
-- Inbound TCP control rejects non-private remote addresses by default before reading a control frame. This guard can be disabled from settings only for intentional routed-network testing.
+- Inbound TCP control and UDP discovery reject non-private remote addresses by default before accepting a control frame, recording a discovered peer, or replying to a scan request. This guard can be disabled from settings only for intentional routed-network testing.
 - Pair requests can start from a discovered peer or a manual `host:port` target.
 - Discovered peer pairing uses the peer device ID, while saved/reconnect fallback pairing can send an explicit endpoint without overwriting the remembered manual fallback. Only manual form submissions update the remembered manual fallback.
 - Pair acknowledgements for discovered peers and explicit known-device endpoint pairings must match the selected device ID and fingerprint before a comparison code is shown. When a stored peer public key exists, the acknowledgement must match that public key too. Plain manual endpoint pairing learns identity from the acknowledgement because no prior discovery identity exists.
