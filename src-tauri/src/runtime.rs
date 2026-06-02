@@ -1454,6 +1454,7 @@ impl RuntimeStore {
         endpoint: &str,
         message: &str,
     ) {
+        let endpoint = normalized_endpoint(endpoint).unwrap_or_else(|| endpoint.to_string());
         let mut state = self.state.lock().expect("runtime state poisoned");
         if !state
             .persisted
@@ -1474,7 +1475,7 @@ impl RuntimeStore {
         state.connection_failures.insert(
             device_id.to_string(),
             ConnectionFailure {
-                endpoint: endpoint.to_string(),
+                endpoint,
                 failed_at_ms: now_ms(),
                 message: message.to_string(),
             },
@@ -4879,6 +4880,59 @@ mod tests {
             .expect("trusted device should be listed")
             .last_connection_failure
             .is_none());
+    }
+
+    #[test]
+    fn trusted_connection_failure_normalizes_endpoint_for_status() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-normalized"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.50",
+            "connection timed out",
+        );
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(
+            device
+                .last_connection_failure
+                .as_ref()
+                .expect("failure should be visible")
+                .endpoint,
+            "192.168.1.50:44777"
+        );
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
     }
 
     #[test]
