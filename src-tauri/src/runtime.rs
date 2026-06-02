@@ -640,6 +640,17 @@ impl RuntimeStore {
             state.capture.target_device_id = None;
             state.capture.started_at_ms = None;
         }
+        if state.persisted.settings.private_network_only {
+            sanitize_persisted_endpoints(&mut state.persisted);
+            state.discovery.manual_endpoint = state.persisted.settings.manual_endpoint.clone();
+            let private_network_only = state.persisted.settings.private_network_only;
+            state.connection_health.retain(|_, health| {
+                private_guard_allows_endpoint(&health.endpoint, private_network_only)
+            });
+            state.connection_failures.retain(|_, failure| {
+                private_guard_allows_endpoint(&failure.endpoint, private_network_only)
+            });
+        }
 
         match state.persisted.save() {
             Ok(()) => NetworkAction {
@@ -2282,7 +2293,10 @@ fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String
         .settings
         .manual_endpoint
         .as_deref()
-        .and_then(normalized_endpoint);
+        .and_then(|endpoint| sanitize_endpoint_for_private_guard(
+            endpoint,
+            persisted.settings.private_network_only,
+        ));
 
     if persisted.settings.manual_endpoint != manual_endpoint {
         persisted.settings.manual_endpoint = manual_endpoint.clone();
@@ -2290,7 +2304,13 @@ fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String
     }
 
     for device in &mut persisted.trusted_devices {
-        let last_endpoint = device.last_endpoint.as_deref().and_then(normalized_endpoint);
+        let last_endpoint = device
+            .last_endpoint
+            .as_deref()
+            .and_then(|endpoint| sanitize_endpoint_for_private_guard(
+                endpoint,
+                persisted.settings.private_network_only,
+            ));
         if device.last_endpoint != last_endpoint {
             device.last_endpoint = last_endpoint;
             changed = true;
@@ -2300,7 +2320,12 @@ fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String
         for endpoint in device
             .recent_endpoints
             .iter()
-            .filter_map(|endpoint| normalized_endpoint(endpoint))
+            .filter_map(|endpoint| {
+                sanitize_endpoint_for_private_guard(
+                    endpoint,
+                    persisted.settings.private_network_only,
+                )
+            })
         {
             push_unique_endpoint(&mut recent_endpoints, endpoint);
         }
@@ -2322,6 +2347,14 @@ fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String
     }
 
     manual_endpoint
+}
+
+fn sanitize_endpoint_for_private_guard(
+    endpoint: &str,
+    private_network_only: bool,
+) -> Option<String> {
+    let endpoint = normalized_endpoint(endpoint)?;
+    private_guard_allows_endpoint(&endpoint, private_network_only).then_some(endpoint)
 }
 
 fn hostname_is_local_only(host: &str) -> bool {
@@ -3287,6 +3320,92 @@ mod tests {
             })
             .expect("public manual endpoint should be allowed after guard is off");
         assert_eq!(target.endpoint, "8.8.8.8:44777");
+    }
+
+    #[test]
+    fn enabling_private_network_guard_clears_saved_public_endpoint_literals() {
+        crate::identity::set_test_config_dir(unique_test_dir("private-guard-toggle-clears-public"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        store
+            .remember_manual_endpoint("8.8.8.8".to_string())
+            .expect("public manual endpoint should save while guard is off");
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("8.8.4.4:44777".to_string()),
+                recent_endpoints: vec![
+                    "1.1.1.1:44777".to_string(),
+                    "192.168.1.50:44777".to_string(),
+                ],
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "8.8.4.4:44777".to_string(),
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+            state.connection_failures.insert(
+                "trusted-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "1.1.1.1:44777".to_string(),
+                    failed_at_ms: now_ms(),
+                    message: "connection refused".to_string(),
+                },
+            );
+        }
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(true),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok, "{}", action.message);
+
+        assert_eq!(store.status().discovery.manual_endpoint, None);
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+        {
+            let state = store.state.lock().expect("runtime state poisoned");
+            assert_eq!(state.persisted.settings.manual_endpoint, None);
+            assert_eq!(state.persisted.trusted_devices[0].last_endpoint, None);
+            assert_eq!(
+                state.persisted.trusted_devices[0].recent_endpoints,
+                vec!["192.168.1.50:44777".to_string()]
+            );
+            assert!(state.connection_health.is_empty());
+            assert!(state.connection_failures.is_empty());
+        }
+
+        let restored = RuntimeStore::load_or_init();
+        assert_eq!(restored.status().discovery.manual_endpoint, None);
+        assert_eq!(
+            restored.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
     }
 
     #[test]

@@ -454,6 +454,7 @@ check("Runtime binds IPv4 and IPv6 control listeners", networkRuntime.includes("
 check("Runtime normalizes IPv4-mapped IPv6 control peers", networkRuntime.includes("to_ipv4_mapped()"));
 check("Runtime tests pong challenge matching", networkRuntime.includes("wrong_challenge") && networkRuntime.includes("ping-challenge"));
 check("Runtime tests private network guard ranges", networkRuntime.includes("private_network_guard_allows_private_and_local_addresses") && networkRuntime.includes("private_network_guard_rejects_public_addresses"));
+check("Runtime clears public saved endpoints when private guard is enabled", runtimeStore.includes("sanitize_endpoint_for_private_guard") && runtimeStore.includes("enabling_private_network_guard_clears_saved_public_endpoint_literals") && networkingMilestone.includes("after the guard is turned back on"));
 check("Runtime prioritizes private local endpoints", networkRuntime.includes("local_ipv4_endpoint_priority") && networkRuntime.includes("local_ipv6_endpoint_priority") && networkRuntime.includes("local_endpoint_priority_prefers_private_lan_addresses"));
 check("Runtime parses local IPv6 endpoints", networkRuntime.includes("parse_ifconfig_local_ipv6_addresses") && networkRuntime.includes("parse_ipconfig_local_ipv6_addresses"));
 check("Runtime omits link-local IPv6 copy endpoints", networkRuntime.includes("copyable_ipv6_endpoints_skip_link_local_addresses") && networkRuntime.includes("!is_ipv6_unicast_link_local(address)"));
