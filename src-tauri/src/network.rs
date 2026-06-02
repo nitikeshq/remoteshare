@@ -402,6 +402,13 @@ pub async fn confirm_pairing(
 }
 
 pub async fn send_test_input(store: RuntimeStore, request: SendInputRequest) -> NetworkAction {
+    if !store.input_sending_enabled() {
+        return action(
+            false,
+            "Set this computer role to Main or Both before sending test input.".to_string(),
+        );
+    }
+
     let reconnect_target = match store
         .trusted_reconnect_targets()
         .into_iter()

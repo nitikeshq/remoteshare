@@ -656,6 +656,14 @@ impl RuntimeStore {
             };
         }
 
+        if !state.persisted.settings.role.can_receive_input() {
+            return NetworkAction {
+                ok: false,
+                message: "Set this computer role to Client or Both before enabling receive."
+                    .to_string(),
+            };
+        }
+
         state.persisted.settings.allow_incoming_control = true;
         for device in &mut state.persisted.trusted_devices {
             device.allow_incoming_control = true;
@@ -719,6 +727,13 @@ impl RuntimeStore {
 
     pub fn start_capture(&self, request: CaptureControlRequest) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
+        if !state.persisted.settings.role.can_send_input() {
+            return NetworkAction {
+                ok: false,
+                message: "Set this computer role to Main or Both before starting capture.".to_string(),
+            };
+        }
+
         let Some(device) = state
             .persisted
             .trusted_devices
@@ -1174,6 +1189,11 @@ impl RuntimeStore {
         })
     }
 
+    pub fn input_sending_enabled(&self) -> bool {
+        let state = self.state.lock().expect("runtime state poisoned");
+        state.persisted.settings.role.can_send_input()
+    }
+
     pub fn trusted_target_for_endpoint(
         &self,
         device_id: &str,
@@ -1203,6 +1223,10 @@ impl RuntimeStore {
 
     pub fn active_capture_target(&self) -> Option<TrustedReconnectTarget> {
         let state = self.state.lock().expect("runtime state poisoned");
+        if !state.persisted.settings.role.can_send_input() {
+            return None;
+        }
+
         let device_id = state.capture.target_device_id.as_ref()?;
         if !state.capture.active {
             return None;
@@ -1367,6 +1391,7 @@ impl RuntimeStore {
 
     pub fn authorize_incoming_input(&self, source: &PairingPeer) -> NetworkAction {
         let state = self.state.lock().expect("runtime state poisoned");
+        let receive_role_enabled = state.persisted.settings.role.can_receive_input();
         let global_incoming_enabled = state.persisted.settings.allow_incoming_control;
         let trusted_device = state
             .persisted
@@ -1379,8 +1404,10 @@ impl RuntimeStore {
         let device_incoming_enabled = trusted_device
             .map(|device| device.allow_incoming_control)
             .unwrap_or(false);
-        let accepted =
-            global_incoming_enabled && device_incoming_enabled && trusted_identity_match;
+        let accepted = receive_role_enabled
+            && global_incoming_enabled
+            && device_incoming_enabled
+            && trusted_identity_match;
 
         if !trusted {
             return NetworkAction {
@@ -1393,6 +1420,14 @@ impl RuntimeStore {
             return NetworkAction {
                 ok: false,
                 message: "Rejected input event because trusted identity does not match."
+                    .to_string(),
+            };
+        }
+
+        if !receive_role_enabled {
+            return NetworkAction {
+                ok: false,
+                message: "Rejected input event: this computer role is not Client or Both."
                     .to_string(),
             };
         }
@@ -2523,6 +2558,7 @@ mod tests {
         let store = RuntimeStore::load_or_init();
         {
             let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
             state.persisted.trusted_devices.push(TrustedDevice {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
@@ -2569,6 +2605,7 @@ mod tests {
 
         {
             let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
             state.persisted.trusted_devices.push(TrustedDevice {
                 id: "trusted-device-1".to_string(),
                 name: "Trusted Mac 1".to_string(),
@@ -2621,6 +2658,7 @@ mod tests {
                 .expect("other public key should fingerprint");
         {
             let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
             state.persisted.settings.allow_incoming_control = true;
             state.persisted.trusted_devices.push(TrustedDevice {
                 id: "trusted-device".to_string(),
@@ -3741,6 +3779,106 @@ mod tests {
         assert!(store.status().capture.active);
         assert!(store.stop_capture_if_target("trusted-device"));
         assert!(!store.status().capture.active);
+    }
+
+    #[test]
+    fn client_role_cannot_start_capture() {
+        crate::identity::set_test_config_dir(unique_test_dir("client-role-capture"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.contains("Main or Both"));
+        assert!(!store.status().capture.active);
+        assert!(store.active_capture_target().is_none());
+    }
+
+    #[test]
+    fn main_role_rejects_incoming_input_even_when_receive_toggles_are_on() {
+        crate::identity::set_test_config_dir(unique_test_dir("main-role-receive"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Main;
+            state.persisted.settings.allow_incoming_control = true;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Mac".to_string(),
+                platform: "macos".to_string(),
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: true,
+            });
+        }
+
+        let action = store.authorize_incoming_input(&PairingPeer {
+            device_id: "trusted-device".to_string(),
+            name: "Trusted Mac".to_string(),
+            platform: "macos".to_string(),
+            control_port: 44777,
+            public_key_fingerprint: "trusted-fingerprint".to_string(),
+            public_key: String::new(),
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.contains("Client or Both"));
+    }
+
+    #[test]
+    fn both_role_accepts_incoming_input_when_receive_toggles_are_on() {
+        crate::identity::set_test_config_dir(unique_test_dir("both-role-receive"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Both;
+            state.persisted.settings.allow_incoming_control = true;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Mac".to_string(),
+                platform: "macos".to_string(),
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: true,
+            });
+        }
+
+        let action = store.authorize_incoming_input(&PairingPeer {
+            device_id: "trusted-device".to_string(),
+            name: "Trusted Mac".to_string(),
+            platform: "macos".to_string(),
+            control_port: 44777,
+            public_key_fingerprint: "trusted-fingerprint".to_string(),
+            public_key: String::new(),
+        });
+
+        assert!(action.ok);
     }
 
     #[test]

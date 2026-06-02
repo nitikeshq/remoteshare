@@ -37,14 +37,15 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## Pairing
 
 1. Open RemoteShare on both computers.
-2. Click `Scan LAN` on either computer.
-3. If the other computer appears, click `Pair`.
-4. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer.
-5. If multiple endpoints are shown, prefer the IPv4 Wi-Fi/LAN address on the same subnet as the other computer. Unique-local or routable IPv6 endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
-6. Confirm that both computers show the same six-digit code.
-7. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
-8. Verify that the device row shows `Trusted` and a shortened key fingerprint.
-9. Open `Trusted Device Audit` and use its `Key` buttons to copy or compare the full local and peer fingerprints for evidence.
+2. Set the macOS sender role to `Main` and the Windows receiver role to `Client`. `Both` is acceptable for later bidirectional tests, but not needed for the first smoke run.
+3. Click `Scan LAN` on either computer.
+4. If the other computer appears, click `Pair`.
+5. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer.
+6. If multiple endpoints are shown, prefer the IPv4 Wi-Fi/LAN address on the same subnet as the other computer. Unique-local or routable IPv6 endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
+7. Confirm that both computers show the same six-digit code.
+8. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
+9. Verify that the device row shows `Trusted` and a shortened key fingerprint.
+10. Open `Trusted Device Audit` and use its `Key` buttons to copy or compare the full local and peer fingerprints for evidence.
 
 ## Reconnect
 
@@ -56,7 +57,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 
 ## Input Smoke Test
 
-1. Use `Enable` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
+1. Confirm the receiver role is `Client` or `Both`, then use `Enable` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
 2. Confirm the receiving trusted row shows `Receive` enabled.
 3. Use `Test` on the sender.
 4. The receiver should show an accepted input transport event.

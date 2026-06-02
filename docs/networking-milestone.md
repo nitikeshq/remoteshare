@@ -47,6 +47,8 @@ Manual endpoints accept `host`, `host:port`, IPv4, raw IPv6, and bracketed IPv6.
 
 Pairing must require explicit approval on both machines.
 
+Each computer has a local role: `Main`, `Client`, or `Both`. `Main` and `Both` can send test input and start capture forwarding. `Client` and `Both` can receive trusted input when the global receive toggle and the trusted-device receive toggle are enabled. The first MVP test sets macOS to `Main` and Windows to `Client`.
+
 Expected flow:
 
 1. Host sees nearby client.

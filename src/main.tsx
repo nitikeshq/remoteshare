@@ -294,6 +294,14 @@ function roleLabel(role: ComputerRole) {
   return "Both";
 }
 
+function canSendInput(role: ComputerRole) {
+  return role === "main" || role === "both";
+}
+
+function canReceiveInput(role: ComputerRole) {
+  return role === "client" || role === "both";
+}
+
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
   if (pairing.localApproved) {
     return {
@@ -360,8 +368,9 @@ async function invokeNetworkAction(command: string, args?: Record<string, unknow
   }
 }
 
-function captureButtonTitle(captureReady: boolean, captureActive: boolean) {
+function captureButtonTitle(captureReady: boolean, captureActive: boolean, role: ComputerRole) {
   if (captureActive) return "Stop the current capture session before switching devices.";
+  if (!canSendInput(role)) return "Set this computer role to Main or Both before capture.";
   if (!captureReady) return "Native capture is not ready on this OS or permission state.";
   return "Forward local keyboard and mouse input to this trusted device.";
 }
@@ -675,6 +684,11 @@ function App() {
   }
 
   async function sendTestInput(device: Device) {
+    if (!canSendInput(status.mode)) {
+      showActionMessage("Set this computer role to Main or Both before sending test input.", true);
+      return;
+    }
+
     const action = await invokeNetworkAction("send_test_input", {
       request: { deviceId: device.id }
     });
@@ -734,6 +748,11 @@ function App() {
   }
 
   async function startCapture(device: Device) {
+    if (!canSendInput(status.mode)) {
+      showActionMessage("Set this computer role to Main or Both before starting capture.", true);
+      return;
+    }
+
     const action = await invokeNetworkAction("start_capture", {
       request: { deviceId: device.id }
     });
@@ -756,6 +775,7 @@ function App() {
     [trustedDevices]
   );
   const receiveShortcutAvailable =
+    canReceiveInput(status.mode) &&
     trustedDevices.length > 0 &&
     (!status.allowIncomingControl || trustedDevicesNeedingReceive.length > 0);
   const reachableTrustedDevices = useMemo(
@@ -832,8 +852,15 @@ function App() {
     [permissions, status.platform]
   );
   const captureReady = permissions.captureEngine === "ready";
+  const sendRoleReady = canSendInput(status.mode);
+  const receiveRoleReady = canReceiveInput(status.mode);
   const setupSteps = useMemo(
     () => [
+      {
+        label: "Choose roles",
+        done: status.mode === "main" || status.mode === "both",
+        detail: "Set this Mac to Main and set the Windows computer to Client."
+      },
       {
         label: "Mac input permissions",
         done: permissions.captureEngine === "ready",
@@ -851,7 +878,10 @@ function App() {
       },
       {
         label: "Enable receive",
-        done: status.allowIncomingControl && trustedDevices.some((device) => device.allowIncomingControl),
+        done:
+          receiveRoleReady &&
+          status.allowIncomingControl &&
+          trustedDevices.some((device) => device.allowIncomingControl),
         detail: "Use Enable or turn on Allow incoming control and Receive for the trusted Windows row."
       },
       {
@@ -862,7 +892,15 @@ function App() {
         detail: "Use Test from the Mac sender and confirm the Windows client logs key press r."
       }
     ],
-    [permissions.captureEngine, status.allowIncomingControl, status.devices, status.recentInputEvents, trustedDevices]
+    [
+      permissions.captureEngine,
+      receiveRoleReady,
+      status.allowIncomingControl,
+      status.devices,
+      status.mode,
+      status.recentInputEvents,
+      trustedDevices
+    ]
   );
 
   return (
@@ -1229,7 +1267,13 @@ function App() {
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   <button
                     className="secondary-button compact"
+                    disabled={!sendRoleReady}
                     onClick={() => sendTestInput(device)}
+                    title={
+                      sendRoleReady
+                        ? "Send a trusted test input event to this device."
+                        : "Set this computer role to Main or Both before sending input."
+                    }
                   >
                     Test
                   </button>
@@ -1242,9 +1286,9 @@ function App() {
                   ) : (
                     <button
                       className="secondary-button compact"
-                      disabled={status.capture.active || !captureReady}
+                      disabled={status.capture.active || !captureReady || !sendRoleReady}
                       onClick={() => startCapture(device)}
-                      title={captureButtonTitle(captureReady, status.capture.active)}
+                      title={captureButtonTitle(captureReady, status.capture.active, status.mode)}
                     >
                       Capture
                     </button>
@@ -1262,7 +1306,9 @@ function App() {
                   <label
                     className={`row-toggle ${device.inputControlReady ? "" : "row-toggle-disabled"}`}
                     title={
-                      device.inputControlReady
+                      !receiveRoleReady
+                        ? "Set this computer role to Client or Both before receiving input."
+                        : device.inputControlReady
                         ? "Allow this trusted device to control this computer."
                         : "Re-pair this device before enabling receive."
                     }
@@ -1271,7 +1317,7 @@ function App() {
                     <input
                       type="checkbox"
                       checked={device.allowIncomingControl}
-                      disabled={!device.inputControlReady}
+                      disabled={!device.inputControlReady || !receiveRoleReady}
                       onChange={(event) => updateDeviceControl(device, event.target.checked)}
                     />
                     {!device.inputControlReady && <em>Re-pair</em>}

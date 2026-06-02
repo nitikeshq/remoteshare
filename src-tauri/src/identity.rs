@@ -57,6 +57,16 @@ pub enum ComputerRole {
     Both,
 }
 
+impl ComputerRole {
+    pub fn can_send_input(&self) -> bool {
+        matches!(self, Self::Main | Self::Both)
+    }
+
+    pub fn can_receive_input(&self) -> bool {
+        matches!(self, Self::Client | Self::Both)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustedDevice {
