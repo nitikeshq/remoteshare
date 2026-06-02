@@ -9,17 +9,17 @@ const helper = path.resolve("scripts/smoke-report-release-rows.mjs");
 
 try {
   const valid = fixture("valid", [
-    ["dmg", "RemoteShare_0.1.7_aarch64.dmg", "valid dmg"],
-    ["exe", "RemoteShare_0.1.7_x64-setup.exe", "valid exe"],
-    ["deb", "RemoteShare_0.1.7_amd64.deb", "valid deb"]
+    ["dmg", "RemoteShare_0.1.8_aarch64.dmg", "valid dmg"],
+    ["exe", "RemoteShare_0.1.8_x64-setup.exe", "valid exe"],
+    ["deb", "RemoteShare_0.1.8_amd64.deb", "valid deb"]
   ]);
   runHelper(valid, true, "valid release rows should pass", [
-    "| RemoteShare version/tag | v0.1.7 |",
-    "| macOS installer file | RemoteShare_0.1.7_aarch64.dmg |",
+    "| RemoteShare version/tag | v0.1.8 |",
+    "| macOS installer file | RemoteShare_0.1.8_aarch64.dmg |",
     `| macOS installer SHA256 | ${sha256("valid dmg")} |`,
-    "| Windows installer file | RemoteShare_0.1.7_x64-setup.exe |",
+    "| Windows installer file | RemoteShare_0.1.8_x64-setup.exe |",
     `| Windows installer SHA256 | ${sha256("valid exe")} |`,
-    "| Linux installer file | RemoteShare_0.1.7_amd64.deb |",
+    "| Linux installer file | RemoteShare_0.1.8_amd64.deb |",
     `| Linux installer SHA256 | ${sha256("valid deb")} |`
   ]);
 
@@ -28,14 +28,14 @@ try {
   runHelper(missingManifest, false, "missing manifest should fail", ["Missing release manifest"]);
 
   const missingExe = fixture("missing-exe", [
-    ["dmg", "RemoteShare_0.1.7_aarch64.dmg", "valid dmg"],
-    ["deb", "RemoteShare_0.1.7_amd64.deb", "valid deb"]
+    ["dmg", "RemoteShare_0.1.8_aarch64.dmg", "valid dmg"],
+    ["deb", "RemoteShare_0.1.8_amd64.deb", "valid deb"]
   ]);
   runHelper(missingExe, false, "missing exe should fail", ["missing exe artifact"]);
 
   const missingDeb = fixture("missing-deb", [
-    ["dmg", "RemoteShare_0.1.7_aarch64.dmg", "valid dmg"],
-    ["exe", "RemoteShare_0.1.7_x64-setup.exe", "valid exe"]
+    ["dmg", "RemoteShare_0.1.8_aarch64.dmg", "valid dmg"],
+    ["exe", "RemoteShare_0.1.8_x64-setup.exe", "valid exe"]
   ]);
   runHelper(missingDeb, false, "missing deb should fail", ["missing deb artifact"]);
 
