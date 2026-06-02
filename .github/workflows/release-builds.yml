@@ -27,6 +27,7 @@ jobs:
             artifact-path: src-tauri/target/release/bundle/deb/*.deb
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -98,6 +99,15 @@ jobs:
       - name: Test GitHub release asset verifier
         run: npm run test:github-release-assets
 
+      - name: Test release asset download helper
+        run: npm run test:download-release-assets
+
+      - name: Test Rust formatter diagnostic
+        run: npm run test:rustfmt
+
+      - name: Test CI annotation helper
+        run: npm run test:ci-annotation
+
       - name: Typecheck frontend
         run: npm run typecheck
 
@@ -159,6 +169,7 @@ jobs:
     needs: build
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -221,6 +232,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    timeout-minutes: 20
 
     steps:
       - name: Checkout

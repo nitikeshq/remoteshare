@@ -121,6 +121,8 @@ check(
 check("macOS bundle target is configured", workflow.includes("macos-latest"));
 check("Windows bundle target is configured", workflow.includes("windows-latest"));
 check("Linux bundle target is configured", workflow.includes("ubuntu-latest"));
+check("Release workflow bounds native build duration", workflow.includes("timeout-minutes: 60"));
+check("Release workflow bounds release assembly duration", countOccurrences(workflow, "timeout-minutes: 20") >= 2);
 check("Project metadata uses the public repository URL", packageJson.repository?.url === "git+https://github.com/nitikeshq/remoteshare.git" && packageJson.homepage === "https://github.com/nitikeshq/remoteshare#readme" && cargoToml.includes('repository = "https://github.com/nitikeshq/remoteshare"'));
 check("Project declares MIT license", packageJson.license === "MIT" && cargoToml.includes('license = "MIT"') && readme.includes("[MIT License](LICENSE)") && licenseText.includes("MIT License") && licenseText.includes("RemoteShare contributors"));
 check("Release workflow uses matrix artifact paths", workflow.includes("${{ matrix.artifact-path }}"));
@@ -146,10 +148,13 @@ check("Release workflow runs LAN smoke report preparation tests", workflow.inclu
 check("Release workflow runs smoke report release row tests", workflow.includes("npm run test:smoke-rows"));
 check("Release workflow runs release readiness verifier tests", workflow.includes("npm run test:release-readiness"));
 check("Release workflow runs GitHub release asset verifier tests", workflow.includes("npm run test:github-release-assets"));
+check("Release workflow runs release asset download helper tests", workflow.includes("npm run test:download-release-assets"));
+check("Release workflow runs Rust formatter diagnostic tests", workflow.includes("npm run test:rustfmt"));
+check("Release workflow runs CI annotation helper tests", workflow.includes("npm run test:ci-annotation"));
 check("Release workflow runs package doctor", workflow.includes("npm run doctor"));
-check("Release workflow runs Rust unit tests before native build", workflow.indexOf("npm run check:rust") < workflow.indexOf("npm run test:rust") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run build"));
+check("Release workflow runs Rust unit tests before native build", workflow.indexOf("ci-run-with-annotation.mjs \"Rust check\"") < workflow.indexOf("ci-run-with-annotation.mjs \"Rust tests\"") && workflow.indexOf("ci-run-with-annotation.mjs \"Rust tests\"") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("ci-run-with-annotation.mjs \"Rust tests\"") < workflow.indexOf("npm run build"));
 check("Release workflow annotates Rust check and test failures", workflow.includes("ci-run-with-annotation.mjs \"Rust check\"") && workflow.includes("ci-run-with-annotation.mjs \"Rust tests\""));
-check("Release workflow cleans debug cache before native build", workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run build"));
+check("Release workflow cleans debug cache before native build", workflow.indexOf("ci-run-with-annotation.mjs \"Rust tests\"") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run build"));
 check("Release workflow cleans bundle temp files before native build", workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run clean:bundle-temp") && workflow.indexOf("npm run clean:bundle-temp") < workflow.indexOf("npm run build"));
 check("Local native build cleans bundle temp files before Tauri build", packageJson.scripts?.build?.startsWith("npm run clean:bundle-temp && ") && packageJson.scripts.build.includes("tauri build"));
 check("Release workflow publishes GitHub releases for tags", workflow.includes("Publish GitHub Release") && workflow.includes("softprops/action-gh-release@v2"));
@@ -629,6 +634,10 @@ function check(name, ok) {
 
 function warn(message) {
   console.warn(`warn: ${message}`);
+}
+
+function countOccurrences(value, needle) {
+  return value.split(needle).length - 1;
 }
 
 function installerVerifierTestIncludes(text) {
