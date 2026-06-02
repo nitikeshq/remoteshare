@@ -279,6 +279,10 @@ function pairingExpiryLabel(pairing: PendingPairing) {
   return `${remainingSeconds}s left`;
 }
 
+function pairingDirectionLabel(pairing: PendingPairing) {
+  return pairing.direction === "incoming" ? "Incoming" : "Outgoing";
+}
+
 function inputEventStatusLabel(event: InputEventRecord) {
   if (event.accepted) return "Accepted";
   return event.direction === "incoming" ? "Failed" : "Rejected";
@@ -1629,7 +1633,7 @@ function App() {
                       <h4>{pairing.name}</h4>
                       <p>
                         {pairing.platform} · {roleLabel(pairing.role)} · {pairing.endpoint} ·{" "}
-                        {pairing.direction} · {pairingExpiryLabel(pairing)}
+                        {pairingDirectionLabel(pairing)} · {pairingExpiryLabel(pairing)}
                       </p>
                       <div className="approval-status">
                         <span className={pairing.localApproved ? "approved" : "pending"}>
