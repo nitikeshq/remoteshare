@@ -892,6 +892,9 @@ impl RuntimeStore {
     pub fn record_peer(&self, announcement: PeerAnnouncement, endpoint: String) -> bool {
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
+        let Some(endpoint) = normalized_endpoint(&endpoint) else {
+            return false;
+        };
         if !private_guard_allows_endpoint(
             &endpoint,
             state.persisted.settings.private_network_only,
@@ -2654,6 +2657,20 @@ mod tests {
         assert!(!store.record_peer(
             PeerAnnouncement {
                 protocol_version: 1,
+                device_id: "invalid-endpoint".to_string(),
+                name: "Invalid Endpoint".to_string(),
+                platform: "windows".to_string(),
+                control_port: 0,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                role: ComputerRole::Client,
+                public_key: public_key.clone(),
+                scan_request: true,
+            },
+            "192.168.1.70:0".to_string(),
+        ));
+        assert!(!store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
                 device_id: "public-discovery".to_string(),
                 name: "Public Discovery".to_string(),
                 platform: "windows".to_string(),
@@ -2706,6 +2723,10 @@ mod tests {
             .devices
             .iter()
             .all(|device| device.id != "bad-public-key"));
+        assert!(status
+            .devices
+            .iter()
+            .all(|device| device.id != "invalid-endpoint"));
         assert!(status
             .devices
             .iter()
