@@ -226,7 +226,7 @@ function endpointSourceLabel(device: Device) {
   if (device.endpointSource === "discovery") return "discovery";
   if (device.endpointSource === "health") return "reconnect";
   if (device.endpointSource === "saved") return "saved endpoint";
-  if (device.endpointSource === "manual") return "manual";
+  if (device.endpointSource === "manual") return "manual IP";
   return "endpoint unknown";
 }
 
