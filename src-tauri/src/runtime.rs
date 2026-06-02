@@ -1573,6 +1573,21 @@ impl RuntimeStore {
             };
         }
 
+        if !global_incoming_enabled {
+            return NetworkAction {
+                ok: false,
+                message: "Rejected input event because Allow incoming control is off.".to_string(),
+            };
+        }
+
+        if !device_incoming_enabled {
+            return NetworkAction {
+                ok: false,
+                message: "Rejected input event because Receive is off for this trusted device."
+                    .to_string(),
+            };
+        }
+
         if !accepted {
             return NetworkAction {
                 ok: false,
@@ -3070,11 +3085,27 @@ mod tests {
             public_key: String::new(),
         };
 
-        assert!(!store.authorize_incoming_input(&source).ok);
+        let global_off = store.authorize_incoming_input(&source);
+        assert!(!global_off.ok);
+        assert_eq!(
+            global_off.message,
+            "Rejected input event because Allow incoming control is off."
+        );
 
         {
             let mut state = store.state.lock().expect("runtime state poisoned");
             state.persisted.settings.allow_incoming_control = true;
+        }
+
+        let device_off = store.authorize_incoming_input(&source);
+        assert!(!device_off.ok);
+        assert_eq!(
+            device_off.message,
+            "Rejected input event because Receive is off for this trusted device."
+        );
+
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
             state.persisted.trusted_devices[0].allow_incoming_control = true;
         }
 
