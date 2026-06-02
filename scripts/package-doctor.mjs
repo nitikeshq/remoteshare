@@ -37,6 +37,10 @@ const smokeReportRows = fs.readFileSync(smokeReportRowsPath, "utf8");
 const releaseCandidateSummaryPath = "scripts/release-candidate-summary.mjs";
 const releaseCandidateSummary = fs.readFileSync(releaseCandidateSummaryPath, "utf8");
 const cleanDebugCache = fs.readFileSync("scripts/clean-debug-cache.mjs", "utf8");
+const rustfmtCheckerPath = "scripts/check-rustfmt.mjs";
+const rustfmtChecker = fs.readFileSync(rustfmtCheckerPath, "utf8");
+const rustfmtCheckerTestPath = "scripts/test-rustfmt-check.mjs";
+const rustfmtCheckerTest = fs.readFileSync(rustfmtCheckerTestPath, "utf8");
 const cryptoRuntime = fs.readFileSync("src-tauri/src/crypto.rs", "utf8");
 const identityRuntime = fs.readFileSync("src-tauri/src/identity.rs", "utf8");
 const networkRuntime = fs.readFileSync("src-tauri/src/network.rs", "utf8");
@@ -54,6 +58,8 @@ const expectedScripts = [
   "typecheck",
   "check:rust",
   "test:rust",
+  "check:rustfmt",
+  "test:rustfmt",
   "checksums:installers",
   "test:checksums",
   "verify:installers",
@@ -142,6 +148,7 @@ check("Release workflow does not mask macOS build failures", !workflow.includes(
 check("README documents npm ci setup", readme.includes("npm ci"));
 check("README documents release verification", readme.includes("npm run verify:release"));
 check("README documents Rust unit tests", readme.includes("npm run test:rust") && readme.includes("runs Rust unit tests"));
+check("README documents rustfmt health check", readme.includes("npm run check:rustfmt") && readme.includes("rustup component add rustfmt") && readme.includes("librustc_driver"));
 check("README documents debug cache cleanup", readme.includes("npm run clean:debug-cache") && readme.includes("Existing release bundle artifacts are left untouched"));
 check("README documents release summary", readme.includes("npm run release:summary"));
 check("README documents release workflow summary", readme.includes("prints a release summary with per-platform artifact coverage"));
@@ -243,6 +250,7 @@ check("Release readiness verifier tests missing manifest, prefilled smoke report
 check("Release checklist exists", fs.existsSync("docs/release-checklist.md"));
 check("Release checklist documents native installer platforms", releaseChecklist.includes("macOS `.dmg`") && releaseChecklist.includes("Windows `.exe`") && releaseChecklist.includes("Linux `.deb`"));
 check("Release checklist documents Rust unit test gate", releaseChecklist.includes("npm run test:rust") && releaseChecklist.includes("Rust unit tests") && releaseChecklist.includes("cargo test"));
+check("Release checklist documents rustfmt health check", releaseChecklist.includes("npm run check:rustfmt") && releaseChecklist.includes("rustup component add rustfmt") && releaseChecklist.includes("local toolchain diagnostic") && releaseChecklist.includes("librustc_driver"));
 check("Release checklist documents disk preflight", releaseChecklist.includes("disk preflight") && releaseChecklist.includes("REMOTESHARE_MIN_FREE_MIB") && releaseChecklist.includes("1024 MiB"));
 check("Release checklist documents debug cache cleanup", releaseChecklist.includes("npm run clean:debug-cache") && releaseChecklist.includes("release/bundle"));
 check("Release checklist documents workflow debug cache cleanup", releaseChecklist.includes("after the Rust check") && releaseChecklist.includes("before the native bundle build"));
@@ -468,6 +476,10 @@ check("Debug cache cleanup script exists", fs.existsSync("scripts/clean-debug-ca
 check("Debug cache cleanup preserves release bundle", cleanDebugCache.includes("target\", \"debug\", \"build") && cleanDebugCache.includes("target\", \"debug\", \"deps") && cleanDebugCache.includes("target\", \"debug\", \"incremental") && !cleanDebugCache.includes("target\", \"release"));
 check("Debug cache cleanup fixture test exists", fs.existsSync("scripts/test-clean-debug-cache.mjs"));
 check("Debug cache cleanup fixture test preserves release bundles", fs.readFileSync("scripts/test-clean-debug-cache.mjs", "utf8").includes("release/bundle") && fs.readFileSync("scripts/test-clean-debug-cache.mjs", "utf8").includes("Debug cache cleanup tests passed."));
+check("Rust formatter diagnostic script exists", fs.existsSync(rustfmtCheckerPath));
+check("Rust formatter diagnostic reports broken toolchains", rustfmtChecker.includes("Rust formatter is unavailable or broken.") && rustfmtChecker.includes("rustup component add rustfmt") && rustfmtChecker.includes("REMOTESHARE_RUSTFMT_COMMAND"));
+check("Rust formatter diagnostic fixture test exists", fs.existsSync(rustfmtCheckerTestPath));
+check("Rust formatter diagnostic fixture tests success and broken dylib output", rustfmtCheckerTest.includes("rustfmt 1.0.0-test") && rustfmtCheckerTest.includes("Library not loaded: librustc_driver-test.dylib") && rustfmtCheckerTest.includes("JSON array of strings"));
 check("Release summary script exists", fs.existsSync("scripts/release-summary.mjs"));
 check("Release summary reports platform coverage", releaseSummary.includes("Platform coverage") && releaseSummary.includes("Windows EXE") && releaseSummary.includes("Linux DEB"));
 check("Release summary handles uppercase installer extensions", releaseSummary.includes("path.extname(entry.name).toLowerCase()") && fs.readFileSync("scripts/test-release-summary.mjs", "utf8").includes("_aarch64.DMG"));
@@ -494,6 +506,7 @@ check("verify:release-scripts tests LAN smoke report preparation helper", packag
 check("verify:release-scripts tests smoke report release rows helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:smoke-rows"));
 check("verify:release-scripts tests release candidate summary helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-candidate-summary"));
 check("verify:release-scripts tests release readiness verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-readiness"));
+check("verify:release-scripts tests rustfmt checker", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:rustfmt"));
 check("verify:release-scripts runs release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run release:summary"));
 check("verify:release-scripts runs package doctor", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run doctor"));
 check("verify:release runs scripts-only release gate", packageJson.scripts?.["verify:release"]?.includes("npm run verify:release-scripts"));

@@ -18,6 +18,14 @@ Run Rust unit tests before release when local disk allows it. This is the `cargo
 npm run test:rust
 ```
 
+Check the local Rust formatter toolchain before formatting or review cleanup:
+
+```bash
+npm run check:rustfmt
+```
+
+This is a local toolchain diagnostic. If it fails with a missing `librustc_driver` library or a similar `rustfmt` load error, repair the active Rust toolchain with `rustup component add rustfmt` or `rustup update stable`. Release readiness still depends on compile/test gates, native runner builds, and hardware LAN smoke evidence.
+
 When disk is too low for Rust or frontend verification, run the scripts-only release gate:
 
 ```bash
