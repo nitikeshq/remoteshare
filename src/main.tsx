@@ -674,6 +674,13 @@ function App() {
     showActionMessage(`Update IP field set for ${device.name}. Paste the current endpoint, then verify it.`);
   }
 
+  function cancelTrustedEndpointUpdate() {
+    setEndpointUpdateDeviceId(null);
+    setManualEndpoint(status.discovery.manualEndpoint ?? "");
+    setManualEndpointDirty(false);
+    showActionMessage("Trusted IP update canceled. Manual pair field restored.");
+  }
+
   async function copyLocalEndpoint(endpoint: string) {
     try {
       await navigator.clipboard.writeText(endpoint);
@@ -1704,10 +1711,7 @@ function App() {
                 className="secondary-button"
                 type="button"
                 disabled={loading}
-                onClick={() => {
-                  setEndpointUpdateDeviceId(null);
-                  setManualEndpointDirty(false);
-                }}
+                onClick={cancelTrustedEndpointUpdate}
               >
                 Cancel
               </button>
