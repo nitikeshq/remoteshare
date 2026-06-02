@@ -525,6 +525,7 @@ check("verify:release runs disk preflight first", packageJson.scripts?.["verify:
 check("check:rust uses a single job to reduce disk pressure", packageJson.scripts?.["check:rust"]?.includes("-j 1"));
 check("test:rust uses a single job to reduce disk pressure", packageJson.scripts?.["test:rust"]?.includes("cargo test --manifest-path src-tauri/Cargo.toml -j 1"));
 check("test:rust serializes tests that share process-global config", packageJson.scripts?.["test:rust"]?.includes("--test-threads=1"));
+check("test:rust exposes CI failure context", packageJson.scripts?.["test:rust"]?.includes("--nocapture"));
 
 const checksumPath = path.join(bundleRoot, "SHA256SUMS.txt");
 if (fs.existsSync(checksumPath)) {

@@ -1,6 +1,6 @@
 {
   "name": "remoteshare",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "test:clean-debug-cache": "node scripts/test-clean-debug-cache.mjs",
     "typecheck": "tsc --noEmit",
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml -j 1",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -j 1 -- --test-threads=1",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -j 1 -- --test-threads=1 --nocapture",
     "check:rustfmt": "node scripts/check-rustfmt.mjs",
     "test:rustfmt": "node scripts/test-rustfmt-check.mjs",
     "test:ci-annotation": "node scripts/test-ci-run-with-annotation.mjs",
