@@ -193,6 +193,7 @@ check("First LAN runbook documents firewall ports", firstLanTest.includes("TCP `
 check("First LAN runbook documents private network guard", firstLanTest.includes("Private network only"));
 check("First LAN runbook documents macOS sender to Windows receiver", firstLanTest.includes("macOS is the sender/main computer") && firstLanTest.includes("Windows is the receiver/client"));
 check("First LAN runbook documents role setup", firstLanTest.includes("macOS sender role to `Main`") && firstLanTest.includes("Windows receiver role to `Client`") && firstLanTest.includes("receiver role is `Client` or `Both`"));
+check("First LAN runbook documents role-aware setup checklist", firstLanTest.includes("setup checklist is role-aware") && firstLanTest.includes("on macOS it expects the sender role") && firstLanTest.includes("on Windows it expects the receiver role"));
 check("First LAN acceptance records role evidence", firstLanTest.includes("| macOS role shown | Main | Main |") && firstLanTest.includes("| Windows role shown | Client | Client |"));
 check("First LAN runbook documents Windows Defender Firewall setup", firstLanTest.includes("Windows Security > Firewall") && firstLanTest.includes("New-NetFirewallRule"));
 check("First LAN runbook scopes Windows firewall rules to Private", firstLanTest.includes("-Profile Private"));
@@ -323,6 +324,7 @@ check("UI keeps incoming control labels for runbook", appUi.includes("Allow inco
 check("UI exposes receive shortcut for trusted devices", appUi.includes("enableReceiveForTrustedDevices") && appUi.includes("receiveShortcutAvailable") && appUi.includes("enable_receive_for_trusted_devices"));
 check("UI disables stale trusted receive toggles", appUi.includes("row-toggle-disabled") && appUi.includes("Re-pair this device before enabling receive") && appUi.includes("disabled={!device.inputControlReady || !receiveRoleReady}"));
 check("UI shows Mac-to-Windows setup checklist", appUi.includes("setupSteps") && appUi.includes("Choose roles") && appUi.includes("Mac main -> Windows client") && appUi.includes("Verify input"));
+check("UI setup checklist is role-aware for macOS sender and Windows receiver", appUi.includes("mvpRoleStep") && appUi.includes("isMacPlatform") && appUi.includes("isWindowsPlatform") && appUi.includes("Set this Windows computer to Client") && appUi.includes("Set this Mac to Main"));
 check("UI does not keep decorative sidebar nav", !appUi.includes("className=\"nav\"") && !appUi.includes("className=\"nav-item"));
 check("UI exposes local computer role selector", appUi.includes("This computer role") && appUi.includes("value=\"main\"") && appUi.includes("value=\"client\"") && appUi.includes("value=\"both\"") && appUi.includes("roleLabel(status.mode)"));
 check("UI shows peer roles in device, audit, and pairing rows", appUi.includes("{device.platform} · {roleLabel(device.role)} · {connectionLabel(device)}") && appUi.includes("<dt>Role</dt>") && appUi.includes("{roleLabel(pairing.role)}"));

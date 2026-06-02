@@ -303,6 +303,40 @@ function canReceiveInput(role: ComputerRole) {
   return role === "client" || role === "both";
 }
 
+function normalizedPlatform(platform: string) {
+  return platform.toLowerCase();
+}
+
+function isMacPlatform(platform: string) {
+  const value = normalizedPlatform(platform);
+  return value.includes("macos") || value.includes("darwin");
+}
+
+function isWindowsPlatform(platform: string) {
+  return normalizedPlatform(platform).includes("windows");
+}
+
+function mvpRoleStep(platform: string, role: ComputerRole) {
+  if (isWindowsPlatform(platform)) {
+    return {
+      done: role === "client" || role === "both",
+      detail: "Set this Windows computer to Client and set the Mac sender to Main."
+    };
+  }
+
+  if (isMacPlatform(platform)) {
+    return {
+      done: role === "main" || role === "both",
+      detail: "Set this Mac to Main and set the Windows computer to Client."
+    };
+  }
+
+  return {
+    done: role === "both",
+    detail: "Use Main on the sender, Client on the receiver, or Both for bidirectional testing."
+  };
+}
+
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
   if (pairing.localApproved) {
     return {
@@ -377,7 +411,7 @@ function captureButtonTitle(captureReady: boolean, captureActive: boolean, role:
 }
 
 function inputReadiness(permissions: InputPermissionStatus, platform: string) {
-  const normalizedPlatform = platform.toLowerCase();
+  const normalizedPlatformValue = normalizedPlatform(platform);
   const captureReady = permissions.captureEngine === "ready";
   const injectionReady = permissions.injectionEngine === "ready";
 
@@ -389,7 +423,7 @@ function inputReadiness(permissions: InputPermissionStatus, platform: string) {
     };
   }
 
-  if (normalizedPlatform.includes("macos") || normalizedPlatform.includes("darwin")) {
+  if (isMacPlatform(platform)) {
     if (permissions.accessibility === "missing" && permissions.inputMonitoring === "missing") {
       return {
         state: "macOS permissions missing",
@@ -415,7 +449,7 @@ function inputReadiness(permissions: InputPermissionStatus, platform: string) {
     }
   }
 
-  if (normalizedPlatform.includes("windows")) {
+  if (isWindowsPlatform(platform)) {
     return {
       state: injectionReady ? "Windows receive ready" : "Windows input pending",
       detail: "Windows injection is available; local capture is planned for a later milestone.",
@@ -423,7 +457,7 @@ function inputReadiness(permissions: InputPermissionStatus, platform: string) {
     };
   }
 
-  if (normalizedPlatform.includes("linux")) {
+  if (normalizedPlatformValue.includes("linux")) {
     return {
       state: "Linux input planned",
       detail: "Linux capture and injection need an X11/Wayland implementation.",
@@ -855,12 +889,16 @@ function App() {
   const captureReady = permissions.captureEngine === "ready";
   const sendRoleReady = canSendInput(status.mode);
   const receiveRoleReady = canReceiveInput(status.mode);
+  const roleStep = useMemo(
+    () => mvpRoleStep(status.platform, status.mode),
+    [status.mode, status.platform]
+  );
   const setupSteps = useMemo(
     () => [
       {
         label: "Choose roles",
-        done: status.mode === "main" || status.mode === "both",
-        detail: "Set this Mac to Main and set the Windows computer to Client."
+        done: roleStep.done,
+        detail: roleStep.detail
       },
       {
         label: "Mac input permissions",
@@ -898,8 +936,9 @@ function App() {
       receiveRoleReady,
       status.allowIncomingControl,
       status.devices,
-      status.mode,
       status.recentInputEvents,
+      roleStep.detail,
+      roleStep.done,
       trustedDevices
     ]
   );
