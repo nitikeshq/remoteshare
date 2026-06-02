@@ -1899,7 +1899,7 @@ Wireless LAN adapter Wi-Fi:
         let mut addresses = super::parse_ipconfig_local_ipv4_addresses(output);
         addresses.sort();
 
-        assert_eq!(addresses, vec!["192.168.1.44".parse().unwrap()]);
+        assert_eq!(addresses, vec![Ipv4Addr::new(192, 168, 1, 44)]);
     }
 
     #[cfg(target_os = "windows")]
