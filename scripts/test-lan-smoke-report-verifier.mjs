@@ -1,0 +1,542 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-lan-smoke-report-"));
+const verifier = path.resolve("scripts/verify-lan-smoke-report.mjs");
+const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+
+try {
+  const valid = writeReport("valid.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: ""
+  });
+  runVerifier(valid, true, "valid smoke report should pass", "Verified LAN smoke report");
+
+  const missingField = writeReport("missing-field.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: `| Windows installer file | RemoteShare_${packageVersion}_x64-setup.exe |`
+  });
+  runVerifier(missingField, false, "missing required field should fail", "Missing Test Context field: Windows installer file");
+
+  const missingLinuxField = writeReport("missing-linux-field.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: `| Linux installer file | RemoteShare_${packageVersion}_amd64.deb |`
+  });
+  runVerifier(missingLinuxField, false, "missing Linux installer field should fail", "Missing Test Context field: Linux installer file");
+
+  const failedAuto = writeReport("failed-auto.md", {
+    autoPass: "Fail",
+    manualPass: "Pass",
+    omitLine: ""
+  });
+  runVerifier(failedAuto, false, "failed auto-discovery should fail", "Auto-Discovery Run must be marked Pass");
+
+  const failedWithBlockingIssue = writeReport("failed-with-blocking-issue.md", {
+    autoPass: "Fail - tracked issue RS-123",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: RS-123"]
+  });
+  runVerifier(
+    failedWithBlockingIssue,
+    false,
+    "tracked blocking issue should not satisfy release readiness",
+    "Auto-Discovery Run must be marked Pass"
+  );
+
+  const failedReconnect = writeReport("failed-reconnect.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoReconnect: "failed"
+  });
+  runVerifier(failedReconnect, false, "failed reconnect should fail", "Auto-Discovery Run field must show success");
+
+  const vagueReconnect = writeReport("vague-reconnect.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoReconnect: "succeeded"
+  });
+  runVerifier(
+    vagueReconnect,
+    false,
+    "vague reconnect should fail",
+    "Auto-Discovery Run reconnect check evidence must show Check succeeded after restart or wake"
+  );
+
+  const vagueStartupHealth = writeReport("vague-startup-health.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoStartupHealth: "ready"
+  });
+  runVerifier(
+    vagueStartupHealth,
+    false,
+    "vague startup health should fail",
+    "Auto-Discovery Run startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed"
+  );
+
+  const vagueAutoEndpointSource = writeReport("vague-auto-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoEndpointSource: "shown"
+  });
+  runVerifier(
+    vagueAutoEndpointSource,
+    false,
+    "vague auto endpoint source should fail",
+    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
+  const vagueManualEndpointSource = writeReport("vague-manual-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointSource: "shown"
+  });
+  runVerifier(
+    vagueManualEndpointSource,
+    false,
+    "vague manual endpoint source should fail",
+    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
+  const vagueManualDiscovery = writeReport("vague-manual-discovery.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualDiscoveryFallback: "yes"
+  });
+  runVerifier(
+    vagueManualDiscovery,
+    false,
+    "vague manual discovery fallback should fail",
+    "Manual Fallback Run discovery evidence must explain that discovery was disabled, skipped, unavailable, or failed"
+  );
+
+  const vagueManualEndpointCopy = writeReport("vague-manual-endpoint-copy.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointCopied: "yes"
+  });
+  runVerifier(
+    vagueManualEndpointCopy,
+    false,
+    "vague manual endpoint copy should fail",
+    "Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint"
+  );
+
+  const vagueInputSmoke = writeReport("vague-input-smoke.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoInputSmoke: "delivered"
+  });
+  runVerifier(
+    vagueInputSmoke,
+    false,
+    "vague input smoke should fail",
+    "Auto-Discovery Run input smoke evidence must mention an accepted key press r event"
+  );
+
+  const vagueInputTransportContext = writeReport("vague-input-transport-context.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoInputTransportContext: "visible"
+  });
+  runVerifier(
+    vagueInputTransportContext,
+    false,
+    "vague input transport context should fail",
+    "Auto-Discovery Run input transport evidence must mention the source device and relative time shown in the receiver UI"
+  );
+
+  const vagueFingerprint = writeReport("vague-fingerprint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFingerprint: "Pass - compared"
+  });
+  runVerifier(
+    vagueFingerprint,
+    false,
+    "vague fingerprint evidence should fail",
+    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+  );
+
+  const vagueCaptureStartStop = writeReport("vague-capture-start-stop.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCaptureStartStop: "started"
+  });
+  runVerifier(
+    vagueCaptureStartStop,
+    false,
+    "vague capture start-stop should fail",
+    "Auto-Discovery Run capture evidence must show capture started and stopped cleanly"
+  );
+
+  const vagueCaptureTiming = writeReport("vague-capture-timing.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCaptureTiming: "visible"
+  });
+  runVerifier(
+    vagueCaptureTiming,
+    false,
+    "vague capture timing should fail",
+    "Auto-Discovery Run capture timing evidence must mention the active capture target and elapsed start time shown in the sender UI"
+  );
+
+  const vagueCaptureEvents = writeReport("vague-capture-events.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCaptureEvents: "accepted key event"
+  });
+  runVerifier(
+    vagueCaptureEvents,
+    false,
+    "vague capture event coverage should fail",
+    "Auto-Discovery Run capture evidence must mention accepted mouse move, mouse click, scroll, and key events"
+  );
+
+  const vagueFailureReason = writeReport("vague-failure-reason.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFailureReason: "visible"
+  });
+  runVerifier(
+    vagueFailureReason,
+    false,
+    "vague failure reason evidence should fail",
+    "Auto-Discovery Run failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry"
+  );
+
+  const wrongReportVersion = writeReport("wrong-report-version.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    version: "v9.9.9"
+  });
+  runVerifier(
+    wrongReportVersion,
+    false,
+    "wrong report version should fail",
+    `Test Context field must include package version ${packageVersion}`
+  );
+
+  const wrongInputDirection = writeReport("wrong-input-direction.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    inputDirection: "Windows sender/main -> macOS receiver/client"
+  });
+  runVerifier(
+    wrongInputDirection,
+    false,
+    "wrong input direction should fail",
+    "Test Context Input direction must be macOS sender/main -> Windows receiver/client"
+  );
+
+  const blockedFirewall = writeReport("blocked-firewall.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    windowsFirewallStatus: "blocked"
+  });
+  runVerifier(
+    blockedFirewall,
+    false,
+    "blocked firewall should fail",
+    "Test Context field must show success: Windows firewall status"
+  );
+
+  const deniedInputMonitoring = writeReport("denied-input-monitoring.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macosInputMonitoringPermission: "denied"
+  });
+  runVerifier(
+    deniedInputMonitoring,
+    false,
+    "denied input monitoring should fail",
+    "Test Context field must show success: macOS Input Monitoring permission"
+  );
+
+  const wrongInstallerVersion = writeReport("wrong-installer-version.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    linuxInstaller: "RemoteShare_9.9.9_amd64.deb"
+  });
+  runVerifier(
+    wrongInstallerVersion,
+    false,
+    "wrong installer version should fail",
+    `Test Context installer filename must include package version ${packageVersion}: Linux installer file`
+  );
+
+  const wrongInstallerExtension = writeReport("wrong-installer-extension.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macInstaller: `RemoteShare_${packageVersion}_aarch64.zip`
+  });
+  runVerifier(
+    wrongInstallerExtension,
+    false,
+    "wrong installer extension should fail",
+    "Test Context installer filename must end with .dmg: macOS installer file"
+  );
+
+  const invalidSha = writeReport("invalid-sha.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    windowsSha: "not-a-sha256"
+  });
+  runVerifier(
+    invalidSha,
+    false,
+    "invalid installer sha should fail",
+    "Test Context field must be a 64-character SHA-256 hex value: Windows installer SHA256"
+  );
+
+  const wrongManualEndpointPort = writeReport("wrong-manual-endpoint-port.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "192.168.1.20:12345"
+  });
+  runVerifier(
+    wrongManualEndpointPort,
+    false,
+    "wrong manual endpoint port should fail",
+    "Manual Fallback Run field must use TCP port 44777: Endpoint used"
+  );
+
+  const localhostManualEndpoint = writeReport("localhost-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "localhost:44777"
+  });
+  runVerifier(
+    localhostManualEndpoint,
+    false,
+    "localhost manual endpoint should fail",
+    "Manual Fallback Run field must use the peer computer endpoint"
+  );
+
+  const ipv6ManualEndpoint = writeReport("ipv6-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "[fd00::20]:44777"
+  });
+  runVerifier(
+    ipv6ManualEndpoint,
+    true,
+    "bracketed IPv6 manual endpoint should pass",
+    "Verified LAN smoke report"
+  );
+
+  const malformedAutoSubnet = writeReport("malformed-auto-subnet.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macIpSubnet: "192.168.1.10"
+  });
+  runVerifier(
+    malformedAutoSubnet,
+    false,
+    "malformed auto-discovery CIDR should fail",
+    "Auto-Discovery Run field must use IPv4 CIDR notation like 192.168.1.10/24: macOS IP/subnet"
+  );
+
+  const differentAutoSubnet = writeReport("different-auto-subnet.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macIpSubnet: "192.168.1.10/24",
+    windowsIpSubnet: "192.168.2.20/24"
+  });
+  runVerifier(
+    differentAutoSubnet,
+    false,
+    "different auto-discovery subnet should fail",
+    "Auto-Discovery Run macOS IP/subnet and Windows IP/subnet must be on the same IPv4 subnet"
+  );
+
+  console.log("LAN smoke report verifier tests passed.");
+} finally {
+  fs.rmSync(root, { recursive: true, force: true });
+}
+
+function writeReport(name, options) {
+  const file = path.join(root, name);
+  const autoReconnect = options.autoReconnect ?? "succeeded after restart";
+  const manualReconnect = options.manualReconnect ?? "succeeded after restart";
+  const autoReconnectEnabled = options.autoReconnectEnabled ?? "enabled after restart";
+  const manualReconnectEnabled = options.manualReconnectEnabled ?? "enabled after restart";
+  const autoStartupHealth = options.autoStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
+  const manualStartupHealth = options.manualStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
+  const autoEndpointSource = options.autoEndpointSource ?? "discovery";
+  const manualEndpointSource = options.manualEndpointSource ?? "saved endpoint";
+  const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";
+  const manualInputSmoke = options.manualInputSmoke ?? "accepted key press r delivered";
+  const autoInputTransportContext =
+    options.autoInputTransportContext ?? "Input Transport row shows Mac sender source device and 2 seconds ago";
+  const manualInputTransportContext =
+    options.manualInputTransportContext ?? "Input Transport row shows Mac sender source device and 3 seconds ago";
+  const autoFingerprint =
+    options.autoFingerprint ?? "Pass - Trusted Device Audit copied full local and peer fingerprints";
+  const manualFingerprint =
+    options.manualFingerprint ?? "Pass - Trusted Device Audit copied full local and peer fingerprints";
+  const autoCaptureStartStop = options.autoCaptureStartStop ?? "started and stopped cleanly";
+  const manualCaptureStartStop = options.manualCaptureStartStop ?? "started and stopped cleanly";
+  const autoCaptureTiming =
+    options.autoCaptureTiming ?? "active target Windows receiver, started 4 seconds ago";
+  const manualCaptureTiming =
+    options.manualCaptureTiming ?? "active target Windows receiver, started 5 seconds ago";
+  const autoCaptureEvents = options.autoCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
+  const manualCaptureEvents = options.manualCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
+  const autoFailureReason = options.autoFailureReason ?? "none";
+  const manualFailureReason = options.manualFailureReason ?? "none";
+  const version = options.version ?? `v${packageVersion}`;
+  const macInstaller = options.macInstaller ?? `RemoteShare_${packageVersion}_aarch64.dmg`;
+  const windowsInstaller = options.windowsInstaller ?? `RemoteShare_${packageVersion}_x64-setup.exe`;
+  const linuxInstaller = options.linuxInstaller ?? `RemoteShare_${packageVersion}_amd64.deb`;
+  const macSha = options.macSha ?? "0".concat("a".repeat(63));
+  const windowsSha = options.windowsSha ?? "0".concat("b".repeat(63));
+  const linuxSha = options.linuxSha ?? "0".concat("c".repeat(63));
+  const manualEndpoint = options.manualEndpoint ?? "192.168.1.20:44777";
+  const manualDiscoveryFallback =
+    options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
+  const manualEndpointCopied =
+    options.manualEndpointCopied ?? "copied from peer This computer row";
+  const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
+  const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
+  const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
+  const macosFirewallStatus = options.macosFirewallStatus ?? "allowed";
+  const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
+  const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
+  const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? "enabled";
+  const lines = [
+    "# LAN Smoke Report",
+    "",
+    "## Test Context",
+    "",
+    "| Field | Value |",
+    "| --- | --- |",
+    "| Test date | 2026-06-02 |",
+    "| Tester | QA |",
+    `| RemoteShare version/tag | ${version} |`,
+    `| Input direction | ${inputDirection} |`,
+    "| macOS model/version | MacBook / macOS 15 |",
+    "| Windows model/version | PC / Windows 11 |",
+    `| macOS installer file | ${macInstaller} |`,
+    `| macOS installer SHA256 | ${macSha} |`,
+    `| Windows installer file | ${windowsInstaller} |`,
+    `| Windows installer SHA256 | ${windowsSha} |`,
+    `| Linux installer file | ${linuxInstaller} |`,
+    `| Linux installer SHA256 | ${linuxSha} |`,
+    "| Router/SSID/band | Lab Wi-Fi / 5 GHz |",
+    "| Same subnet confirmed | yes |",
+    `| macOS firewall status | ${macosFirewallStatus} |`,
+    `| Windows firewall status | ${windowsFirewallStatus} |`,
+    `| macOS Accessibility permission | ${macosAccessibilityPermission} |`,
+    `| macOS Input Monitoring permission | ${macosInputMonitoringPermission} |`,
+    "",
+    "## Auto-Discovery Run",
+    "",
+    "| Field | Result |",
+    "| --- | --- |",
+    `| macOS IP/subnet | ${macIpSubnet} |`,
+    `| Windows IP/subnet | ${windowsIpSubnet} |`,
+    "| Peer appeared in `Scan LAN` | yes |",
+    "| Pair action started | started |",
+    "| Same six-digit code shown on both machines | confirmed |",
+    "| Six-digit code typed on both machines | confirmed |",
+    "| `Trusted` shown on both machines | shown |",
+    `| Full fingerprint copied or visually compared | ${autoFingerprint} |`,
+    `| \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEnabled} |`,
+    `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${autoStartupHealth} |`,
+    `| \`Check\` succeeded after restart/wake | ${autoReconnect} |`,
+    `| Endpoint source shown | ${autoEndpointSource} |`,
+    "| `Allow incoming control` enabled on receiver | enabled |",
+    "| Per-device `Receive` enabled | enabled |",
+    `| Sender \`Test\` delivered accepted \`key press r\` input event | ${autoInputSmoke} |`,
+    `| Input Transport source device and relative time shown | ${autoInputTransportContext} |`,
+    `| Capture started on sender and stopped cleanly | ${autoCaptureStartStop} |`,
+    `| Active capture target and elapsed start time shown | ${autoCaptureTiming} |`,
+    `| Captured mouse move, mouse click, scroll, and key events accepted on receiver | ${autoCaptureEvents} |`,
+    `| Failure reason visible before retry | ${autoFailureReason} |`,
+    `| Pass/fail | ${options.autoPass} |`,
+    "",
+    "## Manual Fallback Run",
+    "",
+    "| Field | Result |",
+    "| --- | --- |",
+    `| Discovery disabled, skipped, or failed | ${manualDiscoveryFallback} |`,
+    `| Manual endpoint copied from peer \`This computer\` row | ${manualEndpointCopied} |`,
+    `| Endpoint used | ${manualEndpoint} |`,
+    "| TCP `44777` reachable | reachable |",
+    "| Pair action started | started |",
+    "| Same six-digit code shown on both machines | confirmed |",
+    "| Six-digit code typed on both machines | confirmed |",
+    "| `Trusted` shown on both machines | shown |",
+    `| Full fingerprint copied or visually compared | ${manualFingerprint} |`,
+    `| \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEnabled} |`,
+    `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${manualStartupHealth} |`,
+    `| \`Check\` succeeded after restart/wake | ${manualReconnect} |`,
+    `| Endpoint source shown as saved endpoint or manual IP | ${manualEndpointSource} |`,
+    "| `Allow incoming control` enabled on receiver | enabled |",
+    "| Per-device `Receive` enabled | enabled |",
+    `| Sender \`Test\` delivered accepted \`key press r\` input event | ${manualInputSmoke} |`,
+    `| Input Transport source device and relative time shown | ${manualInputTransportContext} |`,
+    `| Capture started on sender and stopped cleanly | ${manualCaptureStartStop} |`,
+    `| Active capture target and elapsed start time shown | ${manualCaptureTiming} |`,
+    `| Captured mouse move, mouse click, scroll, and key events accepted on receiver | ${manualCaptureEvents} |`,
+    `| Failure reason visible before retry | ${manualFailureReason} |`,
+    `| Pass/fail | ${options.manualPass} |`,
+    ...(options.notes ?? [])
+  ].filter((line) => line !== options.omitLine);
+
+  fs.writeFileSync(file, `${lines.join("\n")}\n`);
+  return file;
+}
+
+function runVerifier(file, shouldPass, label, expectedOutput) {
+  const result = spawnSync(process.execPath, [verifier, file], {
+    encoding: "utf8"
+  });
+  const output = `${result.stdout}\n${result.stderr}`;
+
+  if (shouldPass && result.status !== 0) {
+    throw new Error(`${label}: expected success, got exit ${result.status}\n${output}`);
+  }
+
+  if (!shouldPass && result.status === 0) {
+    throw new Error(`${label}: expected failure, got success\n${output}`);
+  }
+
+  if (!output.includes(expectedOutput)) {
+    throw new Error(`${label}: expected output to include ${expectedOutput}\n${output}`);
+  }
+}

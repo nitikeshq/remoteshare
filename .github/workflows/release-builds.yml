@@ -1,0 +1,267 @@
+name: Release Builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            artifact-name: remoteshare-macos
+            artifact-path: src-tauri/target/release/bundle/dmg/*.dmg
+          - platform: windows-latest
+            artifact-name: remoteshare-windows
+            artifact-path: src-tauri/target/release/bundle/nsis/*.exe
+          - platform: ubuntu-latest
+            artifact-name: remoteshare-linux
+            artifact-path: src-tauri/target/release/bundle/deb/*.deb
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check disk preflight
+        run: npm run check:disk
+
+      - name: Test disk preflight
+        run: npm run test:disk
+
+      - name: Test checksum generation
+        run: npm run test:checksums
+
+      - name: Test installer verifier
+        run: npm run test:installers
+
+      - name: Test publish artifact verifier
+        run: npm run test:publish-artifacts
+
+      - name: Test release asset preparation
+        run: npm run test:release-assets
+
+      - name: Test release manifest verifier
+        run: npm run test:release-manifest
+
+      - name: Test release artifact helper
+        run: npm run test:release-artifacts-lib
+
+      - name: Test debug cache cleanup
+        run: npm run test:clean-debug-cache
+
+      - name: Test release summary
+        run: npm run test:release-summary
+
+      - name: Test LAN smoke report verifier
+        run: npm run test:lan-smoke-report
+
+      - name: Test LAN smoke report preparation
+        run: npm run test:prepare-lan-smoke-report
+
+      - name: Test smoke report release rows
+        run: npm run test:smoke-rows
+
+      - name: Test release readiness verifier
+        run: npm run test:release-readiness
+
+      - name: Typecheck frontend
+        run: npm run typecheck
+
+      - name: Check Rust
+        run: npm run check:rust
+
+      - name: Test Rust
+        run: npm run test:rust
+
+      - name: Free Rust debug cache before native build
+        run: npm run clean:debug-cache
+
+      - name: Build app
+        run: npm run build
+
+      - name: Verify bundle output
+        shell: bash
+        run: |
+          set -e
+          case "${{ matrix.platform }}" in
+            macos-latest)
+              test -n "$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -name '*.dmg' 2>/dev/null)"
+              ;;
+            windows-latest)
+              test -n "$(find src-tauri/target/release/bundle/nsis -maxdepth 1 -name '*.exe' 2>/dev/null)"
+              ;;
+            ubuntu-latest)
+              test -n "$(find src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' 2>/dev/null)"
+              ;;
+          esac
+          find src-tauri/target/release/bundle -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.deb' \) -print
+
+      - name: Generate checksums
+        run: npm run checksums:installers
+
+      - name: Verify installer checksums
+        run: npm run verify:installers -- src-tauri/target/release/bundle "${{ runner.os }}"
+
+      - name: Summarize release artifacts
+        run: npm run release:summary
+
+      - name: Package doctor
+        run: npm run doctor
+
+      - name: Upload bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            ${{ matrix.artifact-path }}
+            src-tauri/target/release/bundle/SHA256SUMS.txt
+          if-no-files-found: error
+
+  assemble:
+    name: Assemble Release Assets
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Verify all platform artifacts
+        run: npm run verify:publish-artifacts -- release-artifacts
+
+      - name: Generate combined checksums
+        run: npm run prepare:release-assets -- release-artifacts release-assets
+
+      - name: Verify release manifest
+        run: npm run verify:release-manifest -- release-assets
+
+      - name: Prepare LAN smoke report
+        run: npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md
+
+      - name: Prepare release candidate summary
+        run: npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md
+
+      - name: Publish release candidate summary to job summary
+        shell: bash
+        run: cat release-assets/release-candidate-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print LAN smoke report installer rows
+        run: npm run release:smoke-rows -- release-assets
+
+      - name: Upload assembled release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: remoteshare-release-assets
+          path: |
+            release-assets/*.dmg
+            release-assets/*.exe
+            release-assets/*.deb
+            release-assets/SHA256SUMS.txt
+            release-assets/RELEASE-MANIFEST.json
+            release-assets/lan-smoke-report.md
+            release-assets/release-candidate-summary.md
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Verify all platform artifacts
+        run: npm run verify:publish-artifacts -- release-artifacts
+
+      - name: Generate combined checksums
+        run: npm run prepare:release-assets -- release-artifacts release-assets
+
+      - name: Verify release manifest
+        run: npm run verify:release-manifest -- release-assets
+
+      - name: Prepare LAN smoke report
+        run: npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md
+
+      - name: Prepare release candidate summary
+        run: npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md
+
+      - name: Publish release candidate summary to job summary
+        shell: bash
+        run: cat release-assets/release-candidate-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print LAN smoke report installer rows
+        run: npm run release:smoke-rows -- release-assets
+
+      - name: Attach installers to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            release-assets/*.dmg
+            release-assets/*.exe
+            release-assets/*.deb
+            release-assets/SHA256SUMS.txt
+            release-assets/RELEASE-MANIFEST.json
+            release-assets/lan-smoke-report.md
+            release-assets/release-candidate-summary.md

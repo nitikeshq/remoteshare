@@ -1,0 +1,137 @@
+# Release Checklist
+
+Use this checklist before publishing RemoteShare installers.
+
+## Local Gate
+
+Run the lightweight release verifier:
+
+```bash
+npm run verify:release
+```
+
+This does not rebuild native installers. It checks local free disk space, typechecks the UI, runs a single-job `cargo check`, builds the frontend, tests checksum generation, installer, publish artifact, release artifact helper, release asset preparation, release manifest verification, and debug cache cleanup scripts, prints the local release summary, and runs the package doctor.
+
+Run Rust unit tests before release when local disk allows it. This is the `cargo test` gate used by CI:
+
+```bash
+npm run test:rust
+```
+
+When disk is too low for Rust or frontend verification, run the scripts-only release gate:
+
+```bash
+npm run verify:release-scripts
+```
+
+This verifies the release automation, fixture tests, local artifact summary, and package doctor without running `cargo check` or rebuilding the frontend.
+
+The disk preflight defaults to 1024 MiB free and supports macOS, Linux, and Windows runners. Override it with `REMOTESHARE_MIN_FREE_MIB` when a stricter or intentionally looser local/CI threshold is needed. A Rust debug dependency rebuild can need significantly more space than a warm local verification run.
+
+If the local verifier is blocked by Rust debug cache pressure, run:
+
+```bash
+npm run clean:debug-cache
+```
+
+This removes only generated Rust debug cache directories: `src-tauri/target/debug/build`, `src-tauri/target/debug/deps`, and `src-tauri/target/debug/incremental`. It leaves `src-tauri/target/release/bundle` and existing installer artifacts untouched. The next Rust check will rebuild debug dependencies, so use it only when disk preflight is blocking release verification.
+
+The release summary prints per-platform coverage, flags empty installer artifacts, flags duplicate platform artifacts, flags package-version filename mismatches, and prints a publish-readiness line. Local macOS-only runs should say publish readiness is incomplete until exactly one macOS `.dmg`, one Windows `.exe`, and one Linux `.deb` are present, non-empty, checksummed, and version-matched.
+
+## Native Installers
+
+Build each installer on its native operating system:
+
+- macOS `.dmg`: macOS runner or Mac developer machine.
+- Windows `.exe`: Windows runner.
+- Linux `.deb`: Ubuntu runner.
+
+The GitHub Actions workflow `.github/workflows/release-builds.yml` is the preferred path because it runs the disk preflight, frontend typecheck, `cargo check`, Rust unit tests, script test gates, native builds, checksum verification, and uploads all platform artifacts.
+
+The workflow also runs `npm run clean:debug-cache` after the Rust check/test gate and before the native bundle build so debug artifacts from `cargo check` and `cargo test` do not compete with installer packaging space.
+
+For a pre-tag build, run the workflow manually from GitHub Actions. The `Assemble Release Assets` job verifies all three native runner outputs, prepares flat release assets, writes `RELEASE-MANIFEST.json`, prepares a prefilled `lan-smoke-report.md`, writes `release-candidate-summary.md`, publishes that summary into the GitHub Actions job summary, prints the installer rows for smoke evidence, and uploads one combined artifact named `remoteshare-release-assets`.
+
+To reproduce the same assembly locally from the three platform artifacts, download them into one local directory named `release-artifacts`. Keep the artifact subdirectories from GitHub intact, then run:
+
+```bash
+npm run verify:publish-artifacts -- release-artifacts
+npm run prepare:release-assets -- release-artifacts release-assets
+npm run verify:release-manifest -- release-assets
+npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md
+npm run release:candidate-summary -- release-assets
+npm run release:smoke-rows -- release-assets
+```
+
+This is the operator path for proving that the Windows `.exe` and Linux `.deb` produced by native runners match the macOS `.dmg` before cutting a `v*` tag. Read the GitHub Actions job summary first, then open `release-candidate-summary.md` from the artifact; both list the installer filenames, hashes, and the smoke/readiness commands testers need.
+
+When the workflow runs from a `v*` tag, it creates a draft GitHub Release with exactly one non-empty `.dmg`, one non-empty `.exe`, one non-empty `.deb`, a combined `SHA256SUMS.txt`, `RELEASE-MANIFEST.json`, a prefilled `lan-smoke-report.md`, and `release-candidate-summary.md`. The publish job checks out the repo, sets up Node, installs dependencies, then runs `npm run verify:publish-artifacts -- release-artifacts` to verify all three platform artifact types are present exactly once before running `npm run prepare:release-assets -- release-artifacts release-assets`, which flattens installers and generates combined checksums plus a structured manifest. Both checks reject empty installer artifacts, and prepared release asset filenames plus `RELEASE-MANIFEST.json` must match the current package version so native runner outputs from different app versions cannot be mixed. It then runs `npm run verify:release-manifest -- release-assets` to confirm the manifest matches the release assets and checksum file, `npm run prepare:lan-smoke-report -- release-assets release-assets/lan-smoke-report.md` to prefill the Mac and Windows installer names and hashes before upload, `npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md` to write the release candidate smoke-test summary, publishes that summary into the GitHub Actions job summary, and runs `npm run release:smoke-rows -- release-assets` so the publish logs show the rows testers should copy into the completed LAN evidence report. It requires `contents: write` permission so it can attach release assets. Keep the release as a draft until `npm run verify:release-readiness -- release-assets path/to/completed-lan-smoke-report.md` passes against real Mac-to-Windows smoke evidence.
+
+Expected output:
+
+- `src-tauri/target/release/bundle/dmg/*.dmg`
+- `src-tauri/target/release/bundle/nsis/*.exe`
+- `src-tauri/target/release/bundle/deb/*.deb`
+- `src-tauri/target/release/bundle/SHA256SUMS.txt`
+- `remoteshare-release-assets` artifact from manual workflow runs
+- `release-assets/RELEASE-MANIFEST.json` in the publish job
+- `release-assets/lan-smoke-report.md` in the publish job
+- `release-assets/release-candidate-summary.md` in the publish job
+
+## Artifact Verification
+
+After a native build, generate and verify checksums:
+
+```bash
+npm run checksums:installers
+npm run verify:installers
+npm run release:summary
+```
+
+Checksum generation and installer verification reject empty installer artifacts before writing or accepting release checksums. They also require installer filenames to include the current package version before a native runner artifact is accepted.
+
+For prepared publish assets, verify the manifest against the flat installer directory:
+
+```bash
+npm run verify:release-manifest -- release-assets
+```
+
+For single-platform local checks, pass the expected platform:
+
+```bash
+npm run verify:installers -- src-tauri/target/release/bundle macos
+npm run verify:installers -- src-tauri/target/release/bundle windows
+npm run verify:installers -- src-tauri/target/release/bundle linux
+```
+
+## First Smoke Test
+
+Before publishing, install the latest macOS and Windows artifacts on two real computers and complete [first-lan-test.md](first-lan-test.md). Record the MVP acceptance evidence table for both auto-discovery and manual fallback runs using [lan-smoke-report-template.md](lan-smoke-report-template.md) before treating a build as release-ready.
+
+After preparing flat release assets, print the installer rows that should be copied into the smoke report:
+
+```bash
+npm run release:smoke-rows -- release-assets
+```
+
+Or generate a prefilled smoke report from the template:
+
+```bash
+npm run prepare:lan-smoke-report -- release-assets reports/completed-lan-smoke-report.md
+```
+
+Tagged GitHub releases attach a prefilled `lan-smoke-report.md`; download it, complete the hardware evidence rows, then verify the completed copy.
+
+Verify the completed report before publishing:
+
+```bash
+npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md
+```
+
+After preparing flat release assets, run the combined release-readiness verifier:
+
+```bash
+npm run verify:release-readiness -- release-assets path/to/completed-lan-smoke-report.md
+```
+
+This confirms the bundled prefilled `lan-smoke-report.md` still matches the release assets, manifest, and current template; `release-candidate-summary.md` still matches the release assets and manifest; the completed smoke report references the same macOS `.dmg`, Windows `.exe`, and Linux `.deb` basenames and 64-character SHA-256 hashes present in `RELEASE-MANIFEST.json`; and that the smoke report version matches the package version being released.
