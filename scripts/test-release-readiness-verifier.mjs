@@ -235,6 +235,8 @@ function smokeReportFixture(name, passValue, options = {}) {
 | Tester | QA |
 | RemoteShare version/tag | ${version} |
 | Input direction | macOS sender/main -> Windows receiver/client |
+| macOS role shown | Main |
+| Windows role shown | Client |
 | macOS model/version | MacBook / macOS 15 |
 | Windows model/version | PC / Windows 11 |
 | macOS installer file | ${macInstaller} |
