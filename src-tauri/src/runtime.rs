@@ -21,6 +21,12 @@ pub(crate) const PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE: &str =
     "Private network only is enabled. Use a private LAN endpoint or turn off Private network only.";
 
 #[derive(Debug, Clone)]
+struct EndpointSanitization {
+    manual_endpoint: Option<String>,
+    changed: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct RuntimeStore {
     state: Arc<Mutex<RuntimeState>>,
 }
@@ -386,7 +392,7 @@ pub enum InputEventDirection {
 impl RuntimeStore {
     pub fn load_or_init() -> Self {
         let mut persisted = PersistedState::load_or_create();
-        let manual_endpoint = sanitize_persisted_endpoints(&mut persisted);
+        let manual_endpoint = sanitize_persisted_endpoints(&mut persisted).manual_endpoint;
         let started_at_ms = now_ms();
         let startup_registration = if persisted.settings.auto_start {
             ServiceHealth {
@@ -640,8 +646,9 @@ impl RuntimeStore {
             state.capture.target_device_id = None;
             state.capture.started_at_ms = None;
         }
+        let mut cleaned_endpoints = false;
         if state.persisted.settings.private_network_only {
-            sanitize_persisted_endpoints(&mut state.persisted);
+            cleaned_endpoints = sanitize_persisted_endpoints(&mut state.persisted).changed;
             state.discovery.manual_endpoint = state.persisted.settings.manual_endpoint.clone();
             let private_network_only = state.persisted.settings.private_network_only;
             state.connection_health.retain(|_, health| {
@@ -655,7 +662,11 @@ impl RuntimeStore {
         match state.persisted.save() {
             Ok(()) => NetworkAction {
                 ok: true,
-                message: "Settings saved.".to_string(),
+                message: if cleaned_endpoints {
+                    "Settings saved. Public or invalid saved endpoints were removed.".to_string()
+                } else {
+                    "Settings saved.".to_string()
+                },
             },
             Err(error) => NetworkAction {
                 ok: false,
@@ -2287,7 +2298,7 @@ fn ipv6_is_unique_local(address: std::net::Ipv6Addr) -> bool {
     (address.segments()[0] & 0xfe00) == 0xfc00
 }
 
-fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String> {
+fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> EndpointSanitization {
     let mut changed = false;
     let manual_endpoint = persisted
         .settings
@@ -2346,7 +2357,10 @@ fn sanitize_persisted_endpoints(persisted: &mut PersistedState) -> Option<String
         let _ = persisted.save();
     }
 
-    manual_endpoint
+    EndpointSanitization {
+        manual_endpoint,
+        changed,
+    }
 }
 
 fn sanitize_endpoint_for_private_guard(
@@ -3382,6 +3396,10 @@ mod tests {
             allow_incoming_control: None,
         });
         assert!(action.ok, "{}", action.message);
+        assert_eq!(
+            action.message,
+            "Settings saved. Public or invalid saved endpoints were removed."
+        );
 
         assert_eq!(store.status().discovery.manual_endpoint, None);
         assert_eq!(
