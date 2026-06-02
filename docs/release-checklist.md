@@ -12,7 +12,7 @@ npm run verify:release
 
 This does not rebuild native installers. It checks local free disk space, typechecks the UI, runs a single-job `cargo check`, builds the frontend, tests checksum generation, installer, publish artifact, release artifact helper, release asset preparation, release manifest verification, and debug cache cleanup scripts, prints the local release summary, and runs the package doctor.
 
-Run Rust unit tests before release when local disk allows it. This is the `cargo test` gate used by CI:
+Run Rust unit tests before release when local disk allows it. This is the single-threaded `cargo test` gate used by CI because some runtime tests switch a process-global test config directory:
 
 ```bash
 npm run test:rust

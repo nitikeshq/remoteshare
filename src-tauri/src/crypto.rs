@@ -208,7 +208,7 @@ mod tests {
         let key = [0x0b_u8; 20];
         assert_eq!(
             hmac_sha256_hex(&key, b"Hi There"),
-            "b0344c61d8db38535ca8afceaf0bf12b884dcf1d8e6f0d7340282278e838b4cd"
+            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
         );
     }
 }

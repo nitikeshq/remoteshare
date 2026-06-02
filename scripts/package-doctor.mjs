@@ -147,7 +147,7 @@ check("Manual release asset assembly verifies before upload", assembleJobInclude
 check("Release workflow does not mask macOS build failures", !workflow.includes("Build macOS app with DMG fallback"));
 check("README documents npm ci setup", readme.includes("npm ci"));
 check("README documents release verification", readme.includes("npm run verify:release"));
-check("README documents Rust unit tests", readme.includes("npm run test:rust") && readme.includes("runs Rust unit tests"));
+check("README documents Rust unit tests", readme.includes("npm run test:rust") && readme.includes("runs Rust tests with one test thread"));
 check("README documents rustfmt health check", readme.includes("npm run check:rustfmt") && readme.includes("rustup component add rustfmt") && readme.includes("librustc_driver"));
 check("README documents debug cache cleanup", readme.includes("npm run clean:debug-cache") && readme.includes("Existing release bundle artifacts are left untouched"));
 check("README documents release summary", readme.includes("npm run release:summary"));
@@ -249,7 +249,7 @@ check("Release readiness verifier fixture test exists", fs.existsSync("scripts/t
 check("Release readiness verifier tests missing manifest, prefilled smoke report, candidate summary, failed smoke report, mismatched installers, mismatched version, and mismatched hashes", fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing release manifest should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing prefilled LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched prefilled LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("missing release candidate summary should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched release candidate summary should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("failed LAN smoke report should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke installer should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke Linux installer should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke version should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke checksum should fail") && fs.readFileSync("scripts/test-release-readiness-verifier.mjs", "utf8").includes("mismatched LAN smoke Linux checksum should fail"));
 check("Release checklist exists", fs.existsSync("docs/release-checklist.md"));
 check("Release checklist documents native installer platforms", releaseChecklist.includes("macOS `.dmg`") && releaseChecklist.includes("Windows `.exe`") && releaseChecklist.includes("Linux `.deb`"));
-check("Release checklist documents Rust unit test gate", releaseChecklist.includes("npm run test:rust") && releaseChecklist.includes("Rust unit tests") && releaseChecklist.includes("cargo test"));
+check("Release checklist documents Rust unit test gate", releaseChecklist.includes("npm run test:rust") && releaseChecklist.includes("Rust unit tests") && releaseChecklist.includes("single-threaded `cargo test`"));
 check("Release checklist documents rustfmt health check", releaseChecklist.includes("npm run check:rustfmt") && releaseChecklist.includes("rustup component add rustfmt") && releaseChecklist.includes("local toolchain diagnostic") && releaseChecklist.includes("librustc_driver"));
 check("Release checklist documents disk preflight", releaseChecklist.includes("disk preflight") && releaseChecklist.includes("REMOTESHARE_MIN_FREE_MIB") && releaseChecklist.includes("1024 MiB"));
 check("Release checklist documents debug cache cleanup", releaseChecklist.includes("npm run clean:debug-cache") && releaseChecklist.includes("release/bundle"));
@@ -513,6 +513,7 @@ check("verify:release runs scripts-only release gate", packageJson.scripts?.["ve
 check("verify:release runs disk preflight first", packageJson.scripts?.["verify:release"]?.startsWith("npm run check:disk"));
 check("check:rust uses a single job to reduce disk pressure", packageJson.scripts?.["check:rust"]?.includes("-j 1"));
 check("test:rust uses a single job to reduce disk pressure", packageJson.scripts?.["test:rust"]?.includes("cargo test --manifest-path src-tauri/Cargo.toml -j 1"));
+check("test:rust serializes tests that share process-global config", packageJson.scripts?.["test:rust"]?.includes("--test-threads=1"));
 
 const checksumPath = path.join(bundleRoot, "SHA256SUMS.txt");
 if (fs.existsSync(checksumPath)) {

@@ -2032,9 +2032,9 @@ Wireless LAN adapter Wi-Fi:
     #[tokio::test]
     async fn input_ack_round_trip_requires_authentication() {
         let secret = "shared-secret";
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("test listener should bind");
+        let Some(listener) = bind_localhost_listener_or_skip("input ack round trip").await else {
+            return;
+        };
         let endpoint = listener.local_addr().expect("listener should have address");
         let server_secret = secret.to_string();
         let server = tokio::spawn(async move {
@@ -2076,9 +2076,9 @@ Wireless LAN adapter Wi-Fi:
         ));
         server.await.expect("server task should finish");
 
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("test listener should bind");
+        let Some(listener) = bind_localhost_listener_or_skip("unsigned input ack").await else {
+            return;
+        };
         let endpoint = listener.local_addr().expect("listener should have address");
         let unsigned_server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("client should connect");
@@ -2109,9 +2109,9 @@ Wireless LAN adapter Wi-Fi:
     async fn capture_forwarding_requires_receiver_acknowledgement() {
         crate::identity::set_test_config_dir(unique_test_dir("capture-input-ack"));
 
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("test listener should bind");
+        let Some(listener) = bind_localhost_listener_or_skip("capture forwarding ack").await else {
+            return;
+        };
         let endpoint = listener.local_addr().expect("listener should have address");
         let store = trusted_store_for_network_test("127.0.0.1:44777");
         let target = TrustedReconnectTarget {
@@ -2457,6 +2457,17 @@ Wireless LAN adapter Wi-Fi:
             "remoteshare-network-{name}-{}-{now_ms}",
             std::process::id()
         ))
+    }
+
+    async fn bind_localhost_listener_or_skip(test_name: &str) -> Option<TcpListener> {
+        match TcpListener::bind("127.0.0.1:0").await {
+            Ok(listener) => Some(listener),
+            Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("skipping {test_name}: localhost bind denied by environment");
+                None
+            }
+            Err(error) => panic!("{test_name} listener should bind: {error}"),
+        }
     }
 
     fn peer(device_id: &str, public_key_fingerprint: &str) -> PairingPeer {

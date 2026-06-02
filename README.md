@@ -69,7 +69,7 @@ npm run verify:release
 
 The disk preflight defaults to 1024 MiB free because a Rust debug dependency rebuild can consume significantly more than a warm local check. Set `REMOTESHARE_MIN_FREE_MIB` only when you intentionally want a stricter or looser local gate.
 
-`npm run check:rustfmt` is a local Rust formatter health check. If it fails with a missing `librustc_driver` library or similar toolchain error, repair the active Rust toolchain with `rustup component add rustfmt` or `rustup update stable`.
+`npm run test:rust` runs Rust tests with one test thread because several runtime tests switch a process-global test config directory. `npm run check:rustfmt` is a local Rust formatter health check. If it fails with a missing `librustc_driver` library or similar toolchain error, repair the active Rust toolchain with `rustup component add rustfmt` or `rustup update stable`.
 
 If the disk preflight fails because Rust debug cache has filled the local target directory, run:
 
@@ -126,5 +126,5 @@ npm run release:summary
 On this Mac, a simple local DMG can be created from the built `.app` with:
 
 ```bash
-hdiutil create -volname RemoteShare -srcfolder src-tauri/target/release/bundle/macos/RemoteShare.app -ov -format UDZO src-tauri/target/release/bundle/dmg/RemoteShare_0.1.0_aarch64.dmg
+hdiutil create -volname RemoteShare -srcfolder src-tauri/target/release/bundle/macos/RemoteShare.app -ov -format UDZO src-tauri/target/release/bundle/dmg/RemoteShare_0.1.1_aarch64.dmg
 ```
