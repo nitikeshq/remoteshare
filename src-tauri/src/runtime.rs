@@ -2285,12 +2285,12 @@ pub(crate) fn normalized_endpoint(endpoint: &str) -> Option<String> {
 
     if let Some((host, port)) = trimmed.rsplit_once(':') {
         if valid_hostname(host) && !hostname_is_local_only(host) && valid_port(port) {
-            return Some(trimmed.to_string());
+            return Some(format!("{}:{port}", canonical_hostname(host)));
         }
         return None;
     }
 
-    valid_hostname(trimmed).then(|| format!("{trimmed}:44777"))
+    valid_hostname(trimmed).then(|| format!("{}:44777", canonical_hostname(trimmed)))
 }
 
 fn socket_address_is_local_only(address: std::net::SocketAddr) -> bool {
@@ -2438,8 +2438,12 @@ fn sanitize_endpoint_for_private_guard(
 }
 
 fn hostname_is_local_only(host: &str) -> bool {
-    let normalized = host.trim_end_matches('.').to_ascii_lowercase();
+    let normalized = canonical_hostname(host);
     normalized == "localhost" || normalized == "localhost.localdomain"
+}
+
+fn canonical_hostname(host: &str) -> String {
+    host.trim_end_matches('.').to_ascii_lowercase()
 }
 
 fn valid_hostname(host: &str) -> bool {
@@ -2508,7 +2512,19 @@ mod tests {
         );
         assert_eq!(
             normalized_endpoint("macbook.local."),
-            Some("macbook.local.:44777".to_string())
+            Some("macbook.local:44777".to_string())
+        );
+        assert_eq!(
+            normalized_endpoint("MacBook.LOCAL"),
+            Some("macbook.local:44777".to_string())
+        );
+    }
+
+    #[test]
+    fn canonicalizes_host_with_port() {
+        assert_eq!(
+            normalized_endpoint("MacBook.LOCAL.:44778"),
+            Some("macbook.local:44778".to_string())
         );
     }
 
