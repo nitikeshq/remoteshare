@@ -284,6 +284,10 @@ function inputEventStatusLabel(event: InputEventRecord) {
   return event.direction === "incoming" ? "failed" : "rejected";
 }
 
+function inputEventDirectionLabel(event: InputEventRecord) {
+  return event.direction === "incoming" ? "Incoming" : "Outgoing";
+}
+
 function inputEventDeviceLabel(event: InputEventRecord, devices: Device[]) {
   return devices.find((device) => device.id === event.deviceId)?.name ?? event.deviceId;
 }
@@ -1500,7 +1504,7 @@ function App() {
                     key={`${event.atMs}-${event.deviceId}`}
                   >
                     <Keyboard size={16} />
-                    <span>{event.direction}</span>
+                    <span>{inputEventDirectionLabel(event)}</span>
                     <strong>{event.summary}</strong>
                     <small>
                       {deviceLabel} · {elapsedLabel(event.atMs)}
