@@ -250,6 +250,19 @@ try {
     "Auto-Discovery Run failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry"
   );
 
+  const noneSuccess = writeReport("none-success.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoPairAction: "none"
+  });
+  runVerifier(
+    noneSuccess,
+    false,
+    "none should not satisfy success evidence",
+    "Auto-Discovery Run field must show success: Pair action started"
+  );
+
   const wrongReportVersion = writeReport("wrong-report-version.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -480,6 +493,7 @@ function writeReport(name, options) {
     options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
   const manualEndpointCopied =
     options.manualEndpointCopied ?? "copied from peer This computer row";
+  const autoPairAction = options.autoPairAction ?? "started";
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
   const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
@@ -524,7 +538,7 @@ function writeReport(name, options) {
     `| macOS IP/subnet | ${macIpSubnet} |`,
     `| Windows IP/subnet | ${windowsIpSubnet} |`,
     "| Peer appeared in `Scan LAN` | yes |",
-    "| Pair action started | started |",
+    `| Pair action started | ${autoPairAction} |`,
     "| Same six-digit code shown on both machines | confirmed |",
     "| Six-digit code typed on both machines | confirmed |",
     "| `Trusted` shown on both machines | shown |",
