@@ -1716,7 +1716,7 @@ function App() {
                 Cancel
               </button>
             )}
-            {status.discovery.manualEndpoint && (
+            {status.discovery.manualEndpoint && !endpointUpdateDeviceId && (
               <button
                 className="secondary-button compact"
                 onClick={clearManualEndpoint}
