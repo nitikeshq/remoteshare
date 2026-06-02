@@ -627,6 +627,11 @@ impl RuntimeStore {
                 device.allow_incoming_control = false;
             }
         }
+        if !state.persisted.settings.role.can_send_input() {
+            state.capture.active = false;
+            state.capture.target_device_id = None;
+            state.capture.started_at_ms = None;
+        }
 
         match state.persisted.save() {
             Ok(()) => NetworkAction {
@@ -4133,6 +4138,47 @@ mod tests {
 
         assert!(!action.ok);
         assert!(action.message.contains("Main or Both"));
+        assert!(!store.status().capture.active);
+        assert!(store.active_capture_target().is_none());
+    }
+
+    #[test]
+    fn changing_to_client_clears_active_capture() {
+        crate::identity::set_test_config_dir(unique_test_dir("client-role-clears-capture"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let capture = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+        assert!(capture.ok, "{}", capture.message);
+        assert!(store.status().capture.active);
+
+        let role_change = store.update_settings(super::SettingsUpdateRequest {
+            role: Some(ComputerRole::Client),
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(role_change.ok);
+        assert_eq!(store.status().mode, ComputerRole::Client);
         assert!(!store.status().capture.active);
         assert!(store.active_capture_target().is_none());
     }
