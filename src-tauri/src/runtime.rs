@@ -2091,6 +2091,9 @@ fn prune_runtime_state(state: &mut RuntimeState, now: u128) {
     state
         .connection_health
         .retain(|_, health| now.saturating_sub(health.last_seen_at_ms) <= PEER_RETENTION_MS);
+    state
+        .connection_failures
+        .retain(|_, failure| now.saturating_sub(failure.failed_at_ms) <= PEER_RETENTION_MS);
 }
 
 fn pairing_is_expired(pairing: &PendingPairing, now: u128) -> bool {
@@ -5310,6 +5313,47 @@ mod tests {
             .find(|device| device.id == "trusted-device")
             .and_then(|device| device.last_connection_failure.as_ref())
             .is_none());
+    }
+
+    #[test]
+    fn stale_trusted_connection_failures_are_pruned_from_status() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-pruned"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_failures.insert(
+                "trusted-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    failed_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
+                    message: "old stale endpoint".to_string(),
+                },
+            );
+        }
+
+        let status = store.status();
+        assert!(status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed")
+            .last_connection_failure
+            .is_none());
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_failures.get("trusted-device").is_none());
     }
 
     fn unique_test_dir(name: &str) -> PathBuf {
