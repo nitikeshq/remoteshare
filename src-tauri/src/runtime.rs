@@ -104,6 +104,7 @@ pub struct PendingPairing {
     pub device_id: String,
     pub name: String,
     pub platform: String,
+    pub role: ComputerRole,
     pub endpoint: String,
     pub control_port: u16,
     pub public_key_fingerprint: String,
@@ -326,6 +327,8 @@ pub struct PairingPeer {
     pub device_id: String,
     pub name: String,
     pub platform: String,
+    #[serde(default = "default_peer_role")]
+    pub role: ComputerRole,
     pub control_port: u16,
     pub public_key_fingerprint: String,
     #[serde(default)]
@@ -803,6 +806,7 @@ impl RuntimeStore {
             device_id: identity.id.clone(),
             name: identity.name.clone(),
             platform: identity.platform.clone(),
+            role: ComputerRole::Client,
             control_port: state.discovery.port,
             public_key_fingerprint: identity.public_key_fingerprint.clone(),
             role: state.persisted.settings.role.clone(),
@@ -813,7 +817,11 @@ impl RuntimeStore {
 
     pub fn local_pairing_peer(&self) -> PairingPeer {
         let state = self.state.lock().expect("runtime state poisoned");
-        pairing_peer_from_identity(&state.persisted.identity, state.discovery.port)
+        pairing_peer_from_identity(
+            &state.persisted.identity,
+            state.persisted.settings.role.clone(),
+            state.discovery.port,
+        )
     }
 
     pub fn local_device_id(&self) -> String {
@@ -941,6 +949,11 @@ impl RuntimeStore {
                 .map(|peer| peer.platform.clone())
                 .or_else(|| fallback.map(|peer| peer.announcement.platform.clone()))
                 .unwrap_or_else(|| "unknown".to_string()),
+            role: peer
+                .as_ref()
+                .map(|peer| peer.role.clone())
+                .or_else(|| fallback.map(|peer| peer.announcement.role.clone()))
+                .unwrap_or(ComputerRole::Client),
             endpoint: target.endpoint.clone(),
             control_port: peer.as_ref().map(|peer| peer.control_port).unwrap_or(44777),
             public_key_fingerprint: peer
@@ -1001,6 +1014,7 @@ impl RuntimeStore {
             device_id: peer.device_id,
             name: peer.name,
             platform: peer.platform,
+            role: peer.role,
             endpoint,
             control_port: peer.control_port,
             public_key_fingerprint: peer.public_key_fingerprint,
@@ -1647,7 +1661,7 @@ fn device_from_trusted_with_health(
         platform: device.platform.clone(),
         role: peer
             .map(|peer| peer.announcement.role.clone())
-            .unwrap_or(ComputerRole::Client),
+            .unwrap_or_else(|| device.role.clone()),
         trusted: true,
         online,
         connection: match (peer.is_some(), health.is_some()) {
@@ -1797,11 +1811,16 @@ fn non_empty_public_key(public_key: String) -> Option<String> {
     }
 }
 
-fn pairing_peer_from_identity(identity: &DeviceIdentity, control_port: u16) -> PairingPeer {
+fn pairing_peer_from_identity(
+    identity: &DeviceIdentity,
+    role: ComputerRole,
+    control_port: u16,
+) -> PairingPeer {
     PairingPeer {
         device_id: identity.id.clone(),
         name: identity.name.clone(),
         platform: identity.platform.clone(),
+        role,
         control_port,
         public_key_fingerprint: identity.public_key_fingerprint.clone(),
         public_key: identity.identity_public_key.clone(),
@@ -1813,6 +1832,7 @@ fn pairing_peer_from_announcement(announcement: &PeerAnnouncement) -> PairingPee
         device_id: announcement.device_id.clone(),
         name: announcement.name.clone(),
         platform: announcement.platform.clone(),
+        role: announcement.role.clone(),
         control_port: announcement.control_port,
         public_key_fingerprint: announcement.public_key_fingerprint.clone(),
         public_key: announcement.public_key.clone(),
@@ -1824,6 +1844,7 @@ fn pairing_peer_from_trusted_device(device: &TrustedDevice) -> PairingPeer {
         device_id: device.id.clone(),
         name: device.name.clone(),
         platform: device.platform.clone(),
+        role: device.role.clone(),
         control_port: 44777,
         public_key_fingerprint: device.public_key_fingerprint.clone(),
         public_key: device.public_key.clone().unwrap_or_default(),
@@ -1861,6 +1882,7 @@ fn upsert_trusted_device(
     {
         device.name = peer.name;
         device.platform = peer.platform;
+        device.role = peer.role;
         device.public_key_fingerprint = peer.public_key_fingerprint;
         device.public_key = non_empty_public_key(peer.public_key);
         device.shared_secret = Some(shared_secret);
@@ -1873,6 +1895,7 @@ fn upsert_trusted_device(
         id: peer.device_id,
         name: peer.name,
         platform: peer.platform,
+        role: peer.role,
         public_key_fingerprint: peer.public_key_fingerprint,
         public_key: non_empty_public_key(peer.public_key),
         shared_secret: Some(shared_secret),
@@ -1900,6 +1923,7 @@ fn complete_pairing_if_ready(state: &mut RuntimeState, pairing_id: &str) -> Resu
         device_id: pairing.device_id.clone(),
         name: pairing.name.clone(),
         platform: pairing.platform.clone(),
+        role: pairing.role.clone(),
         control_port: pairing.control_port,
         public_key_fingerprint: pairing.public_key_fingerprint.clone(),
         public_key: pairing.public_key.clone(),
@@ -2513,6 +2537,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -2563,6 +2588,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2575,6 +2601,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -2610,6 +2637,7 @@ mod tests {
                 id: "trusted-device-1".to_string(),
                 name: "Trusted Mac 1".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint-1".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret-1".to_string()),
@@ -2621,6 +2649,7 @@ mod tests {
                 id: "trusted-device-2".to_string(),
                 name: "Trusted Mac 2".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint-2".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret-2".to_string()),
@@ -2664,6 +2693,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: trusted_fingerprint.clone(),
                 public_key: Some(trusted_public_key.clone()),
                 shared_secret: Some("shared-secret".to_string()),
@@ -2677,6 +2707,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: trusted_fingerprint.clone(),
             public_key: trusted_public_key,
@@ -2687,6 +2718,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: trusted_fingerprint,
             public_key: other_public_key,
@@ -2702,6 +2734,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: other_fingerprint,
             public_key: String::new(),
@@ -2806,6 +2839,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2838,6 +2872,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2870,6 +2905,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2907,6 +2943,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2947,6 +2984,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -2993,6 +3031,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: Some("trusted-public-key".to_string()),
                 shared_secret: Some("shared-secret".to_string()),
@@ -3070,6 +3109,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Device".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3122,6 +3162,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3241,6 +3282,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3260,6 +3302,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "wrong-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3293,6 +3336,7 @@ mod tests {
             device_id: "remote-device".to_string(),
             name: "Remote Windows".to_string(),
             platform: "windows".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: "remote-fingerprint".to_string(),
             public_key: String::new(),
@@ -3368,6 +3412,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3430,6 +3475,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3459,6 +3505,7 @@ mod tests {
                     device_id: "remote-device".to_string(),
                     name: "Remote Windows".to_string(),
                     platform: "windows".to_string(),
+                    role: ComputerRole::Client,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
@@ -3526,6 +3573,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: Some("trusted-public-key".to_string()),
                 shared_secret: Some("shared-secret".to_string()),
@@ -3598,6 +3646,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3667,6 +3716,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3762,6 +3812,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3793,6 +3844,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3825,6 +3877,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3838,6 +3891,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -3860,6 +3914,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3873,6 +3928,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -3892,6 +3948,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3926,6 +3983,7 @@ mod tests {
                 device_id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 control_port: 44777,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: String::new(),
@@ -3967,6 +4025,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -4021,6 +4080,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Windows".to_string(),
                 platform: "windows".to_string(),
+                role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -4068,6 +4128,7 @@ mod tests {
             device_id: device_id.to_string(),
             name: "Expired Device".to_string(),
             platform: "unknown".to_string(),
+            role: ComputerRole::Client,
             endpoint: "192.168.1.10:44777".to_string(),
             control_port: 44777,
             public_key_fingerprint: format!("{device_id}-fingerprint"),

@@ -1813,9 +1813,12 @@ mod tests {
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
     };
 
-    use crate::runtime::{
-        ConfirmPairingRequest, PairingPeer, PairingTarget, RuntimeStore, TrustedReconnectTarget,
-        TrustedTarget,
+    use crate::{
+        identity::ComputerRole,
+        runtime::{
+            ConfirmPairingRequest, PairingPeer, PairingTarget, RuntimeStore,
+            TrustedReconnectTarget, TrustedTarget,
+        },
     };
     use tokio::net::TcpListener;
 
@@ -2494,6 +2497,7 @@ Wireless LAN adapter Wi-Fi:
             device_id: device_id.to_string(),
             name: "Trusted Windows".to_string(),
             platform: "windows".to_string(),
+            role: ComputerRole::Client,
             control_port: 44777,
             public_key_fingerprint: public_key_fingerprint.to_string(),
             public_key: public_key.to_string(),

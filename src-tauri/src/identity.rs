@@ -35,7 +35,7 @@ pub struct DeviceIdentity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSettings {
-    #[serde(default = "default_computer_role")]
+    #[serde(default = "default_trusted_device_role")]
     pub role: ComputerRole,
     #[serde(default = "default_true")]
     pub auto_start: bool,
@@ -73,6 +73,8 @@ pub struct TrustedDevice {
     pub id: String,
     pub name: String,
     pub platform: String,
+    #[serde(default = "default_computer_role")]
+    pub role: ComputerRole,
     pub public_key_fingerprint: String,
     #[serde(default)]
     pub public_key: Option<String>,
@@ -306,6 +308,10 @@ fn default_computer_role() -> ComputerRole {
     ComputerRole::Main
 }
 
+fn default_trusted_device_role() -> ComputerRole {
+    ComputerRole::Client
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -349,6 +355,7 @@ mod tests {
         assert!(!state.settings.allow_incoming_control);
         assert_eq!(state.settings.manual_endpoint, None);
         assert_eq!(state.trusted_devices.len(), 1);
+        assert_eq!(state.trusted_devices[0].role, ComputerRole::Client);
         assert_eq!(state.trusted_devices[0].public_key, None);
         assert_eq!(state.trusted_devices[0].shared_secret, None);
         assert_eq!(state.trusted_devices[0].last_endpoint, None);
