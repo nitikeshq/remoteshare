@@ -1,7 +1,18 @@
 {
   "name": "remoteshare",
   "version": "0.1.13",
+  "description": "Cross-platform keyboard and mouse sharing for trusted computers on a private network.",
   "private": true,
+  "license": "MIT",
+  "author": "RemoteShare contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitikeshq/remoteshare.git"
+  },
+  "homepage": "https://github.com/nitikeshq/remoteshare#readme",
+  "bugs": {
+    "url": "https://github.com/nitikeshq/remoteshare/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "tauri dev",

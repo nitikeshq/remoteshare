@@ -116,3 +116,7 @@ The release workflow verifies the installers, writes checksums, creates `RELEASE
 - [Release checklist](docs/release-checklist.md)
 - [Transport roadmap](docs/transport-roadmap.md)
 - [Architecture notes](docs/architecture.md)
+
+## License
+
+RemoteShare is released under the [MIT License](LICENSE).

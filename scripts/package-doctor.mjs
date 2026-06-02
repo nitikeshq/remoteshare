@@ -7,6 +7,7 @@ const tauriConfig = readJson("src-tauri/tauri.conf.json");
 const workflowPath = ".github/workflows/release-builds.yml";
 const workflow = fs.readFileSync(workflowPath, "utf8");
 const readme = fs.readFileSync("README.md", "utf8");
+const licenseText = fs.readFileSync("LICENSE", "utf8");
 const cargoToml = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
 const networkingMilestone = fs.readFileSync("docs/networking-milestone.md", "utf8");
 const architecture = fs.readFileSync("docs/architecture.md", "utf8");
@@ -117,6 +118,8 @@ check(
 check("macOS bundle target is configured", workflow.includes("macos-latest"));
 check("Windows bundle target is configured", workflow.includes("windows-latest"));
 check("Linux bundle target is configured", workflow.includes("ubuntu-latest"));
+check("Project metadata uses the public repository URL", packageJson.repository?.url === "git+https://github.com/nitikeshq/remoteshare.git" && packageJson.homepage === "https://github.com/nitikeshq/remoteshare#readme" && cargoToml.includes('repository = "https://github.com/nitikeshq/remoteshare"'));
+check("Project declares MIT license", packageJson.license === "MIT" && cargoToml.includes('license = "MIT"') && readme.includes("[MIT License](LICENSE)") && licenseText.includes("MIT License") && licenseText.includes("RemoteShare contributors"));
 check("Release workflow uses matrix artifact paths", workflow.includes("${{ matrix.artifact-path }}"));
 check("Release workflow uploads macOS DMG artifacts", workflow.includes("src-tauri/target/release/bundle/dmg/*.dmg"));
 check("Release workflow uploads Windows EXE artifacts", workflow.includes("src-tauri/target/release/bundle/nsis/*.exe"));

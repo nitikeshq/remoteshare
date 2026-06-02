@@ -5,7 +5,7 @@ description = "Cross-platform keyboard and mouse sharing."
 authors = ["RemoteShare contributors"]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/remoteshare/remoteshare"
+repository = "https://github.com/nitikeshq/remoteshare"
 
 [lib]
 name = "remoteshare_lib"
