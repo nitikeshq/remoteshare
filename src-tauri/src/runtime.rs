@@ -667,17 +667,32 @@ impl RuntimeStore {
             };
         }
 
+        let ready_count = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .filter(|device| device.shared_secret.is_some())
+            .count();
+        if ready_count == 0 {
+            return NetworkAction {
+                ok: false,
+                message: "Re-pair a trusted device before enabling receive.".to_string(),
+            };
+        }
+
         state.persisted.settings.allow_incoming_control = true;
         for device in &mut state.persisted.trusted_devices {
-            device.allow_incoming_control = true;
+            if device.shared_secret.is_some() {
+                device.allow_incoming_control = true;
+            }
         }
 
         match state.persisted.save() {
             Ok(()) => NetworkAction {
                 ok: true,
                 message: format!(
-                    "Receive enabled for {trusted_count} trusted device{}.",
-                    if trusted_count == 1 { "" } else { "s" }
+                    "Receive enabled for {ready_count} trusted device{}.",
+                    if ready_count == 1 { "" } else { "s" }
                 ),
             },
             Err(error) => NetworkAction {
@@ -2685,7 +2700,7 @@ mod tests {
                 role: ComputerRole::Client,
                 public_key_fingerprint: "trusted-fingerprint-2".to_string(),
                 public_key: None,
-                shared_secret: Some("shared-secret-2".to_string()),
+                shared_secret: None,
                 last_endpoint: Some("192.168.1.51:44777".to_string()),
                 recent_endpoints: Vec::new(),
                 allow_incoming_control: false,
@@ -2694,15 +2709,57 @@ mod tests {
 
         let action = store.enable_receive_for_trusted_devices();
         assert!(action.ok, "{}", action.message);
-        assert_eq!(action.message, "Receive enabled for 2 trusted devices.");
+        assert_eq!(action.message, "Receive enabled for 1 trusted device.");
 
         let status = store.status();
         assert!(status.allow_incoming_control);
-        assert!(status
+        let ready = status
             .devices
             .iter()
-            .filter(|device| device.trusted)
-            .all(|device| device.allow_incoming_control));
+            .find(|device| device.id == "trusted-device-1")
+            .expect("ready trusted device should be listed");
+        assert!(ready.allow_incoming_control);
+        let stale = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device-2")
+            .expect("stale trusted device should be listed");
+        assert!(!stale.allow_incoming_control);
+        assert!(!stale.input_control_ready);
+    }
+
+    #[test]
+    fn receive_shortcut_rejects_stale_trusted_devices() {
+        crate::identity::set_test_config_dir(unique_test_dir("receive-shortcut-stale"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "stale-device".to_string(),
+                name: "Stale Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "stale-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: None,
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.enable_receive_for_trusted_devices();
+        assert!(!action.ok);
+        assert_eq!(
+            action.message,
+            "Re-pair a trusted device before enabling receive."
+        );
+
+        let status = store.status();
+        assert!(!status.allow_incoming_control);
+        assert!(!status.devices[0].allow_incoming_control);
     }
 
     #[test]

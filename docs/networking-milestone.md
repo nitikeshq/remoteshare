@@ -186,7 +186,7 @@ Current scaffold behavior:
 - Incoming input is rejected unless the sender is trusted and incoming control is enabled.
 - Incoming input is also rejected when the sender fingerprint or control-message authentication does not match the trusted device record.
 - Incoming control now requires both the global receive toggle and the trusted device's per-device receive permission.
-- The UI includes a receive shortcut that enables the global incoming-control gate and trusted-device receive permission together, while keeping the individual toggles available for stricter per-device control.
+- The UI includes a receive shortcut that enables the global incoming-control gate and trusted-device receive permission together for trusted devices that have a shared input secret, while keeping the individual toggles available for stricter per-device control. Stale trusted devices that need re-pairing are skipped by the shortcut and cannot receive input until a new shared input secret exists.
 - Incoming input failures, including authentication failure and native injection failure, are retained in the input transport history so testers can distinguish network/auth problems from permission or OS injection problems.
 - Accepted incoming events are passed to the native injection adapter.
 - macOS injection currently supports mouse move, primary/secondary button down/up events, one-axis scroll, and a limited basic keyboard map when Accessibility permission is granted.
