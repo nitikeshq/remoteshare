@@ -954,6 +954,15 @@ impl RuntimeStore {
             return false;
         }
 
+        let endpoint = endpoint;
+        if state
+            .connection_failures
+            .get(&announcement.device_id)
+            .is_some_and(|failure| failure.endpoint == endpoint)
+        {
+            state.connection_failures.remove(&announcement.device_id);
+        }
+
         state.discovered_peers.insert(
             announcement.device_id.clone(),
             DiscoveredPeer {
@@ -5215,6 +5224,124 @@ mod tests {
             .expect("trusted device should be listed")
             .last_connection_failure
             .is_none());
+    }
+
+    #[test]
+    fn trusted_discovery_clears_matching_stale_connection_failure() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-discovery-clears-failure"));
+
+        let store = RuntimeStore::load_or_init();
+        let (_private_key, public_key) = crate::crypto::identity_keypair();
+        let public_key_fingerprint = crate::crypto::fingerprint_from_public_key(&public_key)
+            .expect("generated public key should fingerprint");
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                public_key: Some(public_key.clone()),
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.50:44777",
+            "connection timed out",
+        );
+        assert!(store
+            .status()
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure.as_ref())
+            .is_some());
+
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint,
+                role: ComputerRole::Client,
+                public_key,
+                scan_request: false,
+            },
+            "192.168.1.50".to_string(),
+        ));
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(device.online);
+        assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
+    fn trusted_discovery_keeps_different_endpoint_failure_visible() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-discovery-keeps-failure"));
+
+        let store = RuntimeStore::load_or_init();
+        let (_private_key, public_key) = crate::crypto::identity_keypair();
+        let public_key_fingerprint = crate::crypto::fingerprint_from_public_key(&public_key)
+            .expect("generated public key should fingerprint");
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                public_key: Some(public_key.clone()),
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.51:44777",
+            "connection refused",
+        );
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint,
+                role: ComputerRole::Client,
+                public_key,
+                scan_request: false,
+            },
+            "192.168.1.50".to_string(),
+        ));
+
+        let failure = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure)
+            .expect("different endpoint failure should stay visible");
+        assert_eq!(failure.endpoint, "192.168.1.51:44777");
+        assert_eq!(failure.message, "connection refused");
     }
 
     #[test]
