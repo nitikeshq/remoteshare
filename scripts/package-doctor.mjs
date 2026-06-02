@@ -161,6 +161,7 @@ check("README documents npm ci setup", readme.includes("npm ci"));
 check("README documents common verification commands", readme.includes("npm run typecheck") && readme.includes("npm run doctor") && readme.includes("npm run test:rust") && readme.includes("npm run verify:release"));
 check("README documents debug cache cleanup", readme.includes("npm run clean:debug-cache"));
 check("README leads with LAN MVP scope", readme.includes("sharing one keyboard and mouse") && readme.includes("main computer: macOS") && readme.includes("client computer: Windows"));
+check("README documents future role selection", readme.includes("Main, Client, or Both") && readme.includes("any trusted computer become the main keyboard/mouse source"));
 check("README documents current status", readme.includes("not production-ready yet") && readme.includes("LAN MVP in progress"));
 check("README documents firewall ports", readme.includes("TCP `44777`") && readme.includes("UDP `44778`"));
 check("README documents manual endpoint fallback", readme.includes("If discovery fails") && readme.includes("manual pairing"));
@@ -308,6 +309,7 @@ check("UI exposes receive shortcut for trusted devices", appUi.includes("enableR
 check("UI disables stale trusted receive toggles", appUi.includes("row-toggle-disabled") && appUi.includes("Re-pair this device before enabling receive") && appUi.includes("disabled={!device.inputControlReady}"));
 check("UI shows Mac-to-Windows setup checklist", appUi.includes("setupSteps") && appUi.includes("Mac main -> Windows client") && appUi.includes("Verify input"));
 check("UI does not keep decorative sidebar nav", !appUi.includes("className=\"nav\"") && !appUi.includes("className=\"nav-item"));
+check("UI exposes local computer role selector", appUi.includes("This computer role") && appUi.includes("value=\"main\"") && appUi.includes("value=\"client\"") && appUi.includes("value=\"both\"") && appUi.includes("roleLabel(status.mode)"));
 check("UI exposes private network guard setting", appUi.includes("Private network only") && appUi.includes("privateNetworkOnly"));
 check("UI explains local endpoint choice", appUi.includes("same Wi-Fi/LAN subnet") && appUi.includes("IPv6 is available for manual fallback"));
 check("UI shows all copyable local endpoints", appUi.includes("localEndpoints.map") && !appUi.includes("localEndpoints.slice"));
@@ -372,6 +374,7 @@ check("Cargo enables X25519 dependency", cargoToml.includes("x25519-dalek") && c
 check("Runtime rejects explicit pairing failures", networkRuntime.includes("ControlMessage::PairRejected"));
 check("Runtime uses X25519 pairing key agreement", networkRuntime.includes("dh_public_key") && runtimeStore.includes("local_dh_private_key"));
 check("Runtime uses public-key identity fingerprints", identityRuntime.includes("identity_private_key") && identityRuntime.includes("identity_public_key") && identityRuntime.includes("fingerprint_from_public_key"));
+check("Runtime persists and advertises local computer role", identityRuntime.includes("pub enum ComputerRole") && identityRuntime.includes("pub role: ComputerRole") && runtimeStore.includes("mode: persisted.settings.role.clone()") && runtimeStore.includes("role: state.persisted.settings.role.clone()") && runtimeStore.includes("local_role_setting_updates_status_and_announcement"));
 check("Runtime advertises and stores peer identity public keys", runtimeStore.includes("pub public_key: String") && runtimeStore.includes("identity.identity_public_key") && runtimeStore.includes("device.public_key = non_empty_public_key"));
 check("Runtime validates advertised public keys against fingerprints", runtimeStore.includes("peer_public_key_matches_fingerprint") && runtimeStore.includes("Pairing public key does not match fingerprint") && runtimeStore.includes("Accepted pairing public key does not match fingerprint"));
 check("Runtime matches stored peer public keys for trusted input and reconnect", runtimeStore.includes("trusted_device_matches_source") && runtimeStore.includes("trusted_identity_matches") && runtimeStore.includes("Rejected input event because trusted identity does not match") && networkRuntime.includes("Rejected reconnect ping because trusted identity does not match") && networkRuntime.includes("public_key: reconnect_target.public_key.clone()") && networkRuntime.includes("peer_public_key_matches_fingerprint") && networkRuntime.includes("reconnect_pong_requires_matching_public_key_when_stored"));

@@ -35,6 +35,8 @@ pub struct DeviceIdentity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSettings {
+    #[serde(default = "default_computer_role")]
+    pub role: ComputerRole,
     #[serde(default = "default_true")]
     pub auto_start: bool,
     #[serde(default = "default_true")]
@@ -45,6 +47,14 @@ pub struct UserSettings {
     pub allow_incoming_control: bool,
     #[serde(default)]
     pub manual_endpoint: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ComputerRole {
+    Main,
+    Client,
+    Both,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,6 +158,7 @@ impl PersistedState {
                 platform: std::env::consts::OS.to_string(),
             },
             settings: UserSettings {
+                role: ComputerRole::Main,
                 auto_start: true,
                 trusted_reconnect: true,
                 private_network_only: true,
@@ -281,6 +292,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_computer_role() -> ComputerRole {
+    ComputerRole::Main
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -289,7 +304,7 @@ mod tests {
 
     use crate::crypto::fingerprint_from_public_key;
 
-    use super::{set_test_config_dir, PersistedState, STATE_FILE};
+    use super::{set_test_config_dir, ComputerRole, PersistedState, STATE_FILE};
 
     #[test]
     fn parses_older_state_with_missing_optional_fields() {
@@ -318,6 +333,7 @@ mod tests {
         assert_eq!(state.identity.secret, "");
         assert_eq!(state.identity.identity_private_key, "");
         assert_eq!(state.identity.identity_public_key, "");
+        assert_eq!(state.settings.role, ComputerRole::Main);
         assert!(state.settings.auto_start);
         assert!(state.settings.trusted_reconnect);
         assert!(!state.settings.allow_incoming_control);

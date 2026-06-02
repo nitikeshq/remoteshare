@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import "./styles.css";
 
+type ComputerRole = "main" | "client" | "both";
+
 type Device = {
   id: string;
   name: string;
   platform: string;
-  role: "host" | "client";
+  role: ComputerRole;
   trusted: boolean;
   online: boolean;
   connection: "direct-lan" | "manual" | "relay" | "offline";
@@ -93,7 +95,7 @@ type RuntimeStatus = {
   thisDeviceId: string;
   thisPublicKeyFingerprint: string;
   platform: string;
-  mode: "host" | "client";
+  mode: ComputerRole;
   autoStart: boolean;
   trustedReconnect: boolean;
   privateNetworkOnly: boolean;
@@ -147,7 +149,7 @@ const fallbackStatus: RuntimeStatus = {
   thisDeviceId: "local",
   thisPublicKeyFingerprint: "fingerprint unavailable",
   platform: "unknown",
-  mode: "host",
+  mode: "main",
   autoStart: true,
   trustedReconnect: true,
   privateNetworkOnly: true,
@@ -284,6 +286,12 @@ function inputEventDeviceLabel(event: InputEventRecord, devices: Device[]) {
 
 function approvalLabel(approved: boolean) {
   return approved ? "approved" : "pending";
+}
+
+function roleLabel(role: ComputerRole) {
+  if (role === "main") return "Main";
+  if (role === "client") return "Client";
+  return "Both";
 }
 
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
@@ -619,8 +627,8 @@ function App() {
   }
 
   async function updateSetting(
-    key: "autoStart" | "trustedReconnect" | "privateNetworkOnly" | "allowIncomingControl",
-    value: boolean
+    key: "role" | "autoStart" | "trustedReconnect" | "privateNetworkOnly" | "allowIncomingControl",
+    value: boolean | ComputerRole
   ) {
     const action = await invokeNetworkAction("update_settings", {
       request: { [key]: value }
@@ -889,7 +897,9 @@ function App() {
           <div>
             <p className="eyebrow">Keyboard and mouse sharing</p>
             <h2>Trusted devices reconnect automatically.</h2>
-            <span className="device-fingerprint">{status.platform} · {status.thisDeviceId}</span>
+            <span className="device-fingerprint">
+              {status.platform} · {roleLabel(status.mode)} · {status.thisDeviceId}
+            </span>
           </div>
           <button className="icon-button" onClick={() => refreshStatus()} aria-label="Refresh devices">
             <RefreshCw size={18} className={loading ? "spin" : ""} />
@@ -897,6 +907,13 @@ function App() {
         </header>
 
         <section className="status-grid">
+          <div className="metric">
+            <Monitor size={18} />
+            <div>
+              <span>This computer</span>
+              <strong>{roleLabel(status.mode)}</strong>
+            </div>
+          </div>
           <div className="metric">
             <Wifi size={18} />
             <div>
@@ -1522,6 +1539,17 @@ function App() {
         </section>
 
         <section className="settings-row">
+          <label>
+            <span>This computer role</span>
+            <select
+              value={status.mode}
+              onChange={(event) => updateSetting("role", event.target.value as ComputerRole)}
+            >
+              <option value="main">Main</option>
+              <option value="client">Client</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
           <label>
             <span>Start at login</span>
             <input

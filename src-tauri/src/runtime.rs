@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     autostart, crypto,
-    identity::{DeviceIdentity, PersistedState, TrustedDevice},
+    identity::{ComputerRole, DeviceIdentity, PersistedState, TrustedDevice},
 };
 
 const PEER_TIMEOUT_MS: u128 = 20_000;
@@ -135,7 +135,7 @@ pub struct RuntimeStatus {
     pub this_device_id: String,
     pub this_public_key_fingerprint: String,
     pub platform: String,
-    pub mode: RuntimeMode,
+    pub mode: ComputerRole,
     pub auto_start: bool,
     pub trusted_reconnect: bool,
     pub private_network_only: bool,
@@ -185,19 +185,12 @@ pub struct DiscoveryStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum RuntimeMode {
-    Host,
-    Client,
-}
-
-#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceStatus {
     pub id: String,
     pub name: String,
     pub platform: String,
-    pub role: RuntimeMode,
+    pub role: ComputerRole,
     pub trusted: bool,
     pub online: bool,
     pub connection: ConnectionType,
@@ -264,6 +257,7 @@ pub struct CancelPairingRequest {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsUpdateRequest {
+    pub role: Option<ComputerRole>,
     pub auto_start: Option<bool>,
     pub trusted_reconnect: Option<bool>,
     pub private_network_only: Option<bool>,
@@ -318,6 +312,8 @@ pub struct PeerAnnouncement {
     pub platform: String,
     pub control_port: u16,
     pub public_key_fingerprint: String,
+    #[serde(default = "default_peer_role")]
+    pub role: ComputerRole,
     #[serde(default)]
     pub public_key: String,
     #[serde(default)]
@@ -448,7 +444,7 @@ impl RuntimeStore {
             this_device_id: persisted.identity.id.clone(),
             this_public_key_fingerprint: persisted.identity.public_key_fingerprint.clone(),
             platform: persisted.identity.platform.clone(),
-            mode: RuntimeMode::Host,
+            mode: persisted.settings.role.clone(),
             auto_start: persisted.settings.auto_start,
             trusted_reconnect: persisted.settings.trusted_reconnect,
             private_network_only: persisted.settings.private_network_only,
@@ -597,6 +593,9 @@ impl RuntimeStore {
         let mut state = self.state.lock().expect("runtime state poisoned");
         if let Some(auto_start) = request.auto_start {
             state.persisted.settings.auto_start = auto_start;
+        }
+        if let Some(role) = request.role {
+            state.persisted.settings.role = role;
         }
         if let Some(trusted_reconnect) = request.trusted_reconnect {
             state.persisted.settings.trusted_reconnect = trusted_reconnect;
@@ -791,6 +790,7 @@ impl RuntimeStore {
             platform: identity.platform.clone(),
             control_port: state.discovery.port,
             public_key_fingerprint: identity.public_key_fingerprint.clone(),
+            role: state.persisted.settings.role.clone(),
             public_key: identity.identity_public_key.clone(),
             scan_request: false,
         }
@@ -1517,7 +1517,7 @@ fn devices(state: &RuntimeState) -> Vec<DeviceStatus> {
             id: peer.announcement.device_id.clone(),
             name: peer.announcement.name.clone(),
             platform: peer.announcement.platform.clone(),
-            role: RuntimeMode::Client,
+            role: peer.announcement.role.clone(),
             trusted: false,
             online: true,
             connection: ConnectionType::DirectLan,
@@ -1541,7 +1541,7 @@ fn devices(state: &RuntimeState) -> Vec<DeviceStatus> {
                 id: format!("manual-{endpoint}"),
                 name: endpoint.clone(),
                 platform: "unknown".to_string(),
-                role: RuntimeMode::Client,
+                role: ComputerRole::Client,
                 trusted: false,
                 online: false,
                 connection: ConnectionType::Manual,
@@ -1610,7 +1610,9 @@ fn device_from_trusted_with_health(
         id: device.id.clone(),
         name: device.name.clone(),
         platform: device.platform.clone(),
-        role: RuntimeMode::Client,
+        role: peer
+            .map(|peer| peer.announcement.role.clone())
+            .unwrap_or(ComputerRole::Client),
         trusted: true,
         online,
         connection: match (peer.is_some(), health.is_some()) {
@@ -1645,6 +1647,10 @@ fn peer_matches_trusted_device(peer: &DiscoveredPeer, device: &TrustedDevice) ->
             .public_key
             .as_ref()
             .is_none_or(|public_key| &peer.announcement.public_key == public_key)
+}
+
+fn default_peer_role() -> ComputerRole {
+    ComputerRole::Client
 }
 
 fn trusted_device_matches_source(device: &TrustedDevice, source: &PairingPeer) -> bool {
@@ -2170,7 +2176,7 @@ pub fn now_ms() -> u128 {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::identity::TrustedDevice;
+    use crate::identity::{ComputerRole, TrustedDevice};
 
     use super::{input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE};
     use super::{
@@ -2287,6 +2293,28 @@ mod tests {
         .expect("older peer announcements should remain parseable");
 
         assert!(!announcement.scan_request);
+        assert_eq!(announcement.role, ComputerRole::Client);
+    }
+
+    #[test]
+    fn local_role_setting_updates_status_and_announcement() {
+        crate::identity::set_test_config_dir(unique_test_dir("local-role-setting"));
+
+        let store = RuntimeStore::load_or_init();
+        assert_eq!(store.status().mode, ComputerRole::Main);
+        assert_eq!(store.local_announcement().role, ComputerRole::Main);
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: Some(ComputerRole::Both),
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(action.ok);
+        assert_eq!(store.status().mode, ComputerRole::Both);
+        assert_eq!(store.local_announcement().role, ComputerRole::Both);
     }
 
     #[test]
@@ -2325,6 +2353,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "wrong-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: public_key.clone(),
                 scan_request: true,
             },
@@ -2338,6 +2367,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint,
+                role: ComputerRole::Client,
                 public_key,
                 scan_request: true,
             },
@@ -3423,6 +3453,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "remote-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: String::new(),
                 scan_request: false,
             },
@@ -3546,6 +3577,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "wrong-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: String::new(),
                 scan_request: false,
             },
@@ -3569,6 +3601,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: String::new(),
                 scan_request: false,
             },
@@ -3641,6 +3674,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "wrong-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: String::new(),
                 scan_request: false,
             },
@@ -3659,6 +3693,7 @@ mod tests {
                 platform: "windows".to_string(),
                 control_port: 44777,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
+                role: ComputerRole::Client,
                 public_key: String::new(),
                 scan_request: false,
             },

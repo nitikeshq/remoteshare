@@ -11,6 +11,8 @@ The first MVP target is:
 
 Electron was avoided to keep the app lighter. Rust gives us better control over networking, startup behavior, packaging, and native input handling.
 
+Future releases should let any trusted computer become the main keyboard/mouse source. RemoteShare already stores a local role setting for Main, Client, or Both, but the first hardware smoke path remains macOS main to Windows client.
+
 ## Status
 
 RemoteShare is not production-ready yet. It is a LAN MVP in progress.
@@ -19,6 +21,7 @@ Working foundations:
 
 - Tauri desktop app shell
 - trusted device identity
+- local role setting for Main, Client, or Both
 - LAN discovery
 - manual endpoint pairing fallback
 - typed pairing-code confirmation
