@@ -337,6 +337,30 @@ function mvpRoleStep(platform: string, role: ComputerRole) {
   };
 }
 
+function mvpInputPermissionStep(platform: string, permissions: InputPermissionStatus) {
+  if (isWindowsPlatform(platform)) {
+    return {
+      label: "Windows receive ready",
+      done: permissions.injectionEngine === "ready",
+      detail: "Use Windows as the receiver; local Windows capture is planned for later."
+    };
+  }
+
+  if (isMacPlatform(platform)) {
+    return {
+      label: "Mac input permissions",
+      done: permissions.captureEngine === "ready",
+      detail: "Grant Input Monitoring and Accessibility on the Mac sender."
+    };
+  }
+
+  return {
+    label: "Input readiness",
+    done: permissions.captureEngine === "ready" || permissions.injectionEngine === "ready",
+    detail: "Validate the platform input engine before running input smoke tests."
+  };
+}
+
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
   if (pairing.localApproved) {
     return {
@@ -893,6 +917,10 @@ function App() {
     () => mvpRoleStep(status.platform, status.mode),
     [status.mode, status.platform]
   );
+  const permissionStep = useMemo(
+    () => mvpInputPermissionStep(status.platform, permissions),
+    [permissions, status.platform]
+  );
   const setupSteps = useMemo(
     () => [
       {
@@ -901,9 +929,9 @@ function App() {
         detail: roleStep.detail
       },
       {
-        label: "Mac input permissions",
-        done: permissions.captureEngine === "ready",
-        detail: "Grant Input Monitoring and Accessibility on the Mac sender."
+        label: permissionStep.label,
+        done: permissionStep.done,
+        detail: permissionStep.detail
       },
       {
         label: "Find Windows client",
@@ -932,7 +960,9 @@ function App() {
       }
     ],
     [
-      permissions.captureEngine,
+      permissionStep.detail,
+      permissionStep.done,
+      permissionStep.label,
       receiveRoleReady,
       status.allowIncomingControl,
       status.devices,

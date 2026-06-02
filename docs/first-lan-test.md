@@ -37,7 +37,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## Pairing
 
 1. Open RemoteShare on both computers.
-2. Set the macOS sender role to `Main` and the Windows receiver role to `Client`. `Both` is acceptable for later bidirectional tests, but not needed for the first smoke run. The setup checklist is role-aware: on macOS it expects the sender role, and on Windows it expects the receiver role.
+2. Set the macOS sender role to `Main` and the Windows receiver role to `Client`. `Both` is acceptable for later bidirectional tests, but not needed for the first smoke run. The setup checklist is role-aware: on macOS it expects the sender role and Mac input permissions; on Windows it expects the receiver role and Windows injection readiness.
 3. Click `Scan LAN` on either computer.
 4. If the other computer appears, click `Pair`.
 5. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer.
