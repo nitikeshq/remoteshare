@@ -806,7 +806,6 @@ impl RuntimeStore {
             device_id: identity.id.clone(),
             name: identity.name.clone(),
             platform: identity.platform.clone(),
-            role: ComputerRole::Client,
             control_port: state.discovery.port,
             public_key_fingerprint: identity.public_key_fingerprint.clone(),
             role: state.persisted.settings.role.clone(),
@@ -2374,6 +2373,40 @@ mod tests {
         assert!(action.ok);
         assert_eq!(store.status().mode, ComputerRole::Both);
         assert_eq!(store.local_announcement().role, ComputerRole::Both);
+    }
+
+    #[test]
+    fn trusted_reconnect_setting_persists_after_restart() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-reconnect-setting"));
+
+        let store = RuntimeStore::load_or_init();
+        assert!(store.status().trusted_reconnect);
+
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: Some(false),
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(action.ok);
+        assert!(!store.status().trusted_reconnect);
+
+        let restored = RuntimeStore::load_or_init();
+        assert!(!restored.status().trusted_reconnect);
+
+        let action = restored.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: Some(true),
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(action.ok);
+        let restored_again = RuntimeStore::load_or_init();
+        assert!(restored_again.status().trusted_reconnect);
     }
 
     #[test]
