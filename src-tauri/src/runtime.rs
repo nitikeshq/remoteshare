@@ -2064,7 +2064,12 @@ fn complete_pairing_if_ready(state: &mut RuntimeState, pairing_id: &str) -> Resu
     };
     let local_device_id = state.persisted.identity.id.clone();
     let shared_secret = pending_pairing_shared_secret(&local_device_id, &pairing)?;
-    upsert_trusted_device(&mut state.persisted, peer, pairing.endpoint, shared_secret);
+    let endpoint =
+        normalized_endpoint(&pairing.endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
+    if !private_guard_allows_endpoint(&endpoint, state.persisted.settings.private_network_only) {
+        return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+    }
+    upsert_trusted_device(&mut state.persisted, peer, endpoint, shared_secret);
     state
         .persisted
         .save()
@@ -4208,6 +4213,131 @@ mod tests {
         let state = store.state.lock().expect("runtime state poisoned");
         assert!(!state.pending_pairings.contains_key("pair-old-device"));
         assert!(state.pending_pairings.contains_key("pair-remote-device"));
+    }
+
+    #[test]
+    fn completed_pairing_normalizes_trusted_endpoint_before_saving() {
+        crate::identity::set_test_config_dir(unique_test_dir("complete-normalizes-endpoint"));
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50".to_string(),
+            expected_peer: None,
+        };
+        let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
+        let (_remote_private_key, remote_public_key) = crate::crypto::x25519_keypair();
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                local_private_key,
+                local_public_key,
+                remote_public_key,
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id: pairing_id.clone(),
+                code: "123456".to_string(),
+            })
+            .expect("local approval should be recorded");
+        assert!(store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "192.168.1.50".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should complete"));
+
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+    }
+
+    #[test]
+    fn completed_pairing_rejects_invalid_trusted_endpoint() {
+        crate::identity::set_test_config_dir(unique_test_dir("complete-rejects-endpoint"));
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: None,
+        };
+        let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
+        let (_remote_private_key, remote_public_key) = crate::crypto::x25519_keypair();
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                local_private_key,
+                local_public_key,
+                remote_public_key,
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id: pairing_id.clone(),
+                code: "123456".to_string(),
+            })
+            .expect("local approval should be recorded");
+        let error = store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "localhost".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("invalid trusted endpoint should not complete pairing");
+
+        assert_eq!(error, INVALID_ENDPOINT_MESSAGE);
+        assert!(store.trusted_reconnect_targets().is_empty());
+        assert!(store
+            .status()
+            .pending_pairings
+            .iter()
+            .any(|pairing| pairing.id == pairing_id));
     }
 
     #[test]
