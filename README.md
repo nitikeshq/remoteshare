@@ -126,5 +126,5 @@ npm run release:summary
 On this Mac, a simple local DMG can be created from the built `.app` with:
 
 ```bash
-hdiutil create -volname RemoteShare -srcfolder src-tauri/target/release/bundle/macos/RemoteShare.app -ov -format UDZO src-tauri/target/release/bundle/dmg/RemoteShare_0.1.4_aarch64.dmg
+hdiutil create -volname RemoteShare -srcfolder src-tauri/target/release/bundle/macos/RemoteShare.app -ov -format UDZO src-tauri/target/release/bundle/dmg/RemoteShare_0.1.5_aarch64.dmg
 ```

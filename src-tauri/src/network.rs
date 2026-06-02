@@ -2164,7 +2164,10 @@ Wireless LAN adapter Wi-Fi:
             .and_then(|device| device.last_connection_failure.as_ref())
             .expect("receiver rejection should be visible on trusted device");
         assert_eq!(failure.endpoint, endpoint.to_string());
-        assert_eq!(failure.message, expected_rejection);
+        assert_eq!(
+            failure.message,
+            "Rejected input event: receive control is disabled."
+        );
     }
 
     #[test]
