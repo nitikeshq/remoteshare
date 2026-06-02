@@ -921,6 +921,9 @@ impl RuntimeStore {
         let Some(endpoint) = normalized_endpoint(&endpoint) else {
             return false;
         };
+        if normalized_endpoint_port(&endpoint) != Some(announcement.control_port) {
+            return false;
+        }
         if !private_guard_allows_endpoint(
             &endpoint,
             state.persisted.settings.private_network_only,
@@ -2307,6 +2310,22 @@ fn normalized_endpoint_ip(endpoint: &str) -> Option<std::net::IpAddr> {
         .map(|address| address.ip())
 }
 
+fn normalized_endpoint_port(endpoint: &str) -> Option<u16> {
+    if let Ok(address) = endpoint.parse::<std::net::SocketAddr>() {
+        return Some(address.port());
+    }
+
+    if endpoint.starts_with('[') {
+        return endpoint
+            .rsplit_once("]:")
+            .and_then(|(_, port)| port.parse::<u16>().ok());
+    }
+
+    endpoint
+        .rsplit_once(':')
+        .and_then(|(_, port)| port.parse::<u16>().ok())
+}
+
 fn ip_address_is_private_or_local(address: std::net::IpAddr) -> bool {
     match address {
         std::net::IpAddr::V4(address) => {
@@ -2775,6 +2794,20 @@ mod tests {
             },
             "192.168.1.66:44777".to_string(),
         ));
+        assert!(!store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "mismatched-port".to_string(),
+                name: "Mismatched Port".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44778,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                role: ComputerRole::Client,
+                public_key: public_key.clone(),
+                scan_request: true,
+            },
+            "192.168.1.67:44777".to_string(),
+        ));
         assert!(store.record_peer(
             PeerAnnouncement {
                 protocol_version: 1,
@@ -2782,12 +2815,26 @@ mod tests {
                 name: "Remote Windows".to_string(),
                 platform: "windows".to_string(),
                 control_port: 44777,
-                public_key_fingerprint,
+                public_key_fingerprint: public_key_fingerprint.clone(),
                 role: ComputerRole::Client,
-                public_key,
+                public_key: public_key.clone(),
                 scan_request: true,
             },
             "192.168.1.50:44777".to_string(),
+        ));
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "non-default-port".to_string(),
+                name: "Non Default Port".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44888,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                role: ComputerRole::Client,
+                public_key: public_key.clone(),
+                scan_request: true,
+            },
+            "192.168.1.51:44888".to_string(),
         ));
 
         let status = store.status();
@@ -2798,10 +2845,20 @@ mod tests {
             .expect("accepted peer should be discovered");
         assert!(accepted.online);
         assert_eq!(accepted.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        let non_default_port = status
+            .devices
+            .iter()
+            .find(|device| device.id == "non-default-port")
+            .expect("non-default port peer should be discovered");
+        assert_eq!(non_default_port.endpoint.as_deref(), Some("192.168.1.51:44888"));
         assert!(status
             .devices
             .iter()
             .all(|device| device.id != "bad-public-key"));
+        assert!(status
+            .devices
+            .iter()
+            .all(|device| device.id != "mismatched-port"));
         assert!(status
             .devices
             .iter()
