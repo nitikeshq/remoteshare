@@ -13,6 +13,12 @@ const platformArtifacts = [
 ];
 const installers = findInstallerFiles(root);
 const checksums = fs.existsSync(checksumPath) ? readChecksumFile(checksumPath) : new Map();
+const installerRelativePaths = installers.map((file) =>
+  path.relative(root, file).replaceAll(path.sep, "/")
+);
+const staleChecksumEntries = [...checksums.keys()].filter(
+  (relativePath) => !installerRelativePaths.includes(relativePath)
+);
 
 console.log(`Bundle root: ${root}`);
 
@@ -81,7 +87,8 @@ const readinessIssues = [
   ...emptyPlatforms.map((name) => `${name} empty`),
   ...checksumMissingPlatforms.map((name) => `${name} checksum missing`),
   ...checksumMismatchPlatforms.map((name) => `${name} checksum mismatch`),
-  ...versionMismatchPlatforms.map((name) => `${name} version mismatch`)
+  ...versionMismatchPlatforms.map((name) => `${name} version mismatch`),
+  ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`)
 ];
 console.log(
   readinessIssues.length === 0
@@ -90,12 +97,9 @@ console.log(
 );
 
 if (fs.existsSync(checksumPath)) {
-  const staleEntries = [...checksums.keys()].filter(
-    (relativePath) => !installers.some((file) => path.relative(root, file).replaceAll(path.sep, "/") === relativePath)
-  );
   console.log(`Checksum file: ${checksumPath}`);
-  if (staleEntries.length > 0) {
-    console.log(`Stale checksum entries: ${staleEntries.join(", ")}`);
+  if (staleChecksumEntries.length > 0) {
+    console.log(`Stale checksum entries: ${staleChecksumEntries.join(", ")}`);
   }
 } else {
   console.log("Checksum file: missing");

@@ -57,7 +57,10 @@ try {
     path.join(staleChecksumRoot, "SHA256SUMS.txt"),
     `${"0".repeat(64)}  dmg/stale.dmg\n`
   );
-  runSummary(staleChecksumRoot, ["Stale checksum entries: dmg/stale.dmg"]);
+  runSummary(staleChecksumRoot, [
+    "Stale checksum entries: dmg/stale.dmg",
+    "Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; stale checksum dmg/stale.dmg)."
+  ]);
 
   const checksumMismatchRoot = fixture("checksum-mismatch", [
     [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
