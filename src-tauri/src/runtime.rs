@@ -624,6 +624,14 @@ impl RuntimeStore {
 
     pub fn update_device_control(&self, request: DeviceControlUpdateRequest) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
+        if request.allow_incoming_control && !state.persisted.settings.role.can_receive_input() {
+            return NetworkAction {
+                ok: false,
+                message: "Set this computer role to Client or Both before enabling receive."
+                    .to_string(),
+            };
+        }
+
         let Some(device) = state
             .persisted
             .trusted_devices
@@ -635,6 +643,13 @@ impl RuntimeStore {
                 message: "Trusted device not found.".to_string(),
             };
         };
+
+        if request.allow_incoming_control && device.shared_secret.is_none() {
+            return NetworkAction {
+                ok: false,
+                message: "Re-pair this device before enabling receive.".to_string(),
+            };
+        }
 
         device.allow_incoming_control = request.allow_incoming_control;
         match state.persisted.save() {
@@ -2760,6 +2775,83 @@ mod tests {
         let status = store.status();
         assert!(!status.allow_incoming_control);
         assert!(!status.devices[0].allow_incoming_control);
+    }
+
+    #[test]
+    fn device_receive_permission_requires_receive_role_and_input_secret() {
+        crate::identity::set_test_config_dir(unique_test_dir("device-receive-gating"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Main;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "ready-device".to_string(),
+                name: "Ready Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "ready-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("ready-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "stale-device".to_string(),
+                name: "Stale Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "stale-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: None,
+                last_endpoint: Some("192.168.1.51:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let wrong_role = store.update_device_control(super::DeviceControlUpdateRequest {
+            device_id: "ready-device".to_string(),
+            allow_incoming_control: true,
+        });
+        assert!(!wrong_role.ok);
+        assert_eq!(
+            wrong_role.message,
+            "Set this computer role to Client or Both before enabling receive."
+        );
+
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+        }
+
+        let stale = store.update_device_control(super::DeviceControlUpdateRequest {
+            device_id: "stale-device".to_string(),
+            allow_incoming_control: true,
+        });
+        assert!(!stale.ok);
+        assert_eq!(stale.message, "Re-pair this device before enabling receive.");
+
+        let ready = store.update_device_control(super::DeviceControlUpdateRequest {
+            device_id: "ready-device".to_string(),
+            allow_incoming_control: true,
+        });
+        assert!(ready.ok, "{}", ready.message);
+
+        let status = store.status();
+        assert!(status
+            .devices
+            .iter()
+            .find(|device| device.id == "ready-device")
+            .expect("ready device should be listed")
+            .allow_incoming_control);
+        assert!(!status
+            .devices
+            .iter()
+            .find(|device| device.id == "stale-device")
+            .expect("stale device should be listed")
+            .allow_incoming_control);
     }
 
     #[test]
