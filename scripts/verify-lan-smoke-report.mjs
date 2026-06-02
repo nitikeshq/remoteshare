@@ -59,7 +59,9 @@ const requiredAutoFields = [
   "`Allow incoming control` enabled on receiver",
   "Per-device `Receive` enabled",
   "Sender `Test` delivered accepted `key press r` input event",
+  "Input Transport source device and relative time shown",
   "Capture started on sender and stopped cleanly",
+  "Active capture target and elapsed start time shown",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver",
   "Failure reason visible before retry",
   "Pass/fail"
@@ -82,7 +84,9 @@ const requiredManualFields = [
   "`Allow incoming control` enabled on receiver",
   "Per-device `Receive` enabled",
   "Sender `Test` delivered accepted `key press r` input event",
+  "Input Transport source device and relative time shown",
   "Capture started on sender and stopped cleanly",
+  "Active capture target and elapsed start time shown",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver",
   "Failure reason visible before retry",
   "Pass/fail"

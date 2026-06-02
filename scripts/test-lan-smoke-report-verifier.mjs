@@ -29,6 +29,30 @@ try {
   });
   runVerifier(missingLinuxField, false, "missing Linux installer field should fail", "Missing Test Context field: Linux installer file");
 
+  const missingAutoTransportContext = writeReport("missing-auto-transport-context.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "| Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 2 seconds ago |"
+  });
+  runVerifier(
+    missingAutoTransportContext,
+    false,
+    "missing auto-discovery input transport context should fail",
+    "Missing Auto-Discovery Run field: Input Transport source device and relative time shown"
+  );
+
+  const missingManualCaptureTiming = writeReport("missing-manual-capture-timing.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "| Active capture target and elapsed start time shown | active target Windows receiver, started 5 seconds ago |"
+  });
+  runVerifier(
+    missingManualCaptureTiming,
+    false,
+    "missing manual capture timing should fail",
+    "Missing Manual Fallback Run field: Active capture target and elapsed start time shown"
+  );
+
   const failedAuto = writeReport("failed-auto.md", {
     autoPass: "Fail",
     manualPass: "Pass",
