@@ -8,15 +8,15 @@ const verifier = path.resolve("scripts/verify-publish-artifacts.mjs");
 
 try {
   const validRoot = fixture("valid", [
-    "remoteshare-macos/RemoteShare_0.1.6_aarch64.dmg",
-    "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe",
-    "remoteshare-linux/RemoteShare_0.1.6_amd64.deb"
+    "remoteshare-macos/RemoteShare_0.1.7_aarch64.dmg",
+    "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe",
+    "remoteshare-linux/RemoteShare_0.1.7_amd64.deb"
   ]);
   runVerifier(validRoot, true, "all platform artifacts should pass");
 
   const missingLinuxRoot = fixture("missing-linux", [
-    "remoteshare-macos/RemoteShare_0.1.6_aarch64.dmg",
-    "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe"
+    "remoteshare-macos/RemoteShare_0.1.7_aarch64.dmg",
+    "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe"
   ]);
   runVerifier(
     missingLinuxRoot,
@@ -34,10 +34,10 @@ try {
   );
 
   const unexpectedRoot = fixture("unexpected-installer", [
-    "remoteshare-macos/RemoteShare_0.1.6_aarch64.dmg",
-    "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe",
-    "remoteshare-linux/RemoteShare_0.1.6_amd64.deb",
-    "remoteshare-windows/RemoteShare_0.1.6_x64.msi"
+    "remoteshare-macos/RemoteShare_0.1.7_aarch64.dmg",
+    "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe",
+    "remoteshare-linux/RemoteShare_0.1.7_amd64.deb",
+    "remoteshare-windows/RemoteShare_0.1.7_x64.msi"
   ]);
   runVerifier(
     unexpectedRoot,
@@ -47,10 +47,10 @@ try {
   );
 
   const duplicateTypeRoot = fixture("duplicate-type", [
-    "remoteshare-macos/RemoteShare_0.1.6_aarch64.dmg",
-    "remoteshare-macos/RemoteShare_0.1.6_x64.dmg",
-    "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe",
-    "remoteshare-linux/RemoteShare_0.1.6_amd64.deb"
+    "remoteshare-macos/RemoteShare_0.1.7_aarch64.dmg",
+    "remoteshare-macos/RemoteShare_0.1.7_x64.dmg",
+    "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe",
+    "remoteshare-linux/RemoteShare_0.1.7_amd64.deb"
   ]);
   runVerifier(
     duplicateTypeRoot,
@@ -60,12 +60,12 @@ try {
   );
 
   const emptyArtifactRoot = fixture("empty-artifact", [
-    "remoteshare-macos/RemoteShare_0.1.6_aarch64.dmg",
-    "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe",
-    "remoteshare-linux/RemoteShare_0.1.6_amd64.deb"
+    "remoteshare-macos/RemoteShare_0.1.7_aarch64.dmg",
+    "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe",
+    "remoteshare-linux/RemoteShare_0.1.7_amd64.deb"
   ]);
   fs.writeFileSync(
-    path.join(emptyArtifactRoot, "remoteshare-windows/RemoteShare_0.1.6_x64-setup.exe"),
+    path.join(emptyArtifactRoot, "remoteshare-windows/RemoteShare_0.1.7_x64-setup.exe"),
     ""
   );
   runVerifier(

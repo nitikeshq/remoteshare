@@ -1918,8 +1918,8 @@ Wireless LAN adapter Wi-Fi:
         assert_eq!(
             addresses,
             vec![
-                "fd12:3456:789a::10".parse().unwrap(),
-                "fe80::1c2d:3e4f:5a6b:7c8d".parse().unwrap()
+                Ipv6Addr::from([0xfd12, 0x3456, 0x789a, 0, 0, 0, 0, 0x10]),
+                Ipv6Addr::from([0xfe80, 0, 0, 0, 0x1c2d, 0x3e4f, 0x5a6b, 0x7c8d])
             ]
         );
     }
