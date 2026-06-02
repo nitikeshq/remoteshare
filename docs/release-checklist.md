@@ -10,7 +10,7 @@ Run the lightweight release verifier:
 npm run verify:release
 ```
 
-This does not rebuild native installers. It checks local free disk space, typechecks the UI, runs a single-job `cargo check`, builds the frontend, tests checksum generation, installer, publish artifact, release artifact helper, release asset preparation, release manifest verification, and debug cache cleanup scripts, prints the local release summary, and runs the package doctor.
+This does not rebuild native installers. It checks local free disk space, typechecks the UI, runs a single-job `cargo check`, builds the frontend, tests checksum generation, installer, publish artifact, release artifact helper, release asset preparation, release manifest verification, debug cache cleanup scripts, and bundle temp cleanup scripts, prints the local release summary, and runs the package doctor.
 
 Run Rust unit tests before release when local disk allows it. This is the single-threaded `cargo test` gate used by CI because some runtime tests switch a process-global test config directory:
 
@@ -44,6 +44,14 @@ npm run clean:debug-cache
 
 This removes only generated Rust debug cache directories: `src-tauri/target/debug/build`, `src-tauri/target/debug/deps`, and `src-tauri/target/debug/incremental`. It leaves `src-tauri/target/release/bundle` and existing installer artifacts untouched. The next Rust check will rebuild debug dependencies, so use it only when disk preflight is blocking release verification.
 
+If a macOS DMG build fails after creating a generated `rw.*.dmg` file, run:
+
+```bash
+npm run clean:bundle-temp
+```
+
+This removes only temporary DMG files named `rw.*.dmg` under `src-tauri/target/release/bundle/dmg` and `src-tauri/target/release/bundle/macos`. It preserves final `.dmg`, `.exe`, `.deb`, and checksum artifacts. These stale temporary images can accidentally be included in the next local DMG source folder and cause recursive disk usage or `hdiutil` failures.
+
 The release summary prints per-platform coverage, flags empty installer artifacts, flags duplicate platform artifacts, flags package-version filename mismatches, and prints a publish-readiness line. Local macOS-only runs should say publish readiness is incomplete until exactly one macOS `.dmg`, one Windows `.exe`, and one Linux `.deb` are present, non-empty, checksummed, and version-matched.
 
 ## Native Installers
@@ -56,7 +64,7 @@ Build each installer on its native operating system:
 
 The GitHub Actions workflow `.github/workflows/release-builds.yml` is the preferred path because it runs the disk preflight, frontend typecheck, `cargo check`, Rust unit tests, script test gates, native builds, checksum verification, and uploads all platform artifacts.
 
-The workflow also runs `npm run clean:debug-cache` after the Rust check/test gate and before the native bundle build so debug artifacts from `cargo check` and `cargo test` do not compete with installer packaging space.
+The workflow also runs `npm run clean:debug-cache` and `npm run clean:bundle-temp` after the Rust check/test gate and before the native bundle build so debug artifacts and stale generated DMG temp files do not compete with installer packaging space.
 
 For a pre-tag build, run the workflow manually from GitHub Actions. The `Assemble Release Assets` job verifies all three native runner outputs, prepares flat release assets, writes `RELEASE-MANIFEST.json`, prepares a prefilled `lan-smoke-report.md`, writes `release-candidate-summary.md`, publishes that summary into the GitHub Actions job summary, prints the installer rows for smoke evidence, and uploads one combined artifact named `remoteshare-release-assets`.
 

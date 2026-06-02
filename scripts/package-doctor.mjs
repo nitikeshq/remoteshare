@@ -44,6 +44,7 @@ const smokeReportRows = fs.readFileSync(smokeReportRowsPath, "utf8");
 const releaseCandidateSummaryPath = "scripts/release-candidate-summary.mjs";
 const releaseCandidateSummary = fs.readFileSync(releaseCandidateSummaryPath, "utf8");
 const cleanDebugCache = fs.readFileSync("scripts/clean-debug-cache.mjs", "utf8");
+const cleanBundleTemp = fs.readFileSync("scripts/clean-bundle-temp.mjs", "utf8");
 const rustfmtCheckerPath = "scripts/check-rustfmt.mjs";
 const rustfmtChecker = fs.readFileSync(rustfmtCheckerPath, "utf8");
 const rustfmtCheckerTestPath = "scripts/test-rustfmt-check.mjs";
@@ -66,6 +67,8 @@ const expectedScripts = [
   "build",
   "clean:debug-cache",
   "test:clean-debug-cache",
+  "clean:bundle-temp",
+  "test:clean-bundle-temp",
   "typecheck",
   "check:rust",
   "test:rust",
@@ -136,6 +139,7 @@ check("Release workflow runs release asset preparation tests", workflow.includes
 check("Release workflow runs release manifest verifier tests", workflow.includes("npm run test:release-manifest"));
 check("Release workflow runs release artifact helper tests", workflow.includes("npm run test:release-artifacts-lib"));
 check("Release workflow runs debug cache cleanup tests", workflow.includes("npm run test:clean-debug-cache"));
+check("Release workflow runs bundle temp cleanup tests", workflow.includes("npm run test:clean-bundle-temp"));
 check("Release workflow runs release summary tests", workflow.includes("npm run test:release-summary"));
 check("Release workflow runs LAN smoke report verifier tests", workflow.includes("npm run test:lan-smoke-report"));
 check("Release workflow runs LAN smoke report preparation tests", workflow.includes("npm run test:prepare-lan-smoke-report"));
@@ -146,6 +150,7 @@ check("Release workflow runs package doctor", workflow.includes("npm run doctor"
 check("Release workflow runs Rust unit tests before native build", workflow.indexOf("npm run check:rust") < workflow.indexOf("npm run test:rust") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run build"));
 check("Release workflow annotates Rust check and test failures", workflow.includes("ci-run-with-annotation.mjs \"Rust check\"") && workflow.includes("ci-run-with-annotation.mjs \"Rust tests\""));
 check("Release workflow cleans debug cache before native build", workflow.indexOf("npm run test:rust") < workflow.indexOf("npm run clean:debug-cache") && workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run build"));
+check("Release workflow cleans bundle temp files before native build", workflow.indexOf("npm run clean:debug-cache") < workflow.indexOf("npm run clean:bundle-temp") && workflow.indexOf("npm run clean:bundle-temp") < workflow.indexOf("npm run build"));
 check("Release workflow publishes GitHub releases for tags", workflow.includes("Publish GitHub Release") && workflow.includes("softprops/action-gh-release@v2"));
 check("Release workflow grants publish permission", /permissions:\r?\n\s+contents:\s*write/.test(workflow));
 check("Release publish job checks out scripts before npm commands", publishJobIncludesBefore("uses: actions/checkout@v4", "npm run verify:publish-artifacts"));
@@ -283,7 +288,9 @@ check("Release checklist documents Rust unit test gate", releaseChecklist.includ
 check("Release checklist documents rustfmt health check", releaseChecklist.includes("npm run check:rustfmt") && releaseChecklist.includes("rustup component add rustfmt") && releaseChecklist.includes("local toolchain diagnostic") && releaseChecklist.includes("librustc_driver"));
 check("Release checklist documents disk preflight", releaseChecklist.includes("disk preflight") && releaseChecklist.includes("REMOTESHARE_MIN_FREE_MIB") && releaseChecklist.includes("1024 MiB"));
 check("Release checklist documents debug cache cleanup", releaseChecklist.includes("npm run clean:debug-cache") && releaseChecklist.includes("release/bundle"));
+check("Release checklist documents bundle temp cleanup", releaseChecklist.includes("npm run clean:bundle-temp") && releaseChecklist.includes("rw.*.dmg") && releaseChecklist.includes("recursive disk usage") && releaseChecklist.includes("hdiutil"));
 check("Release checklist documents workflow debug cache cleanup", releaseChecklist.includes("after the Rust check") && releaseChecklist.includes("before the native bundle build"));
+check("Release checklist documents workflow bundle temp cleanup", releaseChecklist.includes("stale generated DMG temp files"));
 check("Release checklist documents checksum verification", releaseChecklist.includes("npm run checksums:installers") && releaseChecklist.includes("npm run verify:installers"));
 check("Release checklist documents checksum generation tests", releaseChecklist.includes("tests checksum generation"));
 check("Release checklist documents empty installer rejection", releaseChecklist.includes("reject empty installer artifacts"));
@@ -305,6 +312,7 @@ check("Release checklist documents package-version artifact consistency", releas
 check("Release checklist documents release artifact helper tests", releaseChecklist.includes("release artifact helper"));
 check("Release checklist documents scripts-only release gate", releaseChecklist.includes("npm run verify:release-scripts") && releaseChecklist.includes("without running `cargo check`") && releaseChecklist.includes("release manifest verification"));
 check("Release checklist documents debug cache cleanup tests", releaseChecklist.includes("debug cache cleanup scripts"));
+check("Release checklist documents bundle temp cleanup tests", releaseChecklist.includes("bundle temp cleanup scripts"));
 check("Release checklist documents publish job npm setup", releaseChecklist.includes("checks out the repo") && releaseChecklist.includes("sets up Node") && releaseChecklist.includes("installs dependencies"));
 check("Release checklist documents platform coverage summary", releaseChecklist.includes("per-platform coverage") && releaseChecklist.includes("flags empty installer artifacts") && releaseChecklist.includes("flags package-version filename mismatches"));
 check("Release checklist links first LAN test", releaseChecklist.includes("first-lan-test.md") && releaseChecklist.includes("MVP acceptance evidence table") && releaseChecklist.includes("lan-smoke-report-template.md") && releaseChecklist.includes("npm run prepare:lan-smoke-report") && releaseChecklist.includes("npm run release:smoke-rows") && releaseChecklist.includes("npm run verify:lan-smoke-report") && releaseChecklist.includes("npm run verify:release-readiness") && releaseChecklist.includes("bundled prefilled `lan-smoke-report.md` still matches the release assets, manifest, and current template") && releaseChecklist.includes("same macOS `.dmg`, Windows `.exe`, and Linux `.deb` basenames and 64-character SHA-256 hashes") && releaseChecklist.includes("smoke report version matches the package version"));
@@ -529,6 +537,10 @@ check("Debug cache cleanup script exists", fs.existsSync("scripts/clean-debug-ca
 check("Debug cache cleanup preserves release bundle", cleanDebugCache.includes("target\", \"debug\", \"build") && cleanDebugCache.includes("target\", \"debug\", \"deps") && cleanDebugCache.includes("target\", \"debug\", \"incremental") && !cleanDebugCache.includes("target\", \"release"));
 check("Debug cache cleanup fixture test exists", fs.existsSync("scripts/test-clean-debug-cache.mjs"));
 check("Debug cache cleanup fixture test preserves release bundles", fs.readFileSync("scripts/test-clean-debug-cache.mjs", "utf8").includes("release/bundle") && fs.readFileSync("scripts/test-clean-debug-cache.mjs", "utf8").includes("Debug cache cleanup tests passed."));
+check("Bundle temp cleanup script exists", fs.existsSync("scripts/clean-bundle-temp.mjs"));
+check("Bundle temp cleanup removes only generated DMG temps", cleanBundleTemp.includes("rw\\..+\\.dmg") && cleanBundleTemp.includes("target\", \"release\", \"bundle") && cleanBundleTemp.includes("macos") && cleanBundleTemp.includes("dmg"));
+check("Bundle temp cleanup fixture test exists", fs.existsSync("scripts/test-clean-bundle-temp.mjs"));
+check("Bundle temp cleanup fixture test preserves final artifacts", fs.readFileSync("scripts/test-clean-bundle-temp.mjs", "utf8").includes("final dmg") && fs.readFileSync("scripts/test-clean-bundle-temp.mjs", "utf8").includes("final exe") && fs.readFileSync("scripts/test-clean-bundle-temp.mjs", "utf8").includes("Bundle temp cleanup tests passed."));
 check("Rust formatter diagnostic script exists", fs.existsSync(rustfmtCheckerPath));
 check("Rust formatter diagnostic reports broken toolchains", rustfmtChecker.includes("Rust formatter is unavailable or broken.") && rustfmtChecker.includes("rustup component add rustfmt") && rustfmtChecker.includes("REMOTESHARE_RUSTFMT_COMMAND"));
 check("Rust formatter diagnostic fixture test exists", fs.existsSync(rustfmtCheckerTestPath));
@@ -556,6 +568,7 @@ check("verify:release-scripts tests release asset preparation", packageJson.scri
 check("verify:release-scripts tests release manifest verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-manifest"));
 check("verify:release-scripts tests release artifact helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-artifacts-lib"));
 check("verify:release-scripts tests debug cache cleanup", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:clean-debug-cache"));
+check("verify:release-scripts tests bundle temp cleanup", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:clean-bundle-temp"));
 check("verify:release-scripts tests disk preflight", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:disk"));
 check("verify:release-scripts tests release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-summary"));
 check("verify:release-scripts tests LAN smoke report verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:lan-smoke-report"));

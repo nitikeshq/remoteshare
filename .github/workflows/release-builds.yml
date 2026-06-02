@@ -77,6 +77,9 @@ jobs:
       - name: Test debug cache cleanup
         run: npm run test:clean-debug-cache
 
+      - name: Test bundle temp cleanup
+        run: npm run test:clean-bundle-temp
+
       - name: Test release summary
         run: npm run test:release-summary
 
@@ -106,6 +109,9 @@ jobs:
 
       - name: Free Rust debug cache before native build
         run: npm run clean:debug-cache
+
+      - name: Remove stale bundle temp files before native build
+        run: npm run clean:bundle-temp
 
       - name: Build app
         run: npm run build
