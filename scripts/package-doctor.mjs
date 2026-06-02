@@ -32,6 +32,10 @@ const releaseReadinessVerifierPath = "scripts/verify-release-readiness.mjs";
 const releaseReadinessVerifier = fs.readFileSync(releaseReadinessVerifierPath, "utf8");
 const githubReleaseAssetVerifierPath = "scripts/verify-github-release-assets.mjs";
 const githubReleaseAssetVerifier = fs.readFileSync(githubReleaseAssetVerifierPath, "utf8");
+const releaseAssetDownloaderPath = "scripts/download-release-assets.mjs";
+const releaseAssetDownloader = fs.readFileSync(releaseAssetDownloaderPath, "utf8");
+const releaseAssetDownloaderTestPath = "scripts/test-download-release-assets.mjs";
+const releaseAssetDownloaderTest = fs.readFileSync(releaseAssetDownloaderTestPath, "utf8");
 const lanSmokePreparerPath = "scripts/prepare-lan-smoke-report.mjs";
 const lanSmokePreparer = fs.readFileSync(lanSmokePreparerPath, "utf8");
 const smokeReportRowsPath = "scripts/smoke-report-release-rows.mjs";
@@ -93,6 +97,8 @@ const expectedScripts = [
   "test:release-readiness",
   "verify:github-release-assets",
   "test:github-release-assets",
+  "download:release-assets",
+  "test:download-release-assets",
   "release:summary",
   "verify:release-scripts",
   "verify:release"
@@ -263,6 +269,10 @@ check("GitHub release asset verifier script exists", fs.existsSync(githubRelease
 check("GitHub release asset verifier matches draft tag, manifest files, asset sizes, and digests", githubReleaseAssetVerifier.includes("GitHub release must stay draft") && githubReleaseAssetVerifier.includes("release.tagName") && githubReleaseAssetVerifier.includes("RELEASE-MANIFEST.json") && githubReleaseAssetVerifier.includes("SHA256SUMS.txt") && githubReleaseAssetVerifier.includes("lan-smoke-report.md") && githubReleaseAssetVerifier.includes("release-candidate-summary.md") && githubReleaseAssetVerifier.includes("asset.size !== localSize") && githubReleaseAssetVerifier.includes("asset.digest && asset.digest !== localDigest"));
 check("GitHub release asset verifier fixture test exists", fs.existsSync("scripts/test-github-release-assets-verifier.mjs"));
 check("GitHub release asset verifier tests missing, unexpected, size, digest, tag, and draft failures", fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("missing exe should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("unexpected asset should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("size mismatch should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("digest mismatch should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("wrong tag should fail") && fs.readFileSync("scripts/test-github-release-assets-verifier.mjs", "utf8").includes("published release should fail before LAN smoke"));
+check("Release asset download helper exists", fs.existsSync(releaseAssetDownloaderPath));
+check("Release asset download helper downloads a draft release into an empty directory and verifies assets", releaseAssetDownloader.includes("Release asset output directory must be empty") && releaseAssetDownloader.includes("gh\", [") && releaseAssetDownloader.includes("\"release\"") && releaseAssetDownloader.includes("\"view\"") && releaseAssetDownloader.includes("\"download\"") && releaseAssetDownloader.includes("github-release.json") && releaseAssetDownloader.includes("verify-github-release-assets.mjs") && releaseAssetDownloader.includes("verify-release-manifest.mjs"));
+check("Release asset download helper fixture test exists", fs.existsSync(releaseAssetDownloaderTestPath));
+check("Release asset download helper fixture test covers valid, stale-output, and wrong-tag cases", releaseAssetDownloaderTest.includes("valid download should pass") && releaseAssetDownloaderTest.includes("non-empty output should fail") && releaseAssetDownloaderTest.includes("wrong tag should fail"));
 check("Release checklist exists", fs.existsSync("docs/release-checklist.md"));
 check("Release checklist documents native installer platforms", releaseChecklist.includes("macOS `.dmg`") && releaseChecklist.includes("Windows `.exe`") && releaseChecklist.includes("Linux `.deb`"));
 check("Release checklist documents Rust unit test gate", releaseChecklist.includes("npm run test:rust") && releaseChecklist.includes("Rust unit tests") && releaseChecklist.includes("single-threaded `cargo test`"));
@@ -280,6 +290,7 @@ check("Release checklist documents published LAN smoke report", releaseChecklist
 check("Release checklist documents release candidate summary", releaseChecklist.includes("release-candidate-summary.md") && releaseChecklist.includes("installer filenames, hashes, and the smoke/readiness commands") && releaseChecklist.includes("still matches the release assets and manifest"));
 check("Release checklist documents release candidate job summary", releaseChecklist.includes("publishes that summary into the GitHub Actions job summary") && releaseChecklist.includes("Read the GitHub Actions job summary first"));
 check("Release checklist documents publish log smoke rows", releaseChecklist.includes("npm run release:smoke-rows -- release-assets") && releaseChecklist.includes("publish logs show the rows testers should copy"));
+check("Release checklist documents draft release asset download helper", releaseChecklist.includes("npm run download:release-assets") && releaseChecklist.includes("empty directory") && releaseChecklist.includes("GitHub asset list, sizes, digests, manifest, and checksums"));
 check("Release checklist documents release publish permission", releaseChecklist.includes("contents: write"));
 check("Release checklist documents publish artifact completeness", releaseChecklist.includes("npm run verify:publish-artifacts") && releaseChecklist.includes("present exactly once"));
 check("Release checklist documents manual assembled release asset", releaseChecklist.includes("The `Assemble Release Assets` job verifies all three native runner outputs") && releaseChecklist.includes("uploads one combined artifact named `remoteshare-release-assets`") && releaseChecklist.includes("writes `release-candidate-summary.md`"));
@@ -535,6 +546,7 @@ check("verify:release-scripts tests smoke report release rows helper", packageJs
 check("verify:release-scripts tests release candidate summary helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-candidate-summary"));
 check("verify:release-scripts tests release readiness verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:release-readiness"));
 check("verify:release-scripts tests GitHub release asset verifier", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:github-release-assets"));
+check("verify:release-scripts tests release asset download helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:download-release-assets"));
 check("verify:release-scripts tests rustfmt checker", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:rustfmt"));
 check("verify:release-scripts tests CI annotation helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:ci-annotation"));
 check("verify:release-scripts runs release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run release:summary"));
