@@ -58,6 +58,7 @@ const identityRuntime = fs.readFileSync("src-tauri/src/identity.rs", "utf8");
 const networkRuntime = fs.readFileSync("src-tauri/src/network.rs", "utf8");
 const runtimeStore = fs.readFileSync("src-tauri/src/runtime.rs", "utf8");
 const inputRuntime = fs.readFileSync("src-tauri/src/input.rs", "utf8");
+const reconnectAttemptCalls = networkRuntime.match(/record_reconnect_attempt\(\)/g)?.length ?? 0;
 const autostartRuntime = fs.readFileSync("src-tauri/src/autostart.rs", "utf8");
 const tauriAppRuntime = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
 const appUi = fs.readFileSync("src/main.tsx", "utf8");
@@ -482,6 +483,7 @@ check("Runtime tests recent trusted endpoint fallback storage", runtimeStore.inc
 check("Runtime validates trusted endpoint recording", runtimeStore.includes("trusted_connection_recording_normalizes_and_rejects_invalid_endpoints") && runtimeStore.includes("completed_pairing_normalizes_trusted_endpoint_before_saving") && runtimeStore.includes("completed_pairing_rejects_invalid_trusted_endpoint") && runtimeStore.includes("completed_repair_clears_stale_connection_state") && runtimeStore.includes("record_trusted_connection") && runtimeStore.includes("normalized_endpoint(&endpoint)") && runtimeStore.includes("normalized_endpoint(&pairing.endpoint)"));
 check("Runtime supports trusted endpoint verification without saved endpoint", runtimeStore.includes("trusted_target_for_endpoint") && runtimeStore.includes("trusted_endpoint_update_target_does_not_require_saved_endpoint"));
 check("Runtime exposes startup network health", runtimeStore.includes("NetworkHealthStatus") && runtimeStore.includes("record_control_listener_health") && runtimeStore.includes("record_discovery_health") && runtimeStore.includes("record_reconnect_attempt"));
+check("Network records manual reconnect attempts in startup health", reconnectAttemptCalls >= 3 && networkingMilestone.includes("Background reconnect, manual `Check`, and trusted endpoint `Verify IP` attempts all refresh this reconnect-attempt timestamp"));
 check("Runtime exposes start-at-login health", runtimeStore.includes("startup_registration") && runtimeStore.includes("record_startup_registration") && runtimeStore.includes("startup_registration_health_is_reported_in_status") && appUi.includes("startupRegistration") && appUi.includes("Start {statusValueLabel(status.networkHealth.startupRegistration.state)}"));
 check("Runtime supports trusted endpoint update requests", runtimeStore.includes("DeviceEndpointUpdateRequest") && runtimeStore.includes("pub endpoint: String"));
 check("Network verifies trusted endpoint updates before saving", networkRuntime.includes("update_trusted_endpoint") && networkRuntime.includes("trusted_target_for_endpoint") && networkRuntime.includes("reconnect_pong_matches") && networkRuntime.includes("Trusted endpoint updated and verified"));

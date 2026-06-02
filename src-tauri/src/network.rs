@@ -496,6 +496,7 @@ pub async fn check_trusted_device(
             "Turn on Auto reconnect before running trusted checks.".to_string(),
         );
     }
+    store.record_reconnect_attempt();
 
     let reconnect_target = match store
         .trusted_reconnect_targets()
@@ -577,6 +578,7 @@ pub async fn update_trusted_endpoint(
         }
         Err(message) => return action(false, message),
     };
+    store.record_reconnect_attempt();
     let challenge = pairing_nonce();
     let message = ControlMessage::Ping {
         source: store.local_pairing_peer(),
