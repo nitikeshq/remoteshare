@@ -187,6 +187,7 @@ check("First LAN runbook documents firewall ports", firstLanTest.includes("TCP `
 check("First LAN runbook documents private network guard", firstLanTest.includes("Private network only"));
 check("First LAN runbook documents macOS sender to Windows receiver", firstLanTest.includes("macOS is the sender/main computer") && firstLanTest.includes("Windows is the receiver/client"));
 check("First LAN runbook documents role setup", firstLanTest.includes("macOS sender role to `Main`") && firstLanTest.includes("Windows receiver role to `Client`") && firstLanTest.includes("receiver role is `Client` or `Both`"));
+check("First LAN acceptance records role evidence", firstLanTest.includes("| macOS role shown | Main | Main |") && firstLanTest.includes("| Windows role shown | Client | Client |"));
 check("First LAN runbook documents Windows Defender Firewall setup", firstLanTest.includes("Windows Security > Firewall") && firstLanTest.includes("New-NetFirewallRule"));
 check("First LAN runbook scopes Windows firewall rules to Private", firstLanTest.includes("-Profile Private"));
 check("First LAN runbook documents macOS firewall setup", firstLanTest.includes("System Settings > Network > Firewall") && firstLanTest.includes("allow incoming connections for RemoteShare"));

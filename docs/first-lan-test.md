@@ -76,6 +76,8 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | macOS IP/subnet |  |  |
 | Windows IP/subnet |  |  |
 | Router/SSID/band |  |  |
+| macOS role shown | Main | Main |
+| Windows role shown | Client | Client |
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
 | Manual endpoint used | None | Discovery skipped/failed and endpoint copied from `This computer` on peer |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
