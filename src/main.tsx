@@ -438,7 +438,8 @@ function mvpReceiveStep(
         canReceiveInput(role) &&
         allowIncomingControl &&
         trustedDevices.some((device) => device.allowIncomingControl),
-      detail: "Use Enable or turn on Allow incoming control and Receive for the trusted Mac row."
+      detail:
+        "Use the input-control Enable shortcut, or turn on Allow incoming control and Receive for the trusted Mac row."
     };
   }
 
@@ -449,7 +450,8 @@ function mvpReceiveStep(
         (device) =>
           (device.role === "client" || device.role === "both") && device.inputControlReady
       ),
-      detail: "On Windows, use Enable or turn on Allow incoming control and Receive before Test."
+      detail:
+        "On Windows, use the input-control Enable shortcut or turn on Allow incoming control and Receive before Test."
     };
   }
 

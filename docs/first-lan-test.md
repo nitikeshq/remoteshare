@@ -57,7 +57,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 
 ## Input Smoke Test
 
-1. Confirm the receiver role is `Client` or `Both`, then use `Enable` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
+1. Confirm the receiver role is `Client` or `Both`, then use `Enable all`, `Enable global`, or `Enable devices` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
 2. Confirm the receiving trusted row shows `Receive` enabled.
 3. Use `Test` on the sender.
 4. The receiver should show an accepted input transport event.
