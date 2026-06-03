@@ -165,6 +165,17 @@ try {
     "macOS installer SHA256 must match release dmg sha256"
   );
 
+  const duplicateContextReport = smokeReportFixture("duplicate-context-row.md", "Pass", {
+    extraContextRows: `| macOS installer file | RemoteShare_${packageVersion}_stale.dmg |\n`
+  });
+  runVerifier(
+    releaseAssets,
+    duplicateContextReport,
+    false,
+    "duplicate LAN smoke context rows should fail",
+    "Duplicate smoke report field in Test Context: macOS installer file"
+  );
+
   const mismatchedWindowsHashReport = smokeReportFixture("mismatched-windows-hash.md", "Pass", {
     windowsSha256: sha256("wrong exe")
   });
@@ -271,6 +282,7 @@ function smokeReportFixture(name, passValue, options = {}) {
   const windowsSha256 = options.windowsSha256 ?? sha256("valid exe");
   const linuxSha256 = options.linuxSha256 ?? sha256("valid deb");
   const version = options.version ?? `v${packageVersion}`;
+  const extraContextRows = options.extraContextRows ?? "";
   fs.writeFileSync(
     file,
     `# LAN Smoke Report
@@ -282,7 +294,7 @@ function smokeReportFixture(name, passValue, options = {}) {
 | Test date | 2026-06-02 |
 | Tester | QA |
 | RemoteShare version/tag | ${version} |
-| Input direction | macOS sender/main -> Windows receiver/client |
+${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/client |
 | macOS role shown | Main |
 | Windows role shown | Client |
 | macOS model/version | MacBook / macOS 15 |

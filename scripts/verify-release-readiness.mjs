@@ -157,7 +157,12 @@ function parseTable(markdown, sectionName) {
     index += 2;
     while (index < lines.length && lines[index].startsWith("|")) {
       const row = cells(lines[index]);
-      if (row.length >= 2) rows.set(row[0], row[1]);
+      if (row.length >= 2) {
+        if (rows.has(row[0])) {
+          throw new Error(`Duplicate smoke report field in ${sectionName}: ${row[0]}`);
+        }
+        rows.set(row[0], row[1]);
+      }
       index += 1;
     }
     return rows;
