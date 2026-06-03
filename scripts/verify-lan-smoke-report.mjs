@@ -498,6 +498,11 @@ function requireNoBlockingNotes(markdown) {
   if (!isNoneNote(retestRequired)) {
     throw new Error("LAN smoke report Notes must not require retest for release readiness.");
   }
+
+  const capturedEvidence = notes.get("screenshots or logs captured");
+  if (!capturedEvidence || isNoneNote(capturedEvidence)) {
+    throw new Error("LAN smoke report Notes must identify screenshots or logs captured for release evidence.");
+  }
 }
 
 function parseNotes(markdown) {

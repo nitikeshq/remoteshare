@@ -469,6 +469,7 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 ## Notes
 
 - Blocking issues: none
+- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots
 - Retest required: no
 `
   );

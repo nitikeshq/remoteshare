@@ -195,7 +195,14 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    notes: ["", "## Notes", "", "- Blocking issues: none", "- Retest required: yes after firewall change"]
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
+      "- Retest required: yes after firewall change"
+    ]
   });
   runVerifier(
     passedWithRetestRequired,
@@ -208,7 +215,13 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    notes: ["", "## Notes", "", "- Retest required: no"]
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
+      "- Retest required: no"
+    ]
   });
   runVerifier(
     passedWithoutBlockingIssueNotes,
@@ -221,7 +234,13 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    notes: ["", "## Notes", "", "- Blocking issues: none"]
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots"
+    ]
   });
   runVerifier(
     passedWithoutRetestNotes,
@@ -234,7 +253,14 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    notes: ["", "## Notes", "", "- Blocking issues: none", "- Retest required: no"]
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
+      "- Retest required: no"
+    ]
   });
   runVerifier(
     passedWithClearNotes,
@@ -253,6 +279,7 @@ try {
       "",
       "- Blocking issues: RS-123",
       "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
       "- Retest required: no"
     ]
   });
@@ -272,6 +299,7 @@ try {
       "## Notes",
       "",
       "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
       "- Retest required: yes after firewall change",
       "- Retest required: no"
     ]
@@ -281,6 +309,19 @@ try {
     false,
     "duplicate retest notes should fail",
     "Duplicate LAN smoke report note in Notes: Retest required"
+  );
+
+  const passedWithoutCapturedEvidenceNotes = writeReport("passed-without-captured-evidence-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: none", "- Screenshots or logs captured:", "- Retest required: no"]
+  });
+  runVerifier(
+    passedWithoutCapturedEvidenceNotes,
+    false,
+    "passed report without captured evidence notes should fail",
+    "LAN smoke report Notes must identify screenshots or logs captured for release evidence"
   );
 
   const failedReconnect = writeReport("failed-reconnect.md", {
@@ -984,7 +1025,14 @@ function writeReport(name, options) {
   const extraContextRows = options.extraContextRows ?? [];
   const extraAutoRows = options.extraAutoRows ?? [];
   const extraManualRows = options.extraManualRows ?? [];
-  const notes = options.notes ?? ["", "## Notes", "", "- Blocking issues: none", "- Retest required: no"];
+  const notes = options.notes ?? [
+    "",
+    "## Notes",
+    "",
+    "- Blocking issues: none",
+    "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots",
+    "- Retest required: no"
+  ];
   const lines = [
     "# LAN Smoke Report",
     "",
