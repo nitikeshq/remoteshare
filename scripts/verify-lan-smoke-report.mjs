@@ -162,7 +162,7 @@ requireManualFailureReasonEvidence(manualFallback);
 requireSuccess(autoDiscovery, "Peer appeared in `Scan LAN`", "Auto-Discovery Run");
 requireAutoDiscoverySubnetEvidence(autoDiscovery);
 requireManualFallbackEvidence(manualFallback);
-requireSuccess(manualFallback, "TCP `44777` reachable", "Manual Fallback Run");
+requireManualTcpReachabilityEvidence(manualFallback);
 requireManualEndpoint(manualFallback, "Endpoint used", "Manual Fallback Run");
 
 console.log(`Verified LAN smoke report: ${path.relative(process.cwd(), reportPath)}`);
@@ -298,6 +298,22 @@ function requireManualFallbackEvidence(table) {
   const copied = requireFilled(table, "Manual endpoint copied from peer `This computer` row", "Manual Fallback Run").toLowerCase();
   if (!/(copied|copy)/.test(copied) || !/(peer|other computer|remote|this computer|receiver|windows|client)/.test(copied)) {
     throw new Error("Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint.");
+  }
+}
+
+function requireManualTcpReachabilityEvidence(table) {
+  const value = requireFilled(table, "TCP `44777` reachable", "Manual Fallback Run").toLowerCase();
+  const valueWithoutExpectedNegative = value
+    .replace(/\bnot\s+failed\b/g, "")
+    .replace(/\bnot\s+failing\b/g, "");
+  if (
+    !/^(yes|pass|passed|success|succeeded|ok|confirmed|reachable)/i.test(value) ||
+    /(fail|failed|failure|blocked|denied|error|not\s+(ok|reachable|open|succeeded|successful))/.test(valueWithoutExpectedNegative) ||
+    !/\btcp\b/.test(value) ||
+    !/(^|\D)44777(\D|$)/.test(value) ||
+    !/(test-netconnection|tnc|nc\s+-|netcat|telnet|socket|port|probe|connect)/.test(value)
+  ) {
+    throw new Error("Manual Fallback Run TCP reachability evidence must mention a successful TCP 44777 probe, such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe.");
   }
 }
 

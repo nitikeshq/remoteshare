@@ -342,6 +342,19 @@ try {
     "Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint"
   );
 
+  const vagueManualTcpReachability = writeReport("vague-manual-tcp-reachability.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualTcpReachable: "reachable"
+  });
+  runVerifier(
+    vagueManualTcpReachability,
+    false,
+    "vague manual TCP reachability should fail",
+    "Manual Fallback Run TCP reachability evidence must mention a successful TCP 44777 probe"
+  );
+
   const vagueInputSmoke = writeReport("vague-input-smoke.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -768,6 +781,8 @@ function writeReport(name, options) {
     options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
   const manualEndpointCopied =
     options.manualEndpointCopied ?? "copied from peer This computer row";
+  const manualTcpReachable =
+    options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
   const autoPairAction = options.autoPairAction ?? "started";
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
@@ -845,7 +860,7 @@ function writeReport(name, options) {
     `| Discovery disabled, skipped, or failed | ${manualDiscoveryFallback} |`,
     `| Manual endpoint copied from peer \`This computer\` row | ${manualEndpointCopied} |`,
     `| Endpoint used | ${manualEndpoint} |`,
-    "| TCP `44777` reachable | reachable |",
+    `| TCP \`44777\` reachable | ${manualTcpReachable} |`,
     "| Pair action started | started |",
     "| Same six-digit code shown on both machines | confirmed |",
     "| Six-digit code typed on both machines | confirmed |",
