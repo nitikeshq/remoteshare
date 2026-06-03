@@ -1,9 +1,5 @@
 # RemoteShare
 
-[![Release Builds](https://github.com/nitikeshq/remoteshare/actions/workflows/release-builds.yml/badge.svg)](https://github.com/nitikeshq/remoteshare/actions/workflows/release-builds.yml)
-[![Version](https://img.shields.io/github/package-json/v/nitikeshq/remoteshare?filename=package.json)](package.json)
-[![License: MIT](https://img.shields.io/github/license/nitikeshq/remoteshare)](LICENSE)
-
 RemoteShare is an early open-source desktop app for sharing one keyboard and mouse across computers on a private network.
 
 The first MVP target is:
