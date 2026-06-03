@@ -442,6 +442,7 @@ function requireManualFallbackEvidence(table) {
   if (!/\bmanual\s+fallback:\s*(preferred\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(copied)) {
     throw new Error("Manual Fallback Run endpoint copy evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6.");
   }
+  requireManualEndpointEvidenceMatchesEndpoint(copied, "endpoint copy evidence");
 }
 
 function requireManualEndpointLabelEvidence(table) {
@@ -452,6 +453,7 @@ function requireManualEndpointLabelEvidence(table) {
   if (!/\bmanual\s+fallback:\s*(preferred\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
     throw new Error("Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6.");
   }
+  requireManualEndpointEvidenceMatchesEndpoint(value, "copied endpoint label evidence");
 }
 
 function requireManualEndpointMatchesCopiedEvidence(table) {
@@ -485,6 +487,46 @@ function isLocalEndpointCopyEvidence(value) {
 
 function endpointFromLocalEndpointEvidence(value) {
   return value.match(/\bendpoint:\s*([^;|]+)/i)?.[1]?.trim() ?? null;
+}
+
+function requireManualEndpointEvidenceMatchesEndpoint(value, evidenceName) {
+  const endpointText = endpointFromLocalEndpointEvidence(value);
+  const endpoint = endpointText ? parseEndpoint(endpointText) : null;
+  if (!endpoint) {
+    throw new Error(`Manual Fallback Run ${evidenceName} must include a concrete Endpoint value.`);
+  }
+
+  const label = value.match(/\blabel:\s*([^;|]+)/i)?.[1]?.trim().toLowerCase() ?? "";
+  const manualFallback = value.match(/\bmanual\s+fallback:\s*([^;|]+)/i)?.[1]?.trim().toLowerCase() ?? "";
+  const expected = manualEndpointEvidenceExpectation(endpoint.host);
+  if (!expected) {
+    throw new Error(`Manual Fallback Run ${evidenceName} must use a private IPv4 or unique-local IPv6 endpoint.`);
+  }
+
+  if (!expected.labels.includes(label)) {
+    throw new Error(`Manual Fallback Run ${evidenceName} label does not match the copied endpoint; expected ${expected.labels.join(" or ")}.`);
+  }
+
+  if (!expected.fallbacks.includes(manualFallback)) {
+    throw new Error(`Manual Fallback Run ${evidenceName} Manual fallback value does not match the copied endpoint; expected ${expected.fallbacks.join(" or ")}.`);
+  }
+}
+
+function manualEndpointEvidenceExpectation(host) {
+  const normalized = host.trim().toLowerCase();
+  if (net.isIP(normalized) === 4 && isPrivateIpv4(normalized)) {
+    return {
+      labels: ["best lan ipv4", "lan ipv4"],
+      fallbacks: ["preferred lan ipv4", "lan ipv4"]
+    };
+  }
+  if (net.isIP(normalized) === 6 && isUniqueLocalIpv6Literal(normalized)) {
+    return {
+      labels: ["lan ipv6"],
+      fallbacks: ["lan ipv6"]
+    };
+  }
+  return null;
 }
 
 function endpointKey(value) {

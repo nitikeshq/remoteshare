@@ -726,6 +726,35 @@ try {
     "Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6."
   );
 
+  const mismatchedManualEndpointLabel = writeReport("mismatched-manual-endpoint-label.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointLabel:
+      "Local endpoint; This computer: Windows receiver; Label: LAN IPv6; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled; Manual fallback: LAN IPv6"
+  });
+  runVerifier(
+    mismatchedManualEndpointLabel,
+    false,
+    "mismatched manual endpoint label should fail",
+    "Manual Fallback Run copied endpoint label evidence label does not match the copied endpoint"
+  );
+
+  const mismatchedManualFallbackEligibility = writeReport("mismatched-manual-fallback-eligibility.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "[fd00::20]:44777",
+    localEndpointEvidence:
+      "Local endpoint; This computer: Windows receiver; Label: LAN IPv6; Endpoint: [fd00::20]:44777; TCP port: 44777; Private network only: enabled; Manual fallback: preferred LAN IPv4"
+  });
+  runVerifier(
+    mismatchedManualFallbackEligibility,
+    false,
+    "mismatched manual fallback eligibility should fail",
+    "Manual Fallback Run endpoint copy evidence Manual fallback value does not match the copied endpoint"
+  );
+
   const mismatchedManualEndpoint = writeReport("mismatched-manual-endpoint.md", {
     autoPass: "Pass",
     manualPass: "Pass",
