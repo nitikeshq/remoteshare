@@ -226,10 +226,14 @@ function elapsedLabel(atMs: number) {
 
 function endpointSourceLabel(device: Device) {
   if (!device.endpoint) return "no endpoint";
-  if (device.endpointSource === "discovery") return "discovery";
-  if (device.endpointSource === "health") return "reconnect";
-  if (device.endpointSource === "saved") return "saved endpoint";
-  if (device.endpointSource === "manual") return "manual IP";
+  return endpointSourceText(device.endpointSource);
+}
+
+function endpointSourceText(source: Device["endpointSource"]) {
+  if (source === "discovery") return "discovery";
+  if (source === "health") return "reconnect";
+  if (source === "saved") return "saved endpoint";
+  if (source === "manual") return "manual IP";
   return "endpoint unknown";
 }
 
@@ -240,7 +244,7 @@ function endpointDiagnostic(device: Device) {
 function connectionFailureDiagnostic(device: Device) {
   if (!device.lastConnectionFailure) return null;
   const failure = device.lastConnectionFailure;
-  return `last failed ${elapsedLabel(failure.failedAtMs)} · ${failure.endpoint} · ${failure.message}`;
+  return `last failed ${endpointSourceText(failure.endpointSource)} ${elapsedLabel(failure.failedAtMs)} · ${failure.endpoint} · ${failure.message}`;
 }
 
 function connectionFailureHint(device: Device) {
