@@ -82,6 +82,40 @@ try {
     "invalid sha256"
   );
 
+  const staleManifestSize = fixture("stale-manifest-size", {
+    mutateManifest: (manifest) => ({
+      ...manifest,
+      artifacts: manifest.artifacts.map((artifact) =>
+        artifact.type === "exe" ? { ...artifact, sizeBytes: artifact.sizeBytes + 1 } : artifact
+      )
+    })
+  });
+  writeReleaseJson(staleManifestSize.releaseJson, staleManifestSize.assetsRoot);
+  runVerifier(
+    staleManifestSize.releaseJson,
+    staleManifestSize.assetsRoot,
+    false,
+    "stale manifest size should fail",
+    "Release manifest size mismatch"
+  );
+
+  const staleManifestHash = fixture("stale-manifest-hash", {
+    mutateManifest: (manifest) => ({
+      ...manifest,
+      artifacts: manifest.artifacts.map((artifact) =>
+        artifact.type === "dmg" ? { ...artifact, sha256: sha256("wrong dmg") } : artifact
+      )
+    })
+  });
+  writeReleaseJson(staleManifestHash.releaseJson, staleManifestHash.assetsRoot);
+  runVerifier(
+    staleManifestHash.releaseJson,
+    staleManifestHash.assetsRoot,
+    false,
+    "stale manifest hash should fail",
+    "Release manifest hash mismatch"
+  );
+
   const unexpected = fixture("unexpected");
   writeReleaseJson(unexpected.releaseJson, unexpected.assetsRoot, { extra: ["RemoteShare_extra.msi"] });
   runVerifier(

@@ -98,6 +98,27 @@ if (unexpectedFiles.length > 0) {
   throw new Error(`GitHub release has unexpected asset(s): ${unexpectedFiles.join(", ")}`);
 }
 
+for (const artifact of manifestArtifacts) {
+  const localPath = path.join(releaseAssetsRoot, artifact.file);
+  if (!fs.existsSync(localPath)) {
+    throw new Error(`Local release artifact is missing: ${localPath}`);
+  }
+
+  const bytes = fs.readFileSync(localPath);
+  if (bytes.byteLength !== artifact.sizeBytes) {
+    throw new Error(
+      `Release manifest size mismatch for ${artifact.file}: expected ${artifact.sizeBytes}, got ${bytes.byteLength}.`
+    );
+  }
+
+  const digest = sha256(bytes);
+  if (digest !== artifact.sha256) {
+    throw new Error(
+      `Release manifest hash mismatch for ${artifact.file}: expected ${artifact.sha256}, got ${digest}.`
+    );
+  }
+}
+
 for (const file of expectedFiles) {
   const asset = assetsByName.get(file);
   const localPath = path.join(releaseAssetsRoot, file);
