@@ -357,6 +357,19 @@ try {
     "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output"
   );
 
+  const partialAutoReconnect = writeReport("partial-auto-reconnect.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoReconnectEnabled: "after restart; Trusted reconnect; Auto reconnect: enabled"
+  });
+  runVerifier(
+    partialAutoReconnect,
+    false,
+    "partial auto reconnect evidence should fail",
+    "Auto-Discovery Run Auto reconnect evidence must paste the full reconnect Copy output"
+  );
+
   const missingReconnectLatency = writeReport("missing-reconnect-latency.md", {
     autoPass: "Pass",
     manualPass: "Pass",

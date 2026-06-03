@@ -36,6 +36,7 @@ try {
   assertIncludes(summary, "`TCP:`, `UDP:`, `Start:`", "startup health copied fields");
   assertIncludes(summary, "started/reconnect timing evidence", "startup health timing evidence");
   assertIncludes(summary, "trusted row reconnect `Copy` button", "reconnect copy evidence");
+  assertIncludes(summary, "full reconnect output", "full reconnect copied output");
   assertIncludes(summary, "Auto reconnect: enabled", "auto reconnect copied field");
   assertIncludes(summary, "Check: reachable", "reconnect check copied field");
   assertIncludes(summary, "measured latency, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence", "reconnect copied fields");

@@ -330,10 +330,17 @@ function requireReconnectEvidence(table, section) {
   const autoReconnect = requireFilled(table, "`Auto reconnect` enabled after restart/wake", section).toLowerCase();
   if (
     !/trusted\s+reconnect/.test(autoReconnect) ||
+    !/this\s+computer:\s*[^;|]+/.test(autoReconnect) ||
     !/auto\s+reconnect:\s*enabled/.test(autoReconnect) ||
+    !/device:\s*[^;|]+/.test(autoReconnect) ||
+    !/check:\s*reachable/.test(autoReconnect) ||
+    !/last\s+seen:/.test(autoReconnect) ||
+    !/latency:\s*[0-9]+(\.[0-9]+)?\s*ms/.test(autoReconnect) ||
+    !/endpoint\s+source:\s*/.test(autoReconnect) ||
+    !/endpoint:\s*[^;|]+/.test(autoReconnect) ||
     !/(restart|wake)/.test(autoReconnect)
   ) {
-    throw new Error(`${section} Auto reconnect evidence must paste the reconnect Copy output and show it was captured after restart or wake.`);
+    throw new Error(`${section} Auto reconnect evidence must paste the full reconnect Copy output with Auto reconnect: enabled, Check: reachable, measured Latency, endpoint source, and endpoint after restart or wake.`);
   }
 
   const startupHealth = requireFilled(

@@ -96,7 +96,7 @@ Minimum pass criteria:
 
 - Both machines show the same typed pairing code before trust is stored.
 - `Trusted` appears on both machines with the expected peer fingerprint.
-- Trusted row reconnect `Copy` output shows `Auto reconnect: enabled` after restart.
+- Trusted row reconnect `Copy` output shows `Auto reconnect: enabled`, `Check: reachable`, measured latency, endpoint source, and endpoint after restart.
 - Trusted row reconnect `Copy` output shows `Check: reachable` and measured `Latency: N ms` after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled; sender and receiver Input Transport `Copy` output prove the outgoing and incoming accepted event records.
 - Capture starts on the macOS sender, the active capture `Copy` output is pasted before Stop, receiver Input Transport `Copy` output proves accepted incoming mouse move, mouse click, scroll, and key events, then stopped capture `Copy` output proves capture stopped cleanly.
