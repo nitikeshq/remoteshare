@@ -4467,6 +4467,48 @@ mod tests {
     }
 
     #[test]
+    fn malformed_ipv4_like_saved_endpoints_are_sanitized_on_startup() {
+        crate::identity::set_test_config_dir(unique_test_dir("sanitize-ipv4-like-endpoints"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.manual_endpoint = Some("192.168.001.025".to_string());
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.001.025:44777".to_string()),
+                recent_endpoints: vec![
+                    "192.168.001.026:44777".to_string(),
+                    "192.168.1.50:44777".to_string(),
+                ],
+                allow_incoming_control: false,
+            });
+            state.persisted.save().expect("state should save");
+        }
+
+        let restored = RuntimeStore::load_or_init();
+        assert_eq!(restored.status().discovery.manual_endpoint, None);
+        assert_eq!(
+            restored.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+
+        let state = restored.state.lock().expect("runtime state poisoned");
+        assert_eq!(state.persisted.settings.manual_endpoint, None);
+        assert_eq!(state.persisted.trusted_devices[0].last_endpoint, None);
+        assert_eq!(
+            state.persisted.trusted_devices[0].recent_endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+    }
+
+    #[test]
     fn saved_endpoints_are_normalized_on_startup() {
         crate::identity::set_test_config_dir(unique_test_dir("normalize-saved-endpoints"));
 
@@ -7566,6 +7608,11 @@ mod tests {
         store.record_trusted_connection_failure(
             "trusted-device",
             "macbook..local:44777",
+            "connection refused",
+        );
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.001.025:44777",
             "connection refused",
         );
 
