@@ -1378,6 +1378,7 @@ impl RuntimeStore {
             return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
         }
 
+        let original_pairing = pairing.clone();
         let pairing = state
             .pending_pairings
             .get_mut(&id)
@@ -1394,7 +1395,7 @@ impl RuntimeStore {
             Ok(completed) => Ok(completed),
             Err(error) => {
                 if let Some(pairing) = state.pending_pairings.get_mut(&id) {
-                    pairing.remote_approved = false;
+                    *pairing = original_pairing;
                 }
                 Err(error)
             }
@@ -5865,25 +5866,31 @@ mod tests {
             .record_remote_pairing_approval(
                 PairingPeer {
                     device_id: "remote-device".to_string(),
-                    name: "Remote Windows".to_string(),
+                    name: "Updated Windows".to_string(),
                     platform: "windows".to_string(),
-                    role: ComputerRole::Client,
+                    role: ComputerRole::Both,
                     control_port: 44777,
                     public_key_fingerprint: "remote-fingerprint".to_string(),
                     public_key: String::new(),
                 },
-                "192.168.1.50:44777".to_string(),
+                "192.168.1.60:44777".to_string(),
                 "123456".to_string(),
             )
             .expect_err("save failure should prevent pairing completion");
 
         assert!(error.starts_with("Failed to save trusted device:"));
         assert!(store.trusted_reconnect_targets().is_empty());
-        assert!(store
+        let pending_pairing = store
             .status()
             .pending_pairings
             .iter()
-            .any(|pairing| pairing.id == pairing_id && !pairing.remote_approved));
+            .find(|pairing| pairing.id == pairing_id)
+            .expect("pending pairing should remain after failed save")
+            .clone();
+        assert!(!pending_pairing.remote_approved);
+        assert_eq!(pending_pairing.endpoint, "192.168.1.50:44777");
+        assert_eq!(pending_pairing.name, "Remote Windows");
+        assert_eq!(pending_pairing.role, ComputerRole::Client);
     }
 
     #[test]
