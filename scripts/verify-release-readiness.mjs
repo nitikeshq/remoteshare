@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { validateReleaseGeneratedAt } from "./release-artifacts-lib.mjs";
 
 const releaseAssetsRoot = process.argv[2];
 const lanSmokeReportPath = process.argv[3];
@@ -120,13 +121,7 @@ function assertSmokeVersionMatches(context, expectedVersion) {
 
 function assertSmokeDateMatchesManifest(context, manifest) {
   const generatedAt = manifest.generatedAt;
-  if (
-    typeof generatedAt !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(generatedAt) ||
-    new Date(generatedAt).toISOString() !== generatedAt
-  ) {
-    throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
-  }
+  validateReleaseGeneratedAt(generatedAt);
 
   const testDate = context.get("Test date") ?? "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(testDate)) {

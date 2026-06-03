@@ -5,6 +5,7 @@ import {
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
   validateManifestArtifactTypes,
+  validateReleaseGeneratedAt,
   validateReleaseManifestArtifact
 } from "./release-artifacts-lib.mjs";
 
@@ -182,13 +183,7 @@ function readManifestFiles(file) {
   try {
     const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
     if (manifest.version !== packageVersion) return null;
-    if (
-      typeof manifest.generatedAt !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(manifest.generatedAt) ||
-      new Date(manifest.generatedAt).toISOString() !== manifest.generatedAt
-    ) {
-      return null;
-    }
+    validateReleaseGeneratedAt(manifest.generatedAt);
     if (!Array.isArray(manifest.artifacts)) return null;
     validateManifestArtifactTypes(manifest.artifacts);
     const artifacts = manifest.artifacts.map((artifact, index) =>

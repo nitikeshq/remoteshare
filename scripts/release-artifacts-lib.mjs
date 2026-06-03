@@ -112,6 +112,20 @@ export function validateReleaseManifestArtifact(artifact, index, packageVersion)
   return { file, sha256, sizeBytes, type };
 }
 
+export function isValidReleaseGeneratedAt(value) {
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) &&
+    new Date(value).toISOString() === value
+  );
+}
+
+export function validateReleaseGeneratedAt(value) {
+  if (!isValidReleaseGeneratedAt(value)) {
+    throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
+  }
+}
+
 function walkFiles(directory, visit) {
   function walk(currentDirectory) {
     if (!fs.existsSync(currentDirectory)) return;

@@ -6,6 +6,7 @@ import {
   findUnexpectedInstallerArtifacts,
   publishArtifactStatus,
   requiredArtifactTypes,
+  validateReleaseGeneratedAt,
   validateManifestArtifactTypes,
   validateReleaseManifestArtifact
 } from "./release-artifacts-lib.mjs";
@@ -135,6 +136,18 @@ try {
     ),
     "Release manifest dmg artifact has invalid sizeBytes.",
     "release manifest artifact size"
+  );
+
+  validateReleaseGeneratedAt("2026-06-01T10:00:00.000Z");
+  assertThrows(
+    () => validateReleaseGeneratedAt("2026-06-01"),
+    "Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.",
+    "release manifest generatedAt date-only"
+  );
+  assertThrows(
+    () => validateReleaseGeneratedAt("2026-02-30T10:00:00.000Z"),
+    "Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.",
+    "release manifest generatedAt invalid calendar date"
   );
 
   console.log("Release artifact helper tests passed.");

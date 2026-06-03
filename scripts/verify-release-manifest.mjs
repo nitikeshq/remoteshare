@@ -5,7 +5,8 @@ import {
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
   publishArtifactStatus,
-  requiredArtifactTypes
+  validateReleaseGeneratedAt,
+  validateReleaseManifestArtifact
 } from "./release-artifacts-lib.mjs";
 
 const root = process.argv[2] ?? "release-assets";
@@ -32,8 +33,10 @@ if (!Array.isArray(manifest.artifacts)) {
   throw new Error("Release manifest must contain an artifacts array.");
 }
 
-validateGeneratedAt(manifest.generatedAt);
-const manifestArtifacts = manifest.artifacts.map(validateManifestArtifact);
+validateReleaseGeneratedAt(manifest.generatedAt);
+const manifestArtifacts = manifest.artifacts.map((artifact, index) =>
+  validateReleaseManifestArtifact(artifact, index, packageVersion)
+);
 const { duplicateTypes, missingTypes } = publishArtifactStatus(manifestArtifacts);
 
 if (missingTypes.length > 0) {
@@ -106,54 +109,6 @@ for (const artifact of manifestArtifacts) {
 }
 
 console.log(`Verified release manifest for ${manifestArtifacts.length} artifact(s).`);
-
-function validateManifestArtifact(artifact, index) {
-  if (!artifact || typeof artifact !== "object") {
-    throw new Error(`Manifest artifact ${index} must be an object.`);
-  }
-
-  const { file, sha256, sizeBytes, type } = artifact;
-  if (typeof type !== "string" || !requiredArtifactTypes.has(type)) {
-    throw new Error(`Manifest artifact ${index} has invalid type: ${String(type)}`);
-  }
-
-  if (typeof file !== "string" || file.length === 0 || path.basename(file) !== file) {
-    throw new Error(`Manifest artifact ${index} must use a basename-only file path.`);
-  }
-
-  const expectedExtension = requiredArtifactTypes.get(type);
-  if (path.extname(file).toLowerCase() !== expectedExtension) {
-    throw new Error(
-      `Manifest artifact ${file} must use ${expectedExtension} extension for ${type}.`
-    );
-  }
-
-  if (!file.includes(`_${packageVersion}_`)) {
-    throw new Error(
-      `Manifest artifact ${file} must include package version ${packageVersion}.`
-    );
-  }
-
-  if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
-    throw new Error(`Manifest artifact ${file} has invalid sha256.`);
-  }
-
-  if (!Number.isInteger(sizeBytes) || sizeBytes <= 0) {
-    throw new Error(`Manifest artifact ${file} has invalid sizeBytes.`);
-  }
-
-  return { file, sha256, sizeBytes, type };
-}
-
-function validateGeneratedAt(value) {
-  if (
-    typeof value !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
-    new Date(value).toISOString() !== value
-  ) {
-    throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
-  }
-}
 
 function readChecksumFile(file) {
   const entries = new Map();
