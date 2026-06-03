@@ -141,10 +141,16 @@ impl PersistedState {
 
         #[cfg(target_os = "windows")]
         if path.exists() {
-            fs::remove_file(&path).map_err(IdentityError::Write)?;
+            if let Err(error) = fs::remove_file(&path) {
+                let _ = fs::remove_file(&temp_path);
+                return Err(IdentityError::Write(error));
+            }
         }
 
-        fs::rename(&temp_path, &path).map_err(IdentityError::Write)?;
+        if let Err(error) = fs::rename(&temp_path, &path) {
+            let _ = fs::remove_file(&temp_path);
+            return Err(IdentityError::Write(error));
+        }
         secure_state_file(&path)?;
         sync_state_parent(&path)
     }
@@ -593,5 +599,27 @@ mod tests {
 
         assert_eq!(dir_mode, 0o700);
         assert_eq!(file_mode, 0o600);
+    }
+
+    #[test]
+    fn failed_state_replace_removes_temp_file() {
+        let dir = std::env::temp_dir().join(format!(
+            "remoteshare-failed-state-replace-temp-cleanup-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("test config dir should be created");
+        fs::create_dir(dir.join(STATE_FILE)).expect("state path should block replacement");
+        set_test_config_dir(dir.clone());
+
+        let state = PersistedState::new();
+        state
+            .save()
+            .expect_err("blocked state replacement should fail");
+
+        assert!(
+            !dir.join("state.json.tmp").exists(),
+            "failed state replacement should remove the temporary state file"
+        );
     }
 }
