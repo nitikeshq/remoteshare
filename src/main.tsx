@@ -129,6 +129,12 @@ type PairRequestPayload = {
   manualEndpoint?: boolean;
 };
 
+type SetupStep = {
+  label: string;
+  done: boolean;
+  detail: string;
+};
+
 type PermissionState = "granted" | "missing" | "unsupported" | "unknown";
 type EngineState = "ready" | "planned" | "unsupported";
 
@@ -594,6 +600,17 @@ function receiveControlEvidence(status: RuntimeStatus, device: Device) {
   ].join("; ");
 }
 
+function setupChecklistEvidence(status: RuntimeStatus, steps: SetupStep[]) {
+  return [
+    "Setup",
+    "Input direction: macOS sender/main -> Windows receiver/client",
+    `This computer: ${status.thisDevice}`,
+    `Platform: ${status.platform}`,
+    `Role: ${roleLabel(status.mode)}`,
+    ...steps.map((step) => `${step.label}: ${step.done ? "done" : "pending"} - ${step.detail}`)
+  ].join("; ");
+}
+
 function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
   const failure = connectionFailureDiagnostic(device);
   const hint = connectionFailureHint(device);
@@ -1025,6 +1042,16 @@ function App() {
     }
   }
 
+  async function copySetupChecklistEvidence() {
+    const evidence = setupChecklistEvidence(status, setupSteps);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied setup evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Setup evidence: ${evidence}`, true);
+    }
+  }
+
   async function copyPairingEvidence(pairing: PendingPairing, enteredCode: string) {
     const evidence = pairingEvidence(pairing, enteredCode, pairingNowMs);
     try {
@@ -1421,7 +1448,7 @@ function App() {
       ),
     [status.allowIncomingControl, status.mode, status.platform, trustedDevices]
   );
-  const setupSteps = useMemo(
+  const setupSteps = useMemo<SetupStep[]>(
     () => [
       {
         label: "Choose roles",
@@ -1487,7 +1514,18 @@ function App() {
         </div>
 
         <div className="setup-checklist" aria-label="Mac to Windows setup checklist">
-          <span>{"Mac main -> Windows client"}</span>
+          <div className="setup-checklist-heading">
+            <span>{"Mac main -> Windows client"}</span>
+            <button
+              className="setup-evidence-copy"
+              onClick={copySetupChecklistEvidence}
+              title="Copy setup evidence"
+              type="button"
+            >
+              <Copy size={12} />
+              <span>Copy</span>
+            </button>
+          </div>
           {setupSteps.map((step) => (
             <div className={`setup-step ${step.done ? "setup-step-done" : ""}`} key={step.label}>
               {step.done ? <CheckCircle2 size={16} /> : <CircleDot size={16} />}

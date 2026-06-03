@@ -22,6 +22,8 @@ try {
   assertIncludes(summary, "# RemoteShare Release Candidate", "summary title");
   assertIncludes(summary, "RemoteShare_0.1.13_x64-setup.exe", "windows installer row");
   assertIncludes(summary, "npm run verify:release-readiness", "readiness command");
+  assertIncludes(summary, "setup checklist `Copy` button", "setup copy evidence");
+  assertIncludes(summary, "role, platform, first-MVP input direction, and checklist step evidence", "setup copied fields");
   assertIncludes(summary, "pending pairing row `Copy` button", "pairing copy evidence");
   assertIncludes(summary, "pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
   assertIncludes(summary, "Trusted Device Audit", "fingerprint audit evidence");

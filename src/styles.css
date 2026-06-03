@@ -77,11 +77,40 @@ input {
   gap: 9px;
 }
 
-.setup-checklist > span {
+.setup-checklist-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.setup-checklist-heading > span {
   color: #8ba2ba;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.setup-evidence-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0 7px;
+  color: #b8f5e8;
+  background: #17212f;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.setup-evidence-copy span {
+  color: inherit;
+  font-size: inherit;
+  text-transform: none;
 }
 
 .setup-step {
