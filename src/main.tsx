@@ -261,13 +261,13 @@ function connectionFailureHint(device: Device) {
   const failure = device.lastConnectionFailure;
   if (!failure) return null;
   if (failure.endpointSource === "saved") {
-    return "Saved endpoint may be stale. Copy the current endpoint from the other computer, then use Edit IP and Verify IP.";
+    return "Saved endpoint may be stale. Copy the current endpoint from the other computer, then use Set IP and Verify IP.";
   }
   if (failure.endpointSource === "discovery") {
     return "Discovery found the device, but TCP control failed. Check firewall rules for port 44777.";
   }
   if (failure.endpointSource === "health") {
-    return "Last reconnect endpoint may be stale. Copy the current endpoint from the other computer, then use Edit IP and Verify IP.";
+    return "Last reconnect endpoint may be stale. Copy the current endpoint from the other computer, then use Set IP and Verify IP.";
   }
   if (failure.endpointSource === "manual") {
     return "Manual IP verification failed. Check the copied endpoint, firewall, and port 44777, then use Set IP and Verify IP again.";
