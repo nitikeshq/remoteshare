@@ -158,6 +158,7 @@ requireCaptureEvidence(autoDiscovery, "Auto-Discovery Run");
 requireCaptureEvidence(manualFallback, "Manual Fallback Run");
 requireFailureReasonEvidence(autoDiscovery, "Auto-Discovery Run");
 requireFailureReasonEvidence(manualFallback, "Manual Fallback Run");
+requireManualFailureReasonEvidence(manualFallback);
 requireSuccess(autoDiscovery, "Peer appeared in `Scan LAN`", "Auto-Discovery Run");
 requireAutoDiscoverySubnetEvidence(autoDiscovery);
 requireManualFallbackEvidence(manualFallback);
@@ -354,7 +355,7 @@ function requireCaptureEvidence(table, section) {
 
 function requireFailureReasonEvidence(table, section) {
   const value = requireFilled(table, "Failure reason visible before retry", section).toLowerCase();
-  if (/^(none|n\/a|not applicable)(\s+(before\s+retry|observed|needed|shown|visible))?$/.test(value) || /^no\s+failures?(\s+(before\s+retry|observed|needed|shown|visible|during\s+run))?$/.test(value)) {
+  if (isNoFailureEvidence(value)) {
     return;
   }
 
@@ -364,6 +365,22 @@ function requireFailureReasonEvidence(table, section) {
   ) {
     throw new Error(`${section} failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry.`);
   }
+}
+
+function requireManualFailureReasonEvidence(table) {
+  const value = requireFilled(table, "Failure reason visible before retry", "Manual Fallback Run").toLowerCase();
+  if (isNoFailureEvidence(value)) return;
+
+  if (
+    !/(manual\s+(ip|endpoint)|set\s+ip|verify\s+ip|copied\s+endpoint|port\s+44777|tcp\s+44777|firewall)/.test(value)
+  ) {
+    throw new Error("Manual Fallback Run failure reason evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP 44777, or firewall recovery path.");
+  }
+}
+
+function isNoFailureEvidence(value) {
+  return /^(none|n\/a|not applicable)(\s+(before\s+retry|observed|needed|shown|visible))?$/.test(value) ||
+    /^no\s+failures?(\s+(before\s+retry|observed|needed|shown|visible|during\s+run))?$/.test(value);
 }
 
 function requirePackageVersion(table, field, section) {

@@ -421,6 +421,32 @@ try {
     "Auto-Discovery Run failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry"
   );
 
+  const vagueManualFailureReason = writeReport("vague-manual-failure-reason.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason: "visible endpoint failure before retry"
+  });
+  runVerifier(
+    vagueManualFailureReason,
+    false,
+    "vague manual failure reason should fail",
+    "Manual Fallback Run failure reason evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP 44777, or firewall recovery path"
+  );
+
+  const manualIpRecoveryFailureReason = writeReport("manual-ip-recovery-failure-reason.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason: "Visible recovery hint: Manual IP verification failed; checked copied endpoint, firewall, and port 44777 before Set IP / Verify IP retry"
+  });
+  runVerifier(
+    manualIpRecoveryFailureReason,
+    true,
+    "manual IP recovery failure reason should pass",
+    "Verified LAN smoke report"
+  );
+
   const noneSuccess = writeReport("none-success.md", {
     autoPass: "Pass",
     manualPass: "Pass",
