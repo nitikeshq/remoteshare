@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  publishArtifactStatus,
+  requiredArtifactTypes
+} from "./release-artifacts-lib.mjs";
 
 const releaseJsonPath = process.argv[2];
 const releaseAssetsRoot = process.argv[3] ?? "release-assets";
@@ -44,8 +48,25 @@ if (!Array.isArray(release.assets)) {
   throw new Error("GitHub release JSON must contain an assets array.");
 }
 
+if (!Array.isArray(manifest.artifacts)) {
+  throw new Error("Release manifest must contain an artifacts array.");
+}
+
+const manifestArtifacts = manifest.artifacts.map(validateManifestArtifact);
+const { duplicateTypes, missingTypes } = publishArtifactStatus(manifestArtifacts);
+
+if (missingTypes.length > 0) {
+  throw new Error(`Release manifest missing artifact type(s): ${missingTypes.join(", ")}`);
+}
+
+if (duplicateTypes.length > 0) {
+  throw new Error(
+    `Release manifest must contain exactly one artifact per type; duplicate type(s): ${duplicateTypes.join(", ")}`
+  );
+}
+
 const expectedFiles = [
-  ...manifest.artifacts.map((artifact) => artifact.file),
+  ...manifestArtifacts.map((artifact) => artifact.file),
   "SHA256SUMS.txt",
   "RELEASE-MANIFEST.json",
   "lan-smoke-report.md",
@@ -106,6 +127,44 @@ for (const file of expectedFiles) {
 }
 
 console.log(`Verified ${expectedFiles.length} GitHub release asset(s) for v${packageVersion}.`);
+
+function validateManifestArtifact(artifact, index) {
+  if (!artifact || typeof artifact !== "object") {
+    throw new Error(`Release manifest artifact ${index} must be an object.`);
+  }
+
+  const { file, sha256, sizeBytes, type } = artifact;
+  if (typeof type !== "string" || !requiredArtifactTypes.has(type)) {
+    throw new Error(`Release manifest artifact ${index} has invalid type: ${String(type)}.`);
+  }
+
+  if (typeof file !== "string" || file.length === 0 || path.basename(file) !== file) {
+    throw new Error(`Release manifest artifact ${index} must use a basename-only file path.`);
+  }
+
+  const expectedExtension = requiredArtifactTypes.get(type);
+  if (path.extname(file).toLowerCase() !== expectedExtension) {
+    throw new Error(
+      `Release manifest ${type} artifact must use ${expectedExtension} extension: ${file}.`
+    );
+  }
+
+  if (!file.includes(`_${packageVersion}_`)) {
+    throw new Error(
+      `Release manifest ${type} artifact filename must include package version ${packageVersion}.`
+    );
+  }
+
+  if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new Error(`Release manifest ${type} artifact has invalid sha256.`);
+  }
+
+  if (!Number.isInteger(sizeBytes) || sizeBytes <= 0) {
+    throw new Error(`Release manifest ${type} artifact has invalid sizeBytes.`);
+  }
+
+  return { file, sha256, sizeBytes, type };
+}
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");

@@ -44,6 +44,44 @@ try {
     "GitHub release missing asset(s)"
   );
 
+  const duplicateType = fixture("duplicate-type", {
+    mutateManifest: (manifest) => ({
+      ...manifest,
+      artifacts: [
+        manifest.artifacts[0],
+        { ...manifest.artifacts[1], file: `RemoteShare_${packageVersion}_arm64-setup.exe` },
+        manifest.artifacts[1],
+        manifest.artifacts[2]
+      ]
+    })
+  });
+  fs.writeFileSync(path.join(duplicateType.assetsRoot, `RemoteShare_${packageVersion}_arm64-setup.exe`), "valid exe");
+  writeReleaseJson(duplicateType.releaseJson, duplicateType.assetsRoot);
+  runVerifier(
+    duplicateType.releaseJson,
+    duplicateType.assetsRoot,
+    false,
+    "duplicate manifest type should fail",
+    "duplicate type(s): exe"
+  );
+
+  const invalidHash = fixture("invalid-hash", {
+    mutateManifest: (manifest) => ({
+      ...manifest,
+      artifacts: manifest.artifacts.map((artifact) =>
+        artifact.type === "deb" ? { ...artifact, sha256: "not-a-sha256" } : artifact
+      )
+    })
+  });
+  writeReleaseJson(invalidHash.releaseJson, invalidHash.assetsRoot);
+  runVerifier(
+    invalidHash.releaseJson,
+    invalidHash.assetsRoot,
+    false,
+    "invalid manifest hash should fail",
+    "invalid sha256"
+  );
+
   const unexpected = fixture("unexpected");
   writeReleaseJson(unexpected.releaseJson, unexpected.assetsRoot, { extra: ["RemoteShare_extra.msi"] });
   runVerifier(
@@ -89,7 +127,7 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function fixture(name) {
+function fixture(name, options = {}) {
   const assetsRoot = path.join(root, name, "release-assets");
   const releaseJson = path.join(root, name, "github-release.json");
   fs.mkdirSync(assetsRoot, { recursive: true });
@@ -114,7 +152,7 @@ function fixture(name) {
   );
   fs.writeFileSync(
     path.join(assetsRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ version: packageVersion, artifacts }, null, 2)}\n`
+    `${JSON.stringify(options.mutateManifest?.({ version: packageVersion, artifacts }) ?? { version: packageVersion, artifacts }, null, 2)}\n`
   );
   fs.writeFileSync(path.join(assetsRoot, "lan-smoke-report.md"), "# LAN smoke report\n");
   fs.writeFileSync(path.join(assetsRoot, "release-candidate-summary.md"), "# Release candidate\n");
