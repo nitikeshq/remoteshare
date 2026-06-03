@@ -44,10 +44,10 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 6. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Use that endpoint row's `Evidence` button to capture the peer computer, label, endpoint, TCP port, and private-network state for the report. Record whether discovery was skipped, blocked, unavailable, or failed. Before pairing manually, record a successful TCP `44777` probe such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 7. If multiple endpoints are shown, prefer the `Best LAN IPv4` endpoint on the same Wi-Fi/LAN subnet as the other computer. Unique-local `LAN IPv6` or routable IPv6 fallback endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
 8. Confirm that both computers show the same six-digit code.
-9. Use the pending pairing row `Copy` button to capture direction, this computer, endpoint, visible code, typed-code state, local/remote approval, and expiry evidence.
+9. Use the pending pairing row `Copy` button to capture direction, this computer, endpoint, visible code, typed-code state, local/remote approval, and expiry evidence for the pair-action, visible-code, typed-code, and pairing-evidence report rows.
 10. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
 11. Verify that the device row shows `Trusted` and a shortened key fingerprint.
-12. Open `Trusted Device Audit` and use the peer row `Evidence` button to copy this computer, local fingerprint, peer, peer role, and peer fingerprint into the report.
+12. Open `Trusted Device Audit` and use the peer row `Evidence` button to copy this computer, local fingerprint, peer, peer role, and peer fingerprint into the trusted and fingerprint report rows.
 
 ## Reconnect
 

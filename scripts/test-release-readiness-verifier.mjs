@@ -404,6 +404,12 @@ function smokeReportFixture(name, passValue, options = {}) {
     "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Mac sender; Platform: macos; Role: Main; Choose roles: done - Set this Mac to Main; Mac input permissions: done - Accessibility and Input Monitoring granted; Find Windows client: done - Windows client trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Windows receive setup: done - Windows client receive ready; Verify input: done - key press r accepted";
   const windowsSetupEvidence =
     "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Windows receiver; Platform: windows; Role: Client; Choose roles: done - Set this Windows computer to Client; Windows receive ready: done - Native input injection ready; Find Mac sender: done - Mac sender trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Local receive permission: done - Allow incoming control and Receive enabled; Verify input: done - key press r accepted";
+  const autoPairingEvidence =
+    "Pairing: Outgoing; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left";
+  const manualPairingEvidence =
+    "Pairing: Incoming; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left";
+  const fingerprintEvidence =
+    "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const capturedEvidenceNote =
     options.includeCapturedEvidenceNote === false
       ? ""
@@ -444,12 +450,12 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | macOS IP/subnet | 192.168.1.10/24 |
 | Windows IP/subnet | 192.168.1.20/24 |
 | Peer appeared in \`Scan LAN\` | yes |
-| Pair action started | started |
-| Same six-digit code shown on both machines | confirmed |
-| Six-digit code typed on both machines | confirmed |
-| Pairing evidence copied from pending row | Pairing: Outgoing; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
-| \`Trusted\` shown on both machines | shown |
-| Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
+| Pair action started | ${autoPairingEvidence} |
+| Same six-digit code shown on both machines | ${autoPairingEvidence} |
+| Six-digit code typed on both machines | ${autoPairingEvidence} |
+| Pairing evidence copied from pending row | ${autoPairingEvidence} |
+| \`Trusted\` shown on both machines | ${fingerprintEvidence} |
+| Full fingerprint copied or visually compared | ${fingerprintEvidence} |
 | \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | Startup health; This computer: Mac sender; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago |
 | \`Check\` succeeded after restart/wake | ${autoReconnectEvidence} |
@@ -473,12 +479,12 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Copied endpoint label shown | ${localEndpointEvidence} |
 | Endpoint used | 192.168.1.20:44777 |
 | TCP \`44777\` reachable | reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded |
-| Pair action started | started |
-| Same six-digit code shown on both machines | confirmed |
-| Six-digit code typed on both machines | confirmed |
-| Pairing evidence copied from pending row | Pairing: Incoming; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
-| \`Trusted\` shown on both machines | shown |
-| Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
+| Pair action started | ${manualPairingEvidence} |
+| Same six-digit code shown on both machines | ${manualPairingEvidence} |
+| Six-digit code typed on both machines | ${manualPairingEvidence} |
+| Pairing evidence copied from pending row | ${manualPairingEvidence} |
+| \`Trusted\` shown on both machines | ${fingerprintEvidence} |
+| Full fingerprint copied or visually compared | ${fingerprintEvidence} |
 | \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | Startup health; This computer: Windows receiver; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago |
 | \`Check\` succeeded after restart/wake | ${manualReconnectEvidence} |

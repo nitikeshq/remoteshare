@@ -126,10 +126,6 @@ requirePass(autoDiscovery, "Auto-Discovery Run");
 requirePass(manualFallback, "Manual Fallback Run");
 
 const successFields = [
-  "Pair action started",
-  "Same six-digit code shown on both machines",
-  "Six-digit code typed on both machines",
-  "`Trusted` shown on both machines",
   "Capture started on sender and stopped cleanly"
 ];
 
@@ -141,6 +137,10 @@ requireFingerprintEvidence(autoDiscovery, "Auto-Discovery Run");
 requireFingerprintEvidence(manualFallback, "Manual Fallback Run");
 requirePairingEvidence(autoDiscovery, "Auto-Discovery Run");
 requirePairingEvidence(manualFallback, "Manual Fallback Run");
+requirePairingFlowEvidence(autoDiscovery, "Auto-Discovery Run");
+requirePairingFlowEvidence(manualFallback, "Manual Fallback Run");
+requireTrustedShownEvidence(autoDiscovery, "Auto-Discovery Run");
+requireTrustedShownEvidence(manualFallback, "Manual Fallback Run");
 requireReconnectEvidence(autoDiscovery, "Auto-Discovery Run");
 requireReconnectEvidence(manualFallback, "Manual Fallback Run");
 requireEndpointSourceEvidence(
@@ -262,6 +262,12 @@ function isSetupEvidence(value) {
 
 function requireFingerprintEvidence(table, section) {
   const value = requireFilled(table, "Full fingerprint copied or visually compared", section).toLowerCase();
+  if (!isFingerprintAuditEvidence(value)) {
+    throw new Error(`${section} fingerprint evidence must paste the Trusted Device Audit evidence output with this computer, local fingerprint, peer, and peer fingerprint.`);
+  }
+}
+
+function isFingerprintAuditEvidence(value) {
   if (
     !/trusted\s+device\s+audit/.test(value) ||
     !/this\s+computer:\s*[^;|]+/.test(value) ||
@@ -269,12 +275,36 @@ function requireFingerprintEvidence(table, section) {
     !/peer:\s*[^;|]+/.test(value) ||
     !/peer\s+fingerprint:\s*(?!unavailable\b)[a-f0-9][a-f0-9:\-\s]{15,}/.test(value)
   ) {
-    throw new Error(`${section} fingerprint evidence must paste the Trusted Device Audit evidence output with this computer, local fingerprint, peer, and peer fingerprint.`);
+    return false;
   }
+  return true;
 }
 
 function requirePairingEvidence(table, section) {
   const value = requireFilled(table, "Pairing evidence copied from pending row", section).toLowerCase();
+  if (!isPairingCopyEvidence(value)) {
+    throw new Error(`${section} pairing evidence must paste the pending-row copy output with direction, this computer, visible code, typed-code state, local/remote approval, and expiry.`);
+  }
+}
+
+function requirePairingFlowEvidence(table, section) {
+  const pairAction = requireFilled(table, "Pair action started", section).toLowerCase();
+  if (!isPairingCopyEvidence(pairAction)) {
+    throw new Error(`${section} pair action evidence must paste the pending-row copy output after Pair is started.`);
+  }
+
+  const codeShown = requireFilled(table, "Same six-digit code shown on both machines", section).toLowerCase();
+  if (!isPairingCopyEvidence(codeShown) || !/visible\s+code:\s*\d{6}/.test(codeShown)) {
+    throw new Error(`${section} visible code evidence must paste the pending-row copy output with the six-digit visible code.`);
+  }
+
+  const codeTyped = requireFilled(table, "Six-digit code typed on both machines", section).toLowerCase();
+  if (!isPairingCopyEvidence(codeTyped) || !/typed\s+code\s+state:\s*codes\s+match/.test(codeTyped)) {
+    throw new Error(`${section} typed-code evidence must paste the pending-row copy output with Typed code state: Codes match.`);
+  }
+}
+
+function isPairingCopyEvidence(value) {
   if (
     !/pairing:\s*(incoming|outgoing)/.test(value) ||
     !/this\s+computer:\s*[^;|]+/.test(value) ||
@@ -284,7 +314,15 @@ function requirePairingEvidence(table, section) {
     !/remote:\s*(approved|pending)/.test(value) ||
     !/expires:/.test(value)
   ) {
-    throw new Error(`${section} pairing evidence must paste the pending-row copy output with direction, this computer, visible code, typed-code state, local/remote approval, and expiry.`);
+    return false;
+  }
+  return true;
+}
+
+function requireTrustedShownEvidence(table, section) {
+  const value = requireFilled(table, "`Trusted` shown on both machines", section).toLowerCase();
+  if (!isFingerprintAuditEvidence(value)) {
+    throw new Error(`${section} trusted evidence must paste the Trusted Device Audit evidence output after trust is shown on both machines.`);
   }
 }
 

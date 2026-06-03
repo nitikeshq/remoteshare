@@ -367,7 +367,7 @@ try {
     positivePrefixFailure,
     false,
     "positive-prefix failure evidence should fail",
-    "Auto-Discovery Run field must show success: Pair action started"
+    "Auto-Discovery Run pair action evidence must paste the pending-row copy output"
   );
 
   const autoCodeNotTyped = writeReport("auto-code-not-typed.md", {
@@ -380,7 +380,7 @@ try {
     autoCodeNotTyped,
     false,
     "auto typed-code failure should fail",
-    "Auto-Discovery Run field must show success: Six-digit code typed on both machines"
+    "Auto-Discovery Run typed-code evidence must paste the pending-row copy output"
   );
 
   const manualCodeNotTyped = writeReport("manual-code-not-typed.md", {
@@ -393,7 +393,7 @@ try {
     manualCodeNotTyped,
     false,
     "manual typed-code failure should fail",
-    "Manual Fallback Run field must show success: Six-digit code typed on both machines"
+    "Manual Fallback Run typed-code evidence must paste the pending-row copy output"
   );
 
   const vaguePairingEvidence = writeReport("vague-pairing-evidence.md", {
@@ -407,6 +407,32 @@ try {
     false,
     "vague pairing evidence should fail",
     "Auto-Discovery Run pairing evidence must paste the pending-row copy output"
+  );
+
+  const vagueVisibleCode = writeReport("vague-visible-code.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCodeShown: "confirmed"
+  });
+  runVerifier(
+    vagueVisibleCode,
+    false,
+    "vague visible code evidence should fail",
+    "Auto-Discovery Run visible code evidence must paste the pending-row copy output"
+  );
+
+  const vagueTrustedShown = writeReport("vague-trusted-shown.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoTrustedShown: "shown"
+  });
+  runVerifier(
+    vagueTrustedShown,
+    false,
+    "vague trusted evidence should fail",
+    "Auto-Discovery Run trusted evidence must paste the Trusted Device Audit evidence output"
   );
 
   const vagueReconnect = writeReport("vague-reconnect.md", {
@@ -932,7 +958,7 @@ try {
     noneSuccess,
     false,
     "none should not satisfy success evidence",
-    "Auto-Discovery Run field must show success: Pair action started"
+    "Auto-Discovery Run pair action evidence must paste the pending-row copy output"
   );
 
   const wrongReportVersion = writeReport("wrong-report-version.md", {
@@ -1271,17 +1297,22 @@ function writeReport(name, options) {
     options.manualEndpointCopied ?? localEndpointEvidence;
   const manualEndpointLabel =
     options.manualEndpointLabel ?? localEndpointEvidence;
-  const manualTcpReachable =
-    options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
-  const autoPairAction = options.autoPairAction ?? "started";
-  const autoCodeTyped = options.autoCodeTyped ?? "confirmed";
   const autoPairingEvidence =
     options.autoPairingEvidence ??
     "Pairing: Outgoing; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left";
-  const manualCodeTyped = options.manualCodeTyped ?? "confirmed";
   const manualPairingEvidence =
     options.manualPairingEvidence ??
     "Pairing: Incoming; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left";
+  const manualTcpReachable =
+    options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
+  const autoPairAction = options.autoPairAction ?? autoPairingEvidence;
+  const autoCodeShown = options.autoCodeShown ?? autoPairingEvidence;
+  const autoCodeTyped = options.autoCodeTyped ?? autoPairingEvidence;
+  const autoTrustedShown = options.autoTrustedShown ?? autoFingerprint;
+  const manualPairAction = options.manualPairAction ?? manualPairingEvidence;
+  const manualCodeShown = options.manualCodeShown ?? manualPairingEvidence;
+  const manualCodeTyped = options.manualCodeTyped ?? manualPairingEvidence;
+  const manualTrustedShown = options.manualTrustedShown ?? manualFingerprint;
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
   const macSetupEvidence =
@@ -1346,10 +1377,10 @@ function writeReport(name, options) {
     `| Windows IP/subnet | ${windowsIpSubnet} |`,
     "| Peer appeared in `Scan LAN` | yes |",
     `| Pair action started | ${autoPairAction} |`,
-    "| Same six-digit code shown on both machines | confirmed |",
+    `| Same six-digit code shown on both machines | ${autoCodeShown} |`,
     `| Six-digit code typed on both machines | ${autoCodeTyped} |`,
     `| Pairing evidence copied from pending row | ${autoPairingEvidence} |`,
-    "| `Trusted` shown on both machines | shown |",
+    `| \`Trusted\` shown on both machines | ${autoTrustedShown} |`,
     `| Full fingerprint copied or visually compared | ${autoFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEnabled} |`,
     `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${autoStartupHealth} |`,
@@ -1375,11 +1406,11 @@ function writeReport(name, options) {
     `| Copied endpoint label shown | ${manualEndpointLabel} |`,
     `| Endpoint used | ${manualEndpoint} |`,
     `| TCP \`44777\` reachable | ${manualTcpReachable} |`,
-    "| Pair action started | started |",
-    "| Same six-digit code shown on both machines | confirmed |",
+    `| Pair action started | ${manualPairAction} |`,
+    `| Same six-digit code shown on both machines | ${manualCodeShown} |`,
     `| Six-digit code typed on both machines | ${manualCodeTyped} |`,
     `| Pairing evidence copied from pending row | ${manualPairingEvidence} |`,
-    "| `Trusted` shown on both machines | shown |",
+    `| \`Trusted\` shown on both machines | ${manualTrustedShown} |`,
     `| Full fingerprint copied or visually compared | ${manualFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEnabled} |`,
     `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${manualStartupHealth} |`,
