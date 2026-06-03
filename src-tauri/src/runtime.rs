@@ -1862,13 +1862,15 @@ impl RuntimeStore {
         let trusted = trusted_device.is_some();
         let trusted_identity_match = trusted_device
             .is_some_and(|device| trusted_device_matches_source(device, source));
+        let source_send_role_enabled = source.role.can_send_input();
         let device_incoming_enabled = trusted_device
             .map(|device| device.allow_incoming_control)
             .unwrap_or(false);
         let accepted = receive_role_enabled
             && global_incoming_enabled
             && device_incoming_enabled
-            && trusted_identity_match;
+            && trusted_identity_match
+            && source_send_role_enabled;
 
         if !trusted {
             return NetworkAction {
@@ -1881,6 +1883,14 @@ impl RuntimeStore {
             return NetworkAction {
                 ok: false,
                 message: "Rejected input event because trusted identity does not match."
+                    .to_string(),
+            };
+        }
+
+        if !source_send_role_enabled {
+            return NetworkAction {
+                ok: false,
+                message: "Rejected input event because trusted source role is not Main or Both."
                     .to_string(),
             };
         }
@@ -3766,7 +3776,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -3779,7 +3789,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -3810,6 +3820,48 @@ mod tests {
         }
 
         assert!(store.authorize_incoming_input(&source).ok);
+    }
+
+    #[test]
+    fn incoming_input_authorization_rejects_non_sender_source_role() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-source-role"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.settings.allow_incoming_control = true;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Client".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: true,
+            });
+        }
+
+        let source = PairingPeer {
+            device_id: "trusted-device".to_string(),
+            name: "Trusted Client".to_string(),
+            platform: "windows".to_string(),
+            role: ComputerRole::Client,
+            control_port: 44777,
+            public_key_fingerprint: "trusted-fingerprint".to_string(),
+            public_key: String::new(),
+        };
+
+        let action = store.authorize_incoming_input(&source);
+
+        assert!(!action.ok);
+        assert_eq!(
+            action.message,
+            "Rejected input event because trusted source role is not Main or Both."
+        );
     }
 
     #[test]
@@ -4152,7 +4204,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: trusted_fingerprint.clone(),
                 public_key: Some(trusted_public_key.clone()),
                 shared_secret: Some("shared-secret".to_string()),
@@ -4166,7 +4218,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: trusted_fingerprint.clone(),
             public_key: trusted_public_key,
@@ -4177,7 +4229,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: trusted_fingerprint,
             public_key: other_public_key,
@@ -4193,7 +4245,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: other_fingerprint,
             public_key: String::new(),
@@ -7779,7 +7831,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -7793,7 +7845,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
@@ -7816,7 +7868,7 @@ mod tests {
                 id: "trusted-device".to_string(),
                 name: "Trusted Mac".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: "trusted-fingerprint".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret".to_string()),
@@ -7830,7 +7882,7 @@ mod tests {
             device_id: "trusted-device".to_string(),
             name: "Trusted Mac".to_string(),
             platform: "macos".to_string(),
-            role: ComputerRole::Client,
+            role: ComputerRole::Main,
             control_port: 44777,
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: String::new(),
