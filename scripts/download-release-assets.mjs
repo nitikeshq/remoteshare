@@ -14,6 +14,7 @@ if (args.includes("--help") || args.includes("-h")) {
 
 const tag = args[0] ?? expectedTag;
 const outputDir = args[1] ?? "release-assets";
+const outputParent = path.dirname(path.resolve(outputDir));
 
 if (tag !== expectedTag) {
   throw new Error(
@@ -27,23 +28,33 @@ if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length > 0) {
   );
 }
 
-fs.mkdirSync(outputDir, { recursive: true });
+fs.mkdirSync(outputParent, { recursive: true });
+const stagingDir = fs.mkdtempSync(path.join(outputParent, ".remoteshare-release-assets-"));
 
-const releaseJsonPath = path.join(outputDir, "github-release.json");
-const release = run("gh", [
-  "release",
-  "view",
-  tag,
-  "--json",
-  "tagName,isDraft,assets,url"
-], { echoOutput: false });
-fs.writeFileSync(releaseJsonPath, release.stdout);
+try {
+  const releaseJsonPath = path.join(stagingDir, "github-release.json");
+  const release = run("gh", [
+    "release",
+    "view",
+    tag,
+    "--json",
+    "tagName,isDraft,assets,url"
+  ], { echoOutput: false });
+  fs.writeFileSync(releaseJsonPath, release.stdout);
 
-run("gh", ["release", "download", tag, "--dir", outputDir]);
-run(process.execPath, ["scripts/verify-github-release-assets.mjs", releaseJsonPath, outputDir]);
-run(process.execPath, ["scripts/verify-release-manifest.mjs", outputDir]);
+  run("gh", ["release", "download", tag, "--dir", stagingDir]);
+  run(process.execPath, ["scripts/verify-github-release-assets.mjs", releaseJsonPath, stagingDir]);
+  run(process.execPath, ["scripts/verify-release-manifest.mjs", stagingDir]);
 
-console.log(`Downloaded and verified ${tag} release assets in ${outputDir}.`);
+  if (fs.existsSync(outputDir)) {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  }
+  fs.renameSync(stagingDir, outputDir);
+  console.log(`Downloaded and verified ${tag} release assets in ${outputDir}.`);
+} catch (error) {
+  fs.rmSync(stagingDir, { recursive: true, force: true });
+  throw error;
+}
 
 function run(command, commandArgs, options = {}) {
   const { echoOutput = true } = options;

@@ -42,12 +42,30 @@ try {
     [`Release tag must match package version v${packageVersion}`]
   );
 
+  const invalidFixture = releaseFixture("invalid-downloaded-manifest", {
+    mutateManifest: (manifest) => {
+      const { generatedAt: _generatedAt, ...withoutGeneratedAt } = manifest;
+      return withoutGeneratedAt;
+    }
+  });
+  const invalidFakeBin = fakeGhBin(invalidFixture);
+  const failedOutputDir = path.join(root, "failed-download-output");
+  runDownloader(
+    invalidFakeBin,
+    [`v${packageVersion}`, failedOutputDir],
+    false,
+    "failed verification should not publish output",
+    ["generatedAt must be a valid ISO-8601 UTC timestamp"]
+  );
+  assertMissing(failedOutputDir, "github-release.json");
+  assertMissing(failedOutputDir, "RELEASE-MANIFEST.json");
+
   console.log("Download release assets tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function releaseFixture(name) {
+function releaseFixture(name, options = {}) {
   const assetsRoot = path.join(root, name, "assets");
   fs.mkdirSync(assetsRoot, { recursive: true });
   const artifacts = [
@@ -70,7 +88,15 @@ function releaseFixture(name) {
   );
   fs.writeFileSync(
     path.join(assetsRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ version: packageVersion, generatedAt, artifacts }, null, 2)}\n`
+    `${JSON.stringify(
+      options.mutateManifest?.({ version: packageVersion, generatedAt, artifacts }) ?? {
+        version: packageVersion,
+        generatedAt,
+        artifacts
+      },
+      null,
+      2
+    )}\n`
   );
   fs.writeFileSync(path.join(assetsRoot, "lan-smoke-report.md"), "# LAN smoke report\n");
   fs.writeFileSync(path.join(assetsRoot, "release-candidate-summary.md"), "# Release candidate\n");
@@ -172,6 +198,13 @@ function assertExists(directory, file) {
   const filePath = path.join(directory, file);
   if (!fs.existsSync(filePath)) {
     throw new Error(`Expected downloaded asset to exist: ${filePath}`);
+  }
+}
+
+function assertMissing(directory, file) {
+  const filePath = path.join(directory, file);
+  if (fs.existsSync(filePath)) {
+    throw new Error(`Expected failed download to keep output clean: ${filePath}`);
   }
 }
 
