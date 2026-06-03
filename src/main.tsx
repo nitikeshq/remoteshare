@@ -1177,6 +1177,11 @@ function App() {
   }
 
   async function copyTrustedEndpointUpdateEvidence(device: Device) {
+    if (!manualEndpoint.trim()) {
+      showActionMessage("Paste the copied endpoint before copying trusted IP evidence.", true);
+      return;
+    }
+
     const evidence = trustedEndpointUpdateEvidence(status, device, manualEndpoint);
     try {
       await navigator.clipboard.writeText(evidence);
@@ -1424,6 +1429,10 @@ function App() {
   const requestInputPermissionsActive = actionIsActive("request-input-permissions");
   const refreshStatusActive = actionIsActive("refresh-status");
   const manualFormActive = loading || manualConnectActive || clearManualEndpointActive;
+  const trustedEndpointEvidenceReady = Boolean(manualEndpoint.trim());
+  const trustedEndpointEvidenceTitle = trustedEndpointEvidenceReady
+    ? "Copy trusted IP evidence"
+    : "Paste the copied endpoint before copying trusted IP evidence.";
   const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
     [trustedDevices]
@@ -2457,9 +2466,9 @@ function App() {
               <button
                 className="manual-evidence-copy"
                 type="button"
-                disabled={manualFormActive}
+                disabled={manualFormActive || !trustedEndpointEvidenceReady}
                 onClick={() => copyTrustedEndpointUpdateEvidence(endpointUpdateDevice)}
-                title="Copy trusted IP evidence"
+                title={trustedEndpointEvidenceTitle}
               >
                 <Copy size={12} />
                 <span>Copy</span>
