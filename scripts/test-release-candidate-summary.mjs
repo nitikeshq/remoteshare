@@ -27,6 +27,8 @@ try {
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
+  assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
+  assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
 
   const missingManifest = path.join(root, "missing-manifest");
   fs.mkdirSync(missingManifest, { recursive: true });
