@@ -4,8 +4,9 @@ export function localEndpointHost(endpoint: string) {
     const end = trimmed.indexOf("]");
     return end > 1 ? trimmed.slice(1, end) : trimmed;
   }
-  const colon = trimmed.lastIndexOf(":");
-  return colon > -1 ? trimmed.slice(0, colon) : trimmed;
+  const firstColon = trimmed.indexOf(":");
+  const lastColon = trimmed.lastIndexOf(":");
+  return firstColon > -1 && firstColon === lastColon ? trimmed.slice(0, firstColon) : trimmed;
 }
 
 export function isPrivateIpv4(host: string) {

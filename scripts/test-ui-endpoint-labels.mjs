@@ -40,7 +40,10 @@ try {
   assert.equal(labels.localEndpointChoiceLabel("192.168.1.21:44777", 1), "LAN IPv4");
   assert.equal(labels.localEndpointChoiceLabel("[fd12:3456:789a::10]:44777", 2), "LAN IPv6");
   assert.equal(labels.localEndpointChoiceLabel("[FD12:3456:789A::10]:44777", 2), "LAN IPv6");
+  assert.equal(labels.localEndpointChoiceLabel("fd12:3456:789a::10", 2), "LAN IPv6");
+  assert.equal(labels.localEndpointChoiceLabel("FD12:3456:789A::10", 2), "LAN IPv6");
   assert.equal(labels.localEndpointChoiceLabel("[2001:db8::20]:44777", 3), "IPv6 fallback");
+  assert.equal(labels.localEndpointChoiceLabel("2001:db8::20", 3), "IPv6 fallback");
   assert.equal(labels.localEndpointChoiceLabel("203.0.113.20:44777", 4), "Fallback IPv4");
 
   console.log("UI endpoint label tests passed.");
