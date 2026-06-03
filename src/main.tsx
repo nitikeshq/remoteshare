@@ -464,7 +464,9 @@ function mvpReceiveStep(
       done:
         canReceiveInput(role) &&
         allowIncomingControl &&
-        trustedDevices.some((device) => device.allowIncomingControl),
+        trustedDevices.some(
+          (device) => canSendInput(device.role) && device.allowIncomingControl
+        ),
       detail:
         "Use the input-control Enable shortcut, or turn on Allow incoming control and Receive for the trusted Mac row."
     };
@@ -484,7 +486,9 @@ function mvpReceiveStep(
 
   return {
     label: "Enable receive",
-    done: allowIncomingControl && trustedDevices.some((device) => device.allowIncomingControl),
+    done:
+      allowIncomingControl &&
+      trustedDevices.some((device) => canSendInput(device.role) && device.allowIncomingControl),
     detail: "Enable incoming control on the receiver before sending input."
   };
 }
@@ -1256,6 +1260,11 @@ function App() {
   }
 
   async function updateDeviceControl(device: Device, value: boolean) {
+    if (value && !canSendInput(device.role)) {
+      showActionMessage("Set the trusted device role to Main or Both before enabling receive.", true);
+      return;
+    }
+
     await runExclusiveAction(`receive:${device.id}`, async () => {
       const action = await invokeNetworkAction("update_device_control", {
         request: { deviceId: device.id, allowIncomingControl: value }
@@ -1420,13 +1429,20 @@ function App() {
     () => status.devices.filter((device) => device.trusted),
     [status.devices]
   );
-  const trustedDevicesNeedingReceive = useMemo(
-    () => trustedDevices.filter((device) => !device.allowIncomingControl),
+  const trustedSenderDevices = useMemo(
+    () =>
+      trustedDevices.filter(
+        (device) => device.inputControlReady && canSendInput(device.role)
+      ),
     [trustedDevices]
+  );
+  const trustedDevicesNeedingReceive = useMemo(
+    () => trustedSenderDevices.filter((device) => !device.allowIncomingControl),
+    [trustedSenderDevices]
   );
   const receiveShortcutAvailable =
     canReceiveInput(status.mode) &&
-    trustedDevices.length > 0 &&
+    trustedSenderDevices.length > 0 &&
     (!status.allowIncomingControl || trustedDevicesNeedingReceive.length > 0);
   const receiveShortcutButtonLabel = receiveShortcutLabel(
     status.allowIncomingControl,
@@ -1987,6 +2003,7 @@ function App() {
               const deviceActionActive =
                 pairActive || checkActive || testActive || captureActive || receiveActive || forgetActive;
               const targetReceiveReady = canReceiveInput(device.role);
+              const sourceSendReady = canSendInput(device.role);
 
               return (
               <article className="device-row" key={device.id}>
@@ -2161,6 +2178,8 @@ function App() {
                       title={
                         !receiveRoleReady
                           ? "Set this computer role to Client or Both before receiving input."
+                          : !sourceSendReady
+                          ? "Set the trusted device role to Main or Both before enabling receive."
                           : device.inputControlReady
                           ? "Allow this trusted device to control this computer."
                           : "Re-pair this device before enabling receive."
@@ -2170,10 +2189,16 @@ function App() {
                       <input
                         type="checkbox"
                         checked={device.allowIncomingControl}
-                        disabled={!device.inputControlReady || !receiveRoleReady || deviceActionActive}
+                        disabled={
+                          !device.inputControlReady ||
+                          !receiveRoleReady ||
+                          !sourceSendReady ||
+                          deviceActionActive
+                        }
                         onChange={(event) => updateDeviceControl(device, event.target.checked)}
                       />
                       {!device.inputControlReady && <em>Re-pair</em>}
+                      {device.inputControlReady && !sourceSendReady && <em>Role</em>}
                     </label>
                     <button
                       className="receive-evidence-copy"

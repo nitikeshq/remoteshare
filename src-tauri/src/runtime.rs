@@ -23,6 +23,8 @@ pub(crate) const TRUSTED_ENDPOINT_REPAIR_MESSAGE: &str =
     "Trusted device needs to be re-paired before endpoint verification.";
 pub(crate) const TARGET_RECEIVE_ROLE_MESSAGE: &str =
     "Set the target computer role to Client or Both before input control.";
+pub(crate) const TRUSTED_DEVICE_SEND_ROLE_MESSAGE: &str =
+    "Set the trusted device role to Main or Both before enabling receive.";
 
 #[derive(Debug, Clone)]
 struct EndpointSanitization {
@@ -775,6 +777,15 @@ impl RuntimeStore {
             };
         }
 
+        if request.allow_incoming_control
+            && !trusted_device_effective_role(&state, device).can_send_input()
+        {
+            return NetworkAction {
+                ok: false,
+                message: TRUSTED_DEVICE_SEND_ROLE_MESSAGE.to_string(),
+            };
+        }
+
         device.allow_incoming_control = request.allow_incoming_control;
         match persisted.save() {
             Ok(()) => {
@@ -813,19 +824,31 @@ impl RuntimeStore {
             .persisted
             .trusted_devices
             .iter()
-            .filter(|device| device.shared_secret.is_some())
+            .filter(|device| {
+                device.shared_secret.is_some()
+                    && trusted_device_effective_role(&state, device).can_send_input()
+            })
             .count();
         if ready_count == 0 {
             return NetworkAction {
                 ok: false,
-                message: "Re-pair a trusted device before enabling receive.".to_string(),
+                message: "Re-pair a sender-capable trusted device before enabling receive."
+                    .to_string(),
             };
         }
 
         let mut persisted = state.persisted.clone();
         persisted.settings.allow_incoming_control = true;
         for device in &mut persisted.trusted_devices {
-            if device.shared_secret.is_some() {
+            if device.shared_secret.is_some()
+                && trusted_device_effective_role_from_peer(
+                    device,
+                    state.discovered_peers.get(&device.id).filter(|peer| {
+                        peer_is_fresh(peer, now_ms()) && peer_matches_trusted_device(peer, device)
+                    }),
+                )
+                .can_send_input()
+            {
                 device.allow_incoming_control = true;
             }
         }
@@ -3012,7 +3035,7 @@ mod tests {
     use super::{
         input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE,
         PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE, TARGET_RECEIVE_ROLE_MESSAGE,
-        TRUSTED_ENDPOINT_REPAIR_MESSAGE,
+        TRUSTED_DEVICE_SEND_ROLE_MESSAGE, TRUSTED_ENDPOINT_REPAIR_MESSAGE,
     };
     use super::{
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
@@ -3808,7 +3831,7 @@ mod tests {
                 id: "trusted-device-1".to_string(),
                 name: "Trusted Mac 1".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: "trusted-fingerprint-1".to_string(),
                 public_key: None,
                 shared_secret: Some("shared-secret-1".to_string()),
@@ -3820,7 +3843,7 @@ mod tests {
                 id: "trusted-device-2".to_string(),
                 name: "Trusted Mac 2".to_string(),
                 platform: "macos".to_string(),
-                role: ComputerRole::Client,
+                role: ComputerRole::Main,
                 public_key_fingerprint: "trusted-fingerprint-2".to_string(),
                 public_key: None,
                 shared_secret: None,
@@ -3877,12 +3900,66 @@ mod tests {
         assert!(!action.ok);
         assert_eq!(
             action.message,
-            "Re-pair a trusted device before enabling receive."
+            "Re-pair a sender-capable trusted device before enabling receive."
         );
 
         let status = store.status();
         assert!(!status.allow_incoming_control);
         assert!(!status.devices[0].allow_incoming_control);
+    }
+
+    #[test]
+    fn receive_shortcut_skips_non_sender_trusted_devices() {
+        crate::identity::set_test_config_dir(unique_test_dir("receive-shortcut-non-sender"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "sender-device".to_string(),
+                name: "Sender Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "sender-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("sender-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "client-device".to_string(),
+                name: "Client Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "client-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("client-secret".to_string()),
+                last_endpoint: Some("192.168.1.51:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.enable_receive_for_trusted_devices();
+        assert!(action.ok, "{}", action.message);
+        assert_eq!(action.message, "Receive enabled for 1 trusted device.");
+
+        let status = store.status();
+        assert!(status.allow_incoming_control);
+        assert!(status
+            .devices
+            .iter()
+            .find(|device| device.id == "sender-device")
+            .expect("sender device should be listed")
+            .allow_incoming_control);
+        assert!(!status
+            .devices
+            .iter()
+            .find(|device| device.id == "client-device")
+            .expect("client device should be listed")
+            .allow_incoming_control);
     }
 
     #[test]
@@ -3975,6 +4052,29 @@ mod tests {
         });
         assert!(!stale.ok);
         assert_eq!(stale.message, "Re-pair this device before enabling receive.");
+
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "client-device".to_string(),
+                name: "Client Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "client-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("client-secret".to_string()),
+                last_endpoint: Some("192.168.1.52:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let non_sender = store.update_device_control(super::DeviceControlUpdateRequest {
+            device_id: "client-device".to_string(),
+            allow_incoming_control: true,
+        });
+        assert!(!non_sender.ok);
+        assert_eq!(non_sender.message, TRUSTED_DEVICE_SEND_ROLE_MESSAGE);
 
         let ready = store.update_device_control(super::DeviceControlUpdateRequest {
             device_id: "ready-device".to_string(),
