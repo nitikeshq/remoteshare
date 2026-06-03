@@ -304,6 +304,32 @@ try {
     "Auto-Discovery Run field must show success: Pair action started"
   );
 
+  const autoCodeNotTyped = writeReport("auto-code-not-typed.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCodeTyped: "not typed on Windows"
+  });
+  runVerifier(
+    autoCodeNotTyped,
+    false,
+    "auto typed-code failure should fail",
+    "Auto-Discovery Run field must show success: Six-digit code typed on both machines"
+  );
+
+  const manualCodeNotTyped = writeReport("manual-code-not-typed.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualCodeTyped: "not typed on macOS"
+  });
+  runVerifier(
+    manualCodeNotTyped,
+    false,
+    "manual typed-code failure should fail",
+    "Manual Fallback Run field must show success: Six-digit code typed on both machines"
+  );
+
   const vagueReconnect = writeReport("vague-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -943,6 +969,8 @@ function writeReport(name, options) {
   const manualTcpReachable =
     options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
   const autoPairAction = options.autoPairAction ?? "started";
+  const autoCodeTyped = options.autoCodeTyped ?? "confirmed";
+  const manualCodeTyped = options.manualCodeTyped ?? "confirmed";
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
   const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
@@ -995,7 +1023,7 @@ function writeReport(name, options) {
     "| Peer appeared in `Scan LAN` | yes |",
     `| Pair action started | ${autoPairAction} |`,
     "| Same six-digit code shown on both machines | confirmed |",
-    "| Six-digit code typed on both machines | confirmed |",
+    `| Six-digit code typed on both machines | ${autoCodeTyped} |`,
     "| `Trusted` shown on both machines | shown |",
     `| Full fingerprint copied or visually compared | ${autoFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEnabled} |`,
@@ -1024,7 +1052,7 @@ function writeReport(name, options) {
     `| TCP \`44777\` reachable | ${manualTcpReachable} |`,
     "| Pair action started | started |",
     "| Same six-digit code shown on both machines | confirmed |",
-    "| Six-digit code typed on both machines | confirmed |",
+    `| Six-digit code typed on both machines | ${manualCodeTyped} |`,
     "| `Trusted` shown on both machines | shown |",
     `| Full fingerprint copied or visually compared | ${manualFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEnabled} |`,
