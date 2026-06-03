@@ -335,6 +335,18 @@ function inputEventDetailLabel(event: InputEventRecord) {
   return `Reason: ${event.detail}`;
 }
 
+function inputEventEvidence(event: InputEventRecord, devices: Device[]) {
+  const detail = inputEventDetailLabel(event);
+  return [
+    `Input Transport: ${inputEventDirectionLabel(event)}`,
+    `Summary: ${event.summary}`,
+    `Device: ${inputEventDeviceLabel(event, devices)}`,
+    `Time: ${elapsedLabel(event.atMs)}`,
+    `Status: ${inputEventStatusLabel(event)}`,
+    ...(detail ? [detail] : [])
+  ].join(" | ");
+}
+
 function approvalLabel(approved: boolean) {
   return approved ? "approved" : "pending";
 }
@@ -927,6 +939,16 @@ function App() {
       showActionMessage("Copied startup health evidence.");
     } catch {
       showActionMessage(`Copy failed. Startup health evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyInputEventEvidence(event: InputEventRecord) {
+    const evidence = inputEventEvidence(event, status.devices);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied input transport evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Input transport evidence: ${evidence}`, true);
     }
   }
 
@@ -1875,6 +1897,15 @@ function App() {
                       {deviceLabel} · {elapsedLabel(event.atMs)}
                     </small>
                     <em>{inputEventStatusLabel(event)}</em>
+                    <button
+                      className="event-evidence-copy"
+                      onClick={() => copyInputEventEvidence(event)}
+                      title="Copy input transport evidence"
+                      type="button"
+                    >
+                      <Copy size={12} />
+                      <span>Copy</span>
+                    </button>
                   </div>
                 );
               })}

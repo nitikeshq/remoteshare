@@ -543,7 +543,7 @@ input {
 
 .event-row {
   display: grid;
-  grid-template-columns: 20px auto minmax(120px, 1fr) minmax(120px, auto) auto;
+  grid-template-columns: 20px auto minmax(120px, 1fr) minmax(120px, auto) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 38px;
@@ -581,6 +581,27 @@ input {
 .event-copy strong {
   color: #1f2933;
   font-weight: 700;
+}
+
+.event-evidence-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  border: 1px solid #bdd5d1;
+  border-radius: 8px;
+  padding: 0 7px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.event-evidence-copy span {
+  color: inherit;
+  font-size: inherit;
 }
 
 .event-detail {
