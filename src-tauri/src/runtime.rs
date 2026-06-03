@@ -5359,6 +5359,64 @@ mod tests {
     }
 
     #[test]
+    fn manual_trusted_endpoint_failure_clears_matching_health() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-failure-clears-health"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+        }
+
+        store.record_manual_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.50:44777",
+            "manual verify timed out",
+        );
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert!(!device.online);
+        let failure = device
+            .last_connection_failure
+            .as_ref()
+            .expect("manual failure should be visible");
+        assert_eq!(failure.endpoint, "192.168.1.50:44777");
+        assert!(matches!(
+            failure.endpoint_source,
+            super::EndpointSource::Manual
+        ));
+        assert_eq!(failure.message, "manual verify timed out");
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
+    }
+
+    #[test]
     fn trusted_connection_recording_ignores_unknown_device_without_ghost_health() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-record-unknown-device"));
 
