@@ -243,6 +243,46 @@ try {
     "Verified LAN smoke report"
   );
 
+  const duplicateBlockingIssueNotes = writeReport("duplicate-blocking-issue-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: RS-123",
+      "- Blocking issues: none",
+      "- Retest required: no"
+    ]
+  });
+  runVerifier(
+    duplicateBlockingIssueNotes,
+    false,
+    "duplicate blocking issue notes should fail",
+    "Duplicate LAN smoke report note in Notes: Blocking issues"
+  );
+
+  const duplicateRetestNotes = writeReport("duplicate-retest-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: none",
+      "- Retest required: yes after firewall change",
+      "- Retest required: no"
+    ]
+  });
+  runVerifier(
+    duplicateRetestNotes,
+    false,
+    "duplicate retest notes should fail",
+    "Duplicate LAN smoke report note in Notes: Retest required"
+  );
+
   const failedReconnect = writeReport("failed-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",

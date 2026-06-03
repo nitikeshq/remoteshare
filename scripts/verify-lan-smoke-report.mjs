@@ -516,7 +516,11 @@ function parseNotes(markdown) {
 
     const note = line.match(/^-\s*([^:]+):\s*(.*)$/);
     if (!note) continue;
-    notes.set(note[1].trim().toLowerCase(), note[2].trim());
+    const key = note[1].trim().toLowerCase();
+    if (notes.has(key)) {
+      throw new Error(`Duplicate LAN smoke report note in Notes: ${note[1].trim()}`);
+    }
+    notes.set(key, note[2].trim());
   }
 
   return notes;
