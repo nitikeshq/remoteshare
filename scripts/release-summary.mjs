@@ -159,6 +159,7 @@ if (!manifestExists) {
   }
 } else {
   console.log(`Release manifest: ${manifestPath}`);
+  console.log(`Release manifest generatedAt: ${manifestStatus.generatedAt}`);
 }
 
 function readChecksumFile(file) {
@@ -249,7 +250,11 @@ function readManifestStatus(file) {
       }
     }
 
-    return { files: new Set(artifacts.map((artifact) => artifact.file)), issue: null };
+    return {
+      files: new Set(artifacts.map((artifact) => artifact.file)),
+      generatedAt: manifest.generatedAt,
+      issue: null
+    };
   } catch (error) {
     return { files: null, issue: error.message };
   }

@@ -25,7 +25,8 @@ try {
     "Linux DEB: missing; build on Ubuntu/Linux runner",
     "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing).",
     "Checksum file:",
-    "Release manifest:"
+    "Release manifest:",
+    `Release manifest generatedAt: ${generatedAt}`
   ]);
 
   const missingChecksumRoot = fixture(
@@ -109,7 +110,8 @@ try {
     "macOS DMG: present (1)",
     "Windows EXE: present (1)",
     "Linux DEB: present (1)",
-    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, and version-matched."
+    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, and version-matched.",
+    `Release manifest generatedAt: ${generatedAt}`
   ]);
 
   const duplicateRoot = fixture("duplicate", [
