@@ -1016,6 +1016,48 @@ try {
     "Verified LAN smoke report"
   );
 
+  const emptyTrustedIpCopiedEndpoint = writeReport("empty-trusted-ip-copied-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason:
+      "Visible recovery hint before retry. Trusted IP update; This computer: Mac sender; Device: Windows receiver; Action: Verify IP without re-pairing; Endpoint field: empty; Copied endpoint: empty; TCP port: 44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
+  });
+  runVerifier(
+    emptyTrustedIpCopiedEndpoint,
+    false,
+    "empty trusted IP copied endpoint should fail",
+    "Manual Fallback Run retry evidence must include a concrete copied endpoint"
+  );
+
+  const mismatchedTrustedIpCopiedEndpoint = writeReport("mismatched-trusted-ip-copied-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason:
+      "Visible recovery hint before retry. Trusted IP update; This computer: Mac sender; Device: Windows receiver; Action: Verify IP without re-pairing; Endpoint field: 192.168.1.20:44777; Copied endpoint: 192.168.1.21:44777; TCP port: 44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
+  });
+  runVerifier(
+    mismatchedTrustedIpCopiedEndpoint,
+    false,
+    "mismatched trusted IP copied endpoint should fail",
+    "Manual Fallback Run retry evidence Endpoint field must match"
+  );
+
+  const publicTrustedIpCopiedEndpoint = writeReport("public-trusted-ip-copied-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason:
+      "Visible recovery hint before retry. Trusted IP update; This computer: Mac sender; Device: Windows receiver; Action: Verify IP without re-pairing; Endpoint field: 8.8.8.8:44777; Copied endpoint: 8.8.8.8:44777; TCP port: 44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
+  });
+  runVerifier(
+    publicTrustedIpCopiedEndpoint,
+    false,
+    "public trusted IP copied endpoint should fail",
+    "Manual Fallback Run retry evidence copied endpoint must not be a public IP literal"
+  );
+
   const noneSuccess = writeReport("none-success.md", {
     autoPass: "Pass",
     manualPass: "Pass",

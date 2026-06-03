@@ -657,11 +657,48 @@ function requireTrustedIpUpdateCopyEvidence(value) {
   ) {
     throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with this computer, device, recovery action, endpoint field, copied endpoint, TCP port, current endpoint/source, last failure, and recovery hint.");
   }
+
+  const endpointField = extractCopyField(value, "endpoint field");
+  const copiedEndpoint = extractCopyField(value, "copied endpoint");
+  if (!endpointField || !copiedEndpoint || endpointField === "empty" || copiedEndpoint === "empty") {
+    throw new Error("Manual Fallback Run retry evidence must include a concrete copied endpoint in the trusted IP update Copy output.");
+  }
+
+  if (endpointField !== copiedEndpoint) {
+    throw new Error("Manual Fallback Run retry evidence Endpoint field must match the trusted IP update Copied endpoint.");
+  }
+
+  const endpoint = parseEndpoint(copiedEndpoint);
+  if (!endpoint || endpoint.port !== 44777) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must be a concrete host:44777 endpoint.");
+  }
+
+  if (isLocalOnlyEndpoint(endpoint.host)) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must be the peer computer endpoint, not localhost or an unspecified bind address.");
+  }
+
+  if (net.isIP(endpoint.host.trim().toLowerCase()) === 0) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must be a private IPv4 or unique-local IPv6 endpoint literal.");
+  }
+
+  if (isPublicIpLiteral(endpoint.host)) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must not be a public IP literal while Private network only is enabled.");
+  }
+
+  if (isLinkLocalIpv6Literal(endpoint.host)) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must not be a link-local IPv6 literal.");
+  }
 }
 
 function isNoFailureEvidence(value) {
   return /^(none|n\/a|not applicable)(\s+(before\s+retry|observed|needed|shown|visible))?$/.test(value) ||
     /^no\s+failures?(\s+(before\s+retry|observed|needed|shown|visible|during\s+run))?$/.test(value);
+}
+
+function extractCopyField(value, field) {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = value.match(new RegExp(`(?:^|[.;]\\s*)${escaped}:\\s*([^;|]+)`));
+  return match?.[1]?.trim() ?? "";
 }
 
 function requirePackageVersion(table, field, section) {
