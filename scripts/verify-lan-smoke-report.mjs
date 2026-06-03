@@ -508,6 +508,22 @@ function requireNoBlockingNotes(markdown) {
   if (!capturedEvidence || isNoneNote(capturedEvidence)) {
     throw new Error("LAN smoke report Notes must identify screenshots or logs captured for release evidence.");
   }
+  requireCapturedEvidenceNotes(capturedEvidence);
+}
+
+function requireCapturedEvidenceNotes(value) {
+  const normalized = value.toLowerCase();
+  const missingEvidence = [];
+  if (!/pair(ing)?/.test(normalized)) missingEvidence.push("pairing");
+  if (!/reconnect/.test(normalized)) missingEvidence.push("reconnect");
+  if (!/input/.test(normalized)) missingEvidence.push("input");
+  if (!/capture|captured/.test(normalized)) missingEvidence.push("capture");
+
+  if (missingEvidence.length > 0) {
+    throw new Error(
+      `LAN smoke report Notes screenshots or logs captured must identify pairing, reconnect, input, and capture evidence; missing ${missingEvidence.join(", ")}.`
+    );
+  }
 }
 
 function parseNotes(markdown) {

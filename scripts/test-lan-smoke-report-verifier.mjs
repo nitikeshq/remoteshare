@@ -324,6 +324,26 @@ try {
     "LAN smoke report Notes must identify screenshots or logs captured for release evidence"
   );
 
+  const passedWithPartialCapturedEvidenceNotes = writeReport("passed-with-partial-captured-evidence-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: [
+      "",
+      "## Notes",
+      "",
+      "- Blocking issues: none",
+      "- Screenshots or logs captured: pairing and reconnect screenshots",
+      "- Retest required: no"
+    ]
+  });
+  runVerifier(
+    passedWithPartialCapturedEvidenceNotes,
+    false,
+    "passed report with partial captured evidence notes should fail",
+    "LAN smoke report Notes screenshots or logs captured must identify pairing, reconnect, input, and capture evidence"
+  );
+
   const failedReconnect = writeReport("failed-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",
