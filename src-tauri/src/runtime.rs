@@ -1512,7 +1512,9 @@ impl RuntimeStore {
         endpoint: &str,
         message: &str,
     ) {
-        let endpoint = normalized_endpoint(endpoint).unwrap_or_else(|| endpoint.to_string());
+        let Some(endpoint) = normalized_endpoint(endpoint) else {
+            return;
+        };
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
         if !private_guard_allows_endpoint(
@@ -6151,6 +6153,42 @@ mod tests {
             "trusted-device",
             "8.8.8.8:44777",
             "connection timed out",
+        );
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_failures.get("trusted-device").is_none());
+    }
+
+    #[test]
+    fn trusted_connection_failure_ignores_invalid_endpoints() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-invalid-endpoint"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "localhost",
+            "connection refused",
+        );
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "macbook..local:44777",
+            "connection refused",
         );
 
         let state = store.state.lock().expect("runtime state poisoned");
