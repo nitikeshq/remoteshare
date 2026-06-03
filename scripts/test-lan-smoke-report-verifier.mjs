@@ -789,8 +789,22 @@ try {
   });
   runVerifier(
     manualIpRecoveryFailureReason,
+    false,
+    "manual IP recovery without trusted copy output should fail",
+    "Manual Fallback Run retry evidence must paste the trusted IP update Copy output"
+  );
+
+  const trustedIpUpdateCopyFailureReason = writeReport("trusted-ip-update-copy-failure-reason.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualFailureReason:
+      "Visible recovery hint before retry. Trusted IP update; Device: Windows receiver; Endpoint field: 192.168.1.20:44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
+  });
+  runVerifier(
+    trustedIpUpdateCopyFailureReason,
     true,
-    "manual IP recovery failure reason should pass",
+    "trusted IP update copy failure reason should pass",
     "Verified LAN smoke report"
   );
 

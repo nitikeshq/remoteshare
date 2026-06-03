@@ -434,6 +434,22 @@ function requireManualFailureReasonEvidence(table) {
   ) {
     throw new Error("Manual Fallback Run failure reason evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP 44777, or firewall recovery path.");
   }
+
+  requireTrustedIpUpdateCopyEvidence(value);
+}
+
+function requireTrustedIpUpdateCopyEvidence(value) {
+  if (
+    !/trusted\s+ip\s+update/.test(value) ||
+    !/device:\s*[^;|]+/.test(value) ||
+    !/endpoint\s+field:\s*[^;|]+/.test(value) ||
+    !/current\s+endpoint:\s*[^;|]+/.test(value) ||
+    !/current\s+source:\s*[^;|]+/.test(value) ||
+    !/last\s+failure:\s*[^;|]+/.test(value) ||
+    !/recovery:\s*[^;|]+/.test(value)
+  ) {
+    throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with device, endpoint field, current endpoint/source, last failure, and recovery hint.");
+  }
 }
 
 function isNoFailureEvidence(value) {
