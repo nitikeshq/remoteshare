@@ -82,6 +82,21 @@ try {
     "invalid sha256"
   );
 
+  const missingGeneratedAt = fixture("missing-generated-at", {
+    mutateManifest: (manifest) => {
+      const { generatedAt: _generatedAt, ...withoutGeneratedAt } = manifest;
+      return withoutGeneratedAt;
+    }
+  });
+  writeReleaseJson(missingGeneratedAt.releaseJson, missingGeneratedAt.assetsRoot);
+  runVerifier(
+    missingGeneratedAt.releaseJson,
+    missingGeneratedAt.assetsRoot,
+    false,
+    "missing manifest generatedAt should fail",
+    "generatedAt must be a valid ISO-8601 UTC timestamp"
+  );
+
   const staleManifestSize = fixture("stale-manifest-size", {
     mutateManifest: (manifest) => ({
       ...manifest,
@@ -186,7 +201,19 @@ function fixture(name, options = {}) {
   );
   fs.writeFileSync(
     path.join(assetsRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify(options.mutateManifest?.({ version: packageVersion, artifacts }) ?? { version: packageVersion, artifacts }, null, 2)}\n`
+    `${JSON.stringify(
+      options.mutateManifest?.({
+        version: packageVersion,
+        generatedAt: "2026-06-01T10:00:00.000Z",
+        artifacts
+      }) ?? {
+        version: packageVersion,
+        generatedAt: "2026-06-01T10:00:00.000Z",
+        artifacts
+      },
+      null,
+      2
+    )}\n`
   );
   fs.writeFileSync(path.join(assetsRoot, "lan-smoke-report.md"), "# LAN smoke report\n");
   fs.writeFileSync(path.join(assetsRoot, "release-candidate-summary.md"), "# Release candidate\n");
