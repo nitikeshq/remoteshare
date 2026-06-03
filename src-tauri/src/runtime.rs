@@ -1257,6 +1257,10 @@ impl RuntimeStore {
             return Err("Accepted pairing fingerprint does not match.".to_string());
         }
 
+        if !pairing.public_key.is_empty() && pairing.public_key != peer.public_key {
+            return Err("Accepted pairing public key does not match.".to_string());
+        }
+
         if !peer_public_key_matches_fingerprint(&peer.public_key, &peer.public_key_fingerprint) {
             return Err("Accepted pairing public key does not match fingerprint.".to_string());
         }
@@ -4223,6 +4227,66 @@ mod tests {
             .any(|pairing| pairing.id == pairing_id
                 && !pairing.remote_approved
                 && pairing.public_key_fingerprint == "remote-fingerprint"));
+    }
+
+    #[test]
+    fn remote_pairing_approval_requires_matching_public_key() {
+        crate::identity::set_test_config_dir(unique_test_dir("pairing-approval-public-key"));
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: None,
+        };
+        let (_identity_private_key, identity_public_key) = crate::crypto::identity_keypair();
+        let identity_fingerprint = crate::crypto::fingerprint_from_public_key(&identity_public_key)
+            .expect("identity public key should fingerprint");
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: identity_fingerprint.clone(),
+                    public_key: identity_public_key.clone(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                "local-private-key".to_string(),
+                "local-public-key".to_string(),
+                "remote-public-key".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        let error = store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: identity_fingerprint,
+                    public_key: String::new(),
+                },
+                "192.168.1.50:44777".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("mismatched approval public key must be rejected");
+
+        assert_eq!(error, "Accepted pairing public key does not match.");
+        assert!(store
+            .status()
+            .pending_pairings
+            .iter()
+            .any(|pairing| pairing.id == pairing_id
+                && !pairing.remote_approved
+                && pairing.public_key == identity_public_key));
     }
 
     #[test]
