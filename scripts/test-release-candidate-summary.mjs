@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-candidate-summary-"));
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const valid = fixture("valid", {
@@ -82,6 +83,7 @@ try {
 
   const wrongVersion = fixture("wrong-version", {
     version: "0.2.0",
+    generatedAt,
     artifacts: [
       artifact("dmg", "RemoteShare_0.2.0_aarch64.dmg", "mac dmg"),
       artifact("exe", "RemoteShare_0.2.0_x64-setup.exe", "windows exe"),
@@ -89,6 +91,23 @@ try {
     ]
   });
   runSummary(wrongVersion, path.join(root, "wrong-version.md"), false, "wrong version should fail", "Release manifest version must match package version");
+
+  const futureGeneratedAt = fixture("future-generated-at", {
+    version: "0.1.13",
+    generatedAt: "2999-01-01T00:00:00.000Z",
+    artifacts: [
+      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
+      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+    ]
+  });
+  runSummary(
+    futureGeneratedAt,
+    path.join(root, "future-generated-at.md"),
+    false,
+    "future generatedAt should fail",
+    "Release manifest generatedAt cannot be in the future"
+  );
 
   const missingFile = fixture("missing-file", {
     version: "0.1.13",
@@ -138,7 +157,7 @@ function fixture(name, manifest) {
   });
   fs.writeFileSync(
     path.join(directory, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ ...manifest, artifacts }, null, 2)}\n`
+    `${JSON.stringify({ generatedAt, ...manifest, artifacts }, null, 2)}\n`
   );
   return directory;
 }

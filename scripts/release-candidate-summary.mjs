@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   publishArtifactStatus,
   requiredArtifactTypes,
+  validateReleaseGeneratedAt,
   validateReleaseManifestArtifact
 } from "./release-artifacts-lib.mjs";
 
@@ -27,6 +28,7 @@ if (!Array.isArray(manifest.artifacts)) {
   throw new Error("Release manifest must contain an artifacts array.");
 }
 
+validateReleaseGeneratedAt(manifest.generatedAt);
 const manifestArtifacts = manifest.artifacts.map((artifact, index) =>
   validateReleaseManifestArtifact(artifact, index, packageJson.version)
 );

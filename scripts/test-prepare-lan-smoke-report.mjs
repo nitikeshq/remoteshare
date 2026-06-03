@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-prepare-lan-smoke-"));
 const preparer = path.resolve("scripts/prepare-lan-smoke-report.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const assets = fixture("release-assets", [
@@ -107,6 +108,24 @@ try {
     `Release manifest version must match package version ${packageVersion}`
   );
 
+  const futureGeneratedAt = fixture(
+    "future-generated-at",
+    [
+      ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+    ],
+    packageVersion,
+    "2999-01-01T00:00:00.000Z"
+  );
+  runPreparer(
+    futureGeneratedAt,
+    path.join(root, "future-generated-at.md"),
+    false,
+    "future generatedAt should fail",
+    "Release manifest generatedAt cannot be in the future"
+  );
+
   const wrongArtifactVersion = fixture("wrong-artifact-version", [
     ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
     ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
@@ -151,7 +170,7 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function fixture(name, files, version = packageVersion) {
+function fixture(name, files, version = packageVersion, manifestGeneratedAt = generatedAt) {
   const directory = path.join(root, name);
   fs.mkdirSync(directory, { recursive: true });
   const artifacts = files.map(([type, file, body, options = {}]) => {
@@ -167,7 +186,7 @@ function fixture(name, files, version = packageVersion) {
   });
   fs.writeFileSync(
     path.join(directory, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ version, artifacts }, null, 2)}\n`
+    `${JSON.stringify({ version, generatedAt: manifestGeneratedAt, artifacts }, null, 2)}\n`
   );
   return directory;
 }
