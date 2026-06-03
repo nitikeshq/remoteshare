@@ -137,6 +137,17 @@ try {
     "Release readiness LAN smoke report check failed"
   );
 
+  const missingCapturedEvidenceReport = smokeReportFixture("missing-captured-evidence.md", "Pass", {
+    includeCapturedEvidenceNote: false
+  });
+  runVerifier(
+    releaseAssets,
+    missingCapturedEvidenceReport,
+    false,
+    "missing LAN smoke captured evidence notes should fail",
+    "Notes must identify screenshots or logs captured for release evidence"
+  );
+
   const mismatchedInstallerReport = smokeReportFixture("mismatched-installer.md", "Pass", {
     macInstaller: `RemoteShare_${packageVersion}_wrong.dmg`
   });
@@ -383,6 +394,10 @@ function smokeReportFixture(name, passValue, options = {}) {
   const version = options.version ?? `v${packageVersion}`;
   const testDate = options.testDate ?? "2026-06-02";
   const extraContextRows = options.extraContextRows ?? "";
+  const capturedEvidenceNote =
+    options.includeCapturedEvidenceNote === false
+      ? ""
+      : "- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots\n";
   fs.writeFileSync(
     file,
     `# LAN Smoke Report
@@ -469,8 +484,7 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 ## Notes
 
 - Blocking issues: none
-- Screenshots or logs captured: pairing, reconnect, input, and capture screenshots
-- Retest required: no
+${capturedEvidenceNote}- Retest required: no
 `
   );
   return file;
