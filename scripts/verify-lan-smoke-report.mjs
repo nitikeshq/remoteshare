@@ -638,10 +638,10 @@ function requireManualFailureReasonEvidence(table) {
     throw new Error("Manual Fallback Run failure reason evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP 44777, or firewall recovery path.");
   }
 
-  requireTrustedIpUpdateCopyEvidence(value);
+  requireTrustedIpUpdateCopyEvidence(value, table);
 }
 
-function requireTrustedIpUpdateCopyEvidence(value) {
+function requireTrustedIpUpdateCopyEvidence(value, table) {
   if (
     !/trusted\s+ip\s+update/.test(value) ||
     !/this\s+computer:\s*[^;|]+/.test(value) ||
@@ -687,6 +687,11 @@ function requireTrustedIpUpdateCopyEvidence(value) {
 
   if (isLinkLocalIpv6Literal(endpoint.host)) {
     throw new Error("Manual Fallback Run retry evidence copied endpoint must not be a link-local IPv6 literal.");
+  }
+
+  const manualEndpoint = requireFilled(table, "Endpoint used", "Manual Fallback Run");
+  if (endpointKey(copiedEndpoint) !== endpointKey(manualEndpoint)) {
+    throw new Error("Manual Fallback Run retry evidence copied endpoint must match the manual fallback Endpoint used.");
   }
 }
 
