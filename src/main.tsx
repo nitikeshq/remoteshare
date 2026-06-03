@@ -277,11 +277,12 @@ function pairRequestForDevice(device: Device): PairRequestPayload {
   };
 }
 
-function pairingExpiryLabel(pairing: PendingPairing) {
+function pairingExpiryLabel(pairing: PendingPairing, nowMs: number) {
   const remainingSeconds = Math.max(
     0,
-    Math.ceil((pairing.expiresAtMs - Date.now()) / 1000)
+    Math.ceil((pairing.expiresAtMs - nowMs) / 1000)
   );
+  if (remainingSeconds === 0) return "expired";
   return `${remainingSeconds}s left`;
 }
 
@@ -436,7 +437,15 @@ function mvpReceiveStep(
   };
 }
 
-function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string) {
+function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string, nowMs: number) {
+  if (nowMs >= pairing.expiresAtMs) {
+    return {
+      canConfirm: false,
+      message: "Expired; start again",
+      error: true
+    };
+  }
+
   if (pairing.localApproved) {
     return {
       canConfirm: false,
@@ -588,6 +597,7 @@ function App() {
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
   const [checkingTrustedDevices, setCheckingTrustedDevices] = useState(false);
   const [pairingCodeEntries, setPairingCodeEntries] = useState<Record<string, string>>({});
+  const [pairingNowMs, setPairingNowMs] = useState(() => Date.now());
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState(false);
 
@@ -639,6 +649,15 @@ function App() {
       setManualEndpoint(status.discovery.manualEndpoint ?? "");
     }
   }, [manualEndpointDirty, status.discovery.manualEndpoint]);
+
+  useEffect(() => {
+    if (status.pendingPairings.length === 0) return;
+    setPairingNowMs(Date.now());
+    const interval = window.setInterval(() => {
+      setPairingNowMs(Date.now());
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [status.pendingPairings.length]);
 
   async function scanLan() {
     setLoading(true);
@@ -758,6 +777,12 @@ function App() {
 
   async function confirmPairing(pairing: PendingPairing) {
     const enteredCode = pairingCodeEntries[pairing.id]?.trim() ?? "";
+    if (pairingNowMs >= pairing.expiresAtMs) {
+      showActionMessage("Pairing request expired. Start pairing again.", true);
+      await refreshStatus();
+      return;
+    }
+
     if (!/^\d{6}$/.test(enteredCode)) {
       showActionMessage("Enter the six-digit code from the other computer before confirming.", true);
       return;
@@ -1668,7 +1693,7 @@ function App() {
             <div className="device-list">
               {status.pendingPairings.map((pairing) => {
                 const enteredCode = pairingCodeEntries[pairing.id] ?? "";
-                const entryState = pairingCodeEntryState(pairing, enteredCode);
+                const entryState = pairingCodeEntryState(pairing, enteredCode, pairingNowMs);
 
                 return (
                   <article className="pairing-row" key={pairing.id}>
@@ -1676,7 +1701,7 @@ function App() {
                       <h4>{pairing.name}</h4>
                       <p>
                         {pairing.platform} · {roleLabel(pairing.role)} · {pairing.endpoint} ·{" "}
-                        {pairingDirectionLabel(pairing)} · {pairingExpiryLabel(pairing)}
+                        {pairingDirectionLabel(pairing)} · {pairingExpiryLabel(pairing, pairingNowMs)}
                       </p>
                       <div className="approval-status">
                         <span className={pairing.localApproved ? "approved" : "pending"}>

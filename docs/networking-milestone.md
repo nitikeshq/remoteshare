@@ -86,7 +86,7 @@ Current scaffold behavior:
 - Each side sends an approval message after local confirmation.
 - Pair acknowledgement write failures are surfaced through the UI network-error status so interrupted pairing attempts are visible on the receiving computer, and the receiver removes that pending request because the sender never received the comparison code.
 - Pending pairing rows show local and remote approval state so testers can see which side is still waiting.
-- The UI keeps `Confirm` disabled until the typed six-digit code from the other computer matches the locally visible comparison code, and it labels six-digit mismatches before a backend request is sent.
+- The UI keeps `Confirm` disabled until the typed six-digit code from the other computer matches the locally visible comparison code, labels six-digit mismatches before a backend request is sent, and keeps expired pending pairing rows visibly disabled while the local countdown waits for the next runtime status prune.
 - Remote pairing approvals must match the pending pairing's device ID, comparison code, fingerprint, and advertised identity public key before they can mark the remote side approved.
 - Remote pairing approvals validate the replied endpoint before mutating the pending pairing, so invalid or private-guard-blocked approval endpoints cannot overwrite the last known pairing endpoint.
 - A trusted device is stored only after both local approval and remote approval are present.
