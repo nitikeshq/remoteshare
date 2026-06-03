@@ -62,6 +62,8 @@ const reconnectAttemptCalls = networkRuntime.match(/record_reconnect_attempt\(\)
 const autostartRuntime = fs.readFileSync("src-tauri/src/autostart.rs", "utf8");
 const tauriAppRuntime = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
 const appUi = fs.readFileSync("src/main.tsx", "utf8");
+const endpointLabels = fs.readFileSync("src/endpoint-labels.ts", "utf8");
+const endpointLabelsTest = fs.readFileSync("scripts/test-ui-endpoint-labels.mjs", "utf8");
 const bundleRoot = "src-tauri/target/release/bundle";
 const expectedTargets = ["dmg", "nsis", "deb"];
 const expectedScripts = [
@@ -76,6 +78,7 @@ const expectedScripts = [
   "check:rustfmt",
   "test:rustfmt",
   "test:ci-annotation",
+  "test:ui-endpoints",
   "checksums:installers",
   "test:checksums",
   "verify:installers",
@@ -362,7 +365,8 @@ check("UI does not keep decorative sidebar nav", !appUi.includes("className=\"na
 check("UI exposes local computer role selector", appUi.includes("This computer role") && appUi.includes("value=\"main\"") && appUi.includes("value=\"client\"") && appUi.includes("value=\"both\"") && appUi.includes("roleLabel(status.mode)"));
 check("UI shows peer roles in device, audit, and pairing rows", appUi.includes("{device.platform} · {roleLabel(device.role)} · {connectionLabel(device)}") && appUi.includes("<dt>Role</dt>") && appUi.includes("{roleLabel(pairing.role)}"));
 check("UI exposes private network guard setting", appUi.includes("Private network only") && appUi.includes("privateNetworkOnly"));
-check("UI explains local endpoint choice", appUi.includes("localEndpointChoiceLabel") && appUi.includes("Best LAN IPv4") && appUi.includes("LAN IPv4") && appUi.includes("LAN IPv6") && appUi.includes("IPv6 fallback") && appUi.includes("Fallback IPv4") && appUi.includes("same Wi-Fi/LAN subnet"));
+check("UI explains local endpoint choice", appUi.includes("localEndpointChoiceLabel") && endpointLabels.includes("Best LAN IPv4") && endpointLabels.includes("LAN IPv4") && endpointLabels.includes("LAN IPv6") && endpointLabels.includes("IPv6 fallback") && endpointLabels.includes("Fallback IPv4") && appUi.includes("same Wi-Fi/LAN subnet"));
+check("UI endpoint labels handle uppercase unique-local IPv6", endpointLabels.includes("isUniqueLocalIpv6") && endpointLabels.includes(".toLowerCase()") && endpointLabelsTest.includes("[FD12:3456:789A::10]:44777") && endpointLabelsTest.includes("\"LAN IPv6\""));
 check("UI shows all copyable local endpoints", appUi.includes("localEndpoints.map") && !appUi.includes("localEndpoints.slice"));
 check("UI can copy full trusted fingerprint", appUi.includes("copyFingerprint") && appUi.includes("Full fingerprint"));
 check("Runtime exposes local public key fingerprint for audit", runtimeStore.includes("this_public_key_fingerprint") && runtimeStore.includes("status_exposes_local_public_key_fingerprint_for_audit") && appUi.includes("thisPublicKeyFingerprint"));
@@ -648,6 +652,7 @@ check("verify:release-scripts tests GitHub release asset verifier", packageJson.
 check("verify:release-scripts tests release asset download helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:download-release-assets"));
 check("verify:release-scripts tests rustfmt checker", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:rustfmt"));
 check("verify:release-scripts tests CI annotation helper", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:ci-annotation"));
+check("verify:release-scripts tests UI endpoint labels", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run test:ui-endpoints"));
 check("verify:release-scripts runs release summary", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run release:summary"));
 check("verify:release-scripts runs package doctor", packageJson.scripts?.["verify:release-scripts"]?.includes("npm run doctor"));
 check("verify:release runs scripts-only release gate", packageJson.scripts?.["verify:release"]?.includes("npm run verify:release-scripts"));
