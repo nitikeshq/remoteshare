@@ -342,6 +342,31 @@ try {
     "Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint"
   );
 
+  const missingManualEndpointLabel = writeReport("missing-manual-endpoint-label.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "| Copied endpoint label shown | Best LAN IPv4 shown next to copied endpoint |"
+  });
+  runVerifier(
+    missingManualEndpointLabel,
+    false,
+    "missing manual endpoint label should fail",
+    "Missing Manual Fallback Run field: Copied endpoint label shown"
+  );
+
+  const vagueManualEndpointLabel = writeReport("vague-manual-endpoint-label.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointLabel: "recommended endpoint"
+  });
+  runVerifier(
+    vagueManualEndpointLabel,
+    false,
+    "vague manual endpoint label should fail",
+    "Manual Fallback Run copied endpoint label evidence must mention Best LAN IPv4, LAN IPv4, or LAN IPv6 as shown in the UI"
+  );
+
   const vagueManualTcpReachability = writeReport("vague-manual-tcp-reachability.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -698,7 +723,8 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    manualEndpoint: "[fd00::20]:44777"
+    manualEndpoint: "[fd00::20]:44777",
+    manualEndpointLabel: "LAN IPv6 shown next to copied endpoint"
   });
   runVerifier(
     ipv6ManualEndpoint,
@@ -781,6 +807,8 @@ function writeReport(name, options) {
     options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
   const manualEndpointCopied =
     options.manualEndpointCopied ?? "copied from peer This computer row";
+  const manualEndpointLabel =
+    options.manualEndpointLabel ?? "Best LAN IPv4 shown next to copied endpoint";
   const manualTcpReachable =
     options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
   const autoPairAction = options.autoPairAction ?? "started";
@@ -859,6 +887,7 @@ function writeReport(name, options) {
     "| --- | --- |",
     `| Discovery disabled, skipped, or failed | ${manualDiscoveryFallback} |`,
     `| Manual endpoint copied from peer \`This computer\` row | ${manualEndpointCopied} |`,
+    `| Copied endpoint label shown | ${manualEndpointLabel} |`,
     `| Endpoint used | ${manualEndpoint} |`,
     `| TCP \`44777\` reachable | ${manualTcpReachable} |`,
     "| Pair action started | started |",

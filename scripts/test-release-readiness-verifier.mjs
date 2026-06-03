@@ -444,6 +444,7 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | --- | --- |
 | Discovery disabled, skipped, or failed | discovery skipped for manual fallback |
 | Manual endpoint copied from peer \`This computer\` row | copied from peer This computer row |
+| Copied endpoint label shown | Best LAN IPv4 shown next to copied endpoint |
 | Endpoint used | 192.168.1.20:44777 |
 | TCP \`44777\` reachable | reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded |
 | Pair action started | started |

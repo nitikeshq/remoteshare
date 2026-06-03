@@ -70,6 +70,7 @@ const requiredAutoFields = [
 const requiredManualFields = [
   "Discovery disabled, skipped, or failed",
   "Manual endpoint copied from peer `This computer` row",
+  "Copied endpoint label shown",
   "Endpoint used",
   "TCP `44777` reachable",
   "Pair action started",
@@ -162,6 +163,7 @@ requireManualFailureReasonEvidence(manualFallback);
 requireSuccess(autoDiscovery, "Peer appeared in `Scan LAN`", "Auto-Discovery Run");
 requireAutoDiscoverySubnetEvidence(autoDiscovery);
 requireManualFallbackEvidence(manualFallback);
+requireManualEndpointLabelEvidence(manualFallback);
 requireManualTcpReachabilityEvidence(manualFallback);
 requireManualEndpoint(manualFallback, "Endpoint used", "Manual Fallback Run");
 
@@ -298,6 +300,13 @@ function requireManualFallbackEvidence(table) {
   const copied = requireFilled(table, "Manual endpoint copied from peer `This computer` row", "Manual Fallback Run").toLowerCase();
   if (!/(copied|copy)/.test(copied) || !/(peer|other computer|remote|this computer|receiver|windows|client)/.test(copied)) {
     throw new Error("Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint.");
+  }
+}
+
+function requireManualEndpointLabelEvidence(table) {
+  const value = requireFilled(table, "Copied endpoint label shown", "Manual Fallback Run").toLowerCase();
+  if (!/\b(best\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
+    throw new Error("Manual Fallback Run copied endpoint label evidence must mention Best LAN IPv4, LAN IPv4, or LAN IPv6 as shown in the UI.");
   }
 }
 

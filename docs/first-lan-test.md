@@ -79,7 +79,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | macOS role shown | Main | Main |
 | Windows role shown | Client | Client |
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
-| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, and successful TCP `44777` probe recorded |
+| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, copied label recorded as `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
 | Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
