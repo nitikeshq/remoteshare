@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
+import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import {
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
@@ -13,6 +15,18 @@ const root = process.argv[2] ?? "src-tauri/target/release/bundle";
 const checksumPath = path.join(root, "SHA256SUMS.txt");
 const manifestPath = path.join(root, "RELEASE-MANIFEST.json");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAssets = [
+  {
+    label: "Prefilled LAN smoke report",
+    file: "lan-smoke-report.md",
+    script: "scripts/prepare-lan-smoke-report.mjs"
+  },
+  {
+    label: "Release candidate summary",
+    file: "release-candidate-summary.md",
+    script: "scripts/release-candidate-summary.mjs"
+  }
+];
 const invalidChecksumLines = [];
 const duplicateChecksumEntries = [];
 const platformArtifacts = [
@@ -115,6 +129,28 @@ for (const artifact of platformArtifacts) {
   }
 }
 
+const canCheckGeneratedAssets =
+  manifestFiles instanceof Set &&
+  missingPlatforms.length === 0 &&
+  duplicatePlatforms.length === 0 &&
+  emptyPlatforms.length === 0 &&
+  checksumMissingPlatforms.length === 0 &&
+  checksumMismatchPlatforms.length === 0 &&
+  versionMismatchPlatforms.length === 0 &&
+  unexpectedRelativePaths.length === 0 &&
+  unmanifestedInstallerPaths.length === 0 &&
+  staleChecksumEntries.length === 0 &&
+  invalidChecksumLines.length === 0 &&
+  duplicateChecksumEntries.length === 0;
+const generatedAssetStatuses = generatedAssets.map((asset) =>
+  generatedAssetStatus(asset, canCheckGeneratedAssets)
+);
+
+console.log("Generated release evidence:");
+for (const status of generatedAssetStatuses) {
+  console.log(`- ${status.label}: ${status.state}${status.detail ? ` (${status.detail})` : ""}`);
+}
+
 const readinessIssues = [
   ...missingPlatforms.map((name) => `${name} missing`),
   ...duplicatePlatforms,
@@ -127,11 +163,12 @@ const readinessIssues = [
   ...unmanifestedInstallerPaths.map((entry) => `unmanifested installer ${entry}`),
   ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`),
   ...invalidChecksumLines.map((line) => `invalid checksum line ${line}`),
-  ...duplicateChecksumEntries.map((entry) => `duplicate checksum ${entry}`)
+  ...duplicateChecksumEntries.map((entry) => `duplicate checksum ${entry}`),
+  ...generatedAssetStatuses.flatMap((status) => status.issue ? [status.issue] : [])
 ];
 console.log(
   readinessIssues.length === 0
-    ? "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, and release-manifest verified."
+    ? "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, release-manifest verified, and generated release evidence is current."
     : `Publish readiness: incomplete (${readinessIssues.join("; ")}).`
 );
 
@@ -180,6 +217,64 @@ function readChecksumFile(file) {
   }
 
   return checksums;
+}
+
+function generatedAssetStatus(asset, canCheckFreshness) {
+  const assetPath = path.join(root, asset.file);
+  if (!fs.existsSync(assetPath)) {
+    return {
+      label: asset.label,
+      state: canCheckFreshness ? "missing" : "missing; skipped freshness check",
+      detail: asset.file,
+      issue: canCheckFreshness ? `${asset.file} missing` : null
+    };
+  }
+
+  if (!canCheckFreshness) {
+    return {
+      label: asset.label,
+      state: "present; skipped freshness check",
+      detail: asset.file,
+      issue: null
+    };
+  }
+
+  const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-summary-"));
+  const expectedPath = path.join(tempDirectory, asset.file);
+  try {
+    const result = spawnSync(process.execPath, [asset.script, root, expectedPath], {
+      encoding: "utf8"
+    });
+    if (result.status !== 0) {
+      const output = `${result.stdout}\n${result.stderr}`.trim();
+      return {
+        label: asset.label,
+        state: "invalid",
+        detail: output || "generation failed",
+        issue: `${asset.file} invalid`
+      };
+    }
+
+    const actual = fs.readFileSync(assetPath, "utf8");
+    const expected = fs.readFileSync(expectedPath, "utf8");
+    if (actual !== expected) {
+      return {
+        label: asset.label,
+        state: "stale",
+        detail: asset.file,
+        issue: `${asset.file} stale`
+      };
+    }
+
+    return {
+      label: asset.label,
+      state: "current",
+      detail: asset.file,
+      issue: null
+    };
+  } finally {
+    fs.rmSync(tempDirectory, { recursive: true, force: true });
+  }
 }
 
 function readManifestStatus(file) {

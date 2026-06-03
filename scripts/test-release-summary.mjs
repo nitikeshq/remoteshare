@@ -101,17 +101,43 @@ try {
   ]);
 
   const completeRoot = fixture("complete", [
-    [`dmg/RemoteShare_${packageVersion}_aarch64.DMG`, "valid dmg"],
-    [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
-    [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
-  ]);
+    [`RemoteShare_${packageVersion}_aarch64.DMG`, "valid dmg"],
+    [`RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    [`remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+  ], true, true, true);
   runSummary(completeRoot, [
-    `dmg/RemoteShare_${packageVersion}_aarch64.DMG`,
+    `RemoteShare_${packageVersion}_aarch64.DMG`,
     "macOS DMG: present (1)",
     "Windows EXE: present (1)",
     "Linux DEB: present (1)",
-    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, and release-manifest verified.",
+    "Generated release evidence:",
+    "Prefilled LAN smoke report: current (lan-smoke-report.md)",
+    "Release candidate summary: current (release-candidate-summary.md)",
+    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, release-manifest verified, and generated release evidence is current.",
     `Release manifest generatedAt: ${generatedAt}`
+  ]);
+
+  const missingGeneratedEvidenceRoot = fixture("missing-generated-evidence", [
+    [`RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    [`RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    [`remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runSummary(missingGeneratedEvidenceRoot, [
+    "Prefilled LAN smoke report: missing (lan-smoke-report.md)",
+    "Release candidate summary: missing (release-candidate-summary.md)",
+    "Publish readiness: incomplete (lan-smoke-report.md missing; release-candidate-summary.md missing)."
+  ]);
+
+  const staleGeneratedEvidenceRoot = fixture("stale-generated-evidence", [
+    [`RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    [`RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    [`remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+  ], true, true, true);
+  fs.appendFileSync(path.join(staleGeneratedEvidenceRoot, "lan-smoke-report.md"), "\nStale local edit\n");
+  runSummary(staleGeneratedEvidenceRoot, [
+    "Prefilled LAN smoke report: stale (lan-smoke-report.md)",
+    "Release candidate summary: current (release-candidate-summary.md)",
+    "Publish readiness: incomplete (lan-smoke-report.md stale)."
   ]);
 
   const duplicateRoot = fixture("duplicate", [
@@ -310,7 +336,7 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function fixture(name, files, writeChecksums = true, writeManifest = true) {
+function fixture(name, files, writeChecksums = true, writeManifest = true, writeGeneratedEvidence = false) {
   const directory = path.join(root, name);
   fs.mkdirSync(directory, { recursive: true });
 
@@ -339,8 +365,21 @@ function fixture(name, files, writeChecksums = true, writeManifest = true) {
   if (writeManifest) {
     writeManifestFile(directory, { version: packageVersion, generatedAt, artifacts });
   }
+  if (writeGeneratedEvidence) {
+    generateEvidence(directory, "scripts/prepare-lan-smoke-report.mjs", "lan-smoke-report.md");
+    generateEvidence(directory, "scripts/release-candidate-summary.mjs", "release-candidate-summary.md");
+  }
 
   return directory;
+}
+
+function generateEvidence(directory, script, outputFile) {
+  const result = spawnSync(process.execPath, [script, directory, path.join(directory, outputFile)], {
+    encoding: "utf8"
+  });
+  if (result.status !== 0) {
+    throw new Error(`Failed to generate ${outputFile}\n${result.stdout}\n${result.stderr}`);
+  }
 }
 
 function readManifest(directory) {

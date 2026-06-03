@@ -108,7 +108,7 @@ npm run verify:installers
 npm run release:summary
 ```
 
-Checksum generation and installer verification reject empty installer artifacts before writing or accepting release checksums. They also require installer filenames to include the current package version before a native runner artifact is accepted.
+Checksum generation and installer verification reject empty installer artifacts before writing or accepting release checksums. They also require installer filenames to include the current package version before a native runner artifact is accepted. The release summary reports per-platform coverage, manifest validity, generated release evidence freshness for `lan-smoke-report.md` and `release-candidate-summary.md`, and publish readiness.
 
 For prepared publish assets, verify the manifest against the flat installer directory:
 
