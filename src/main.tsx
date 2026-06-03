@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -509,6 +509,10 @@ function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string, now
   };
 }
 
+function pairingEntryKey(pairing: PendingPairing) {
+  return `${pairing.id}:${pairing.code}:${pairing.createdAtMs}:${pairing.expiresAtMs}`;
+}
+
 function statusValueLabel(value: PermissionState | EngineState | ServiceHealthState) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -620,6 +624,7 @@ function App() {
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
   const [checkingTrustedDevices, setCheckingTrustedDevices] = useState(false);
   const [pairingCodeEntries, setPairingCodeEntries] = useState<Record<string, string>>({});
+  const pairingEntryKeysRef = useRef<Record<string, string>>({});
   const [pairingNowMs, setPairingNowMs] = useState(() => Date.now());
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState(false);
@@ -681,6 +686,35 @@ function App() {
     }, 1000);
     return () => window.clearInterval(interval);
   }, [status.pendingPairings.length]);
+
+  useEffect(() => {
+    const previousKeys = pairingEntryKeysRef.current;
+    const currentKeys = Object.fromEntries(
+      status.pendingPairings.map((pairing) => [pairing.id, pairingEntryKey(pairing)])
+    );
+    pairingEntryKeysRef.current = currentKeys;
+
+    setPairingCodeEntries((entries) => {
+      let changed = false;
+      const nextEntries: Record<string, string> = {};
+
+      for (const pairing of status.pendingPairings) {
+        if (previousKeys[pairing.id] === currentKeys[pairing.id] && entries[pairing.id] !== undefined) {
+          nextEntries[pairing.id] = entries[pairing.id];
+        } else if (entries[pairing.id] !== undefined) {
+          changed = true;
+        }
+      }
+
+      for (const id of Object.keys(entries)) {
+        if (currentKeys[id] === undefined) {
+          changed = true;
+        }
+      }
+
+      return changed ? nextEntries : entries;
+    });
+  }, [status.pendingPairings]);
 
   async function scanLan() {
     setLoading(true);
