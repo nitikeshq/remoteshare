@@ -50,6 +50,24 @@ try {
   assert.equal(labels.localEndpointManualFallbackLabel("[fd12:3456:789a::10]:44777", 2), "LAN IPv6");
   assert.equal(labels.localEndpointManualFallbackLabel("[2001:db8::20]:44777", 3), "not first-MVP preferred");
   assert.equal(labels.localEndpointManualFallbackLabel("203.0.113.20:44777", 4), "not first-MVP preferred");
+  assert.deepEqual(labels.validateManualEndpoint("192.168.1.20", true), {
+    ok: true,
+    message: "Ready; missing port will use 44777."
+  });
+  assert.deepEqual(labels.validateManualEndpoint("192.168.1.20:44777", true), {
+    ok: true,
+    message: "Ready to use port 44777."
+  });
+  assert.deepEqual(labels.validateManualEndpoint("[fd12:3456:789a::10]:44777", true), {
+    ok: true,
+    message: "Ready to use port 44777."
+  });
+  assert.equal(labels.validateManualEndpoint("203.0.113.20:44777", true).ok, false);
+  assert.equal(labels.validateManualEndpoint("https://192.168.1.20:44777", true).ok, false);
+  assert.equal(labels.validateManualEndpoint("192.168.1.20:70000", true).ok, false);
+  assert.equal(labels.validateManualEndpoint("127.0.0.1:44777", true).ok, false);
+  assert.equal(labels.validateManualEndpoint("fe80::1", true).ok, false);
+  assert.equal(labels.validateManualEndpoint("windows-client.local", true).ok, true);
 
   console.log("UI endpoint label tests passed.");
 } finally {

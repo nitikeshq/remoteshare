@@ -16,7 +16,11 @@ import {
   ShieldCheck,
   Wifi
 } from "lucide-react";
-import { localEndpointChoiceLabel, localEndpointManualFallbackLabel } from "./endpoint-labels";
+import {
+  localEndpointChoiceLabel,
+  localEndpointManualFallbackLabel,
+  validateManualEndpoint
+} from "./endpoint-labels";
 import "./styles.css";
 
 type ComputerRole = "main" | "client" | "both";
@@ -975,7 +979,11 @@ function App() {
 
   async function submitManualConnect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!manualEndpoint.trim()) return;
+    const endpointValidation = validateManualEndpoint(manualEndpoint, status.privateNetworkOnly);
+    if (!endpointValidation.ok) {
+      showActionMessage(endpointValidation.message, true);
+      return;
+    }
 
     if (
       endpointUpdateDeviceId &&
@@ -1459,10 +1467,6 @@ function App() {
   const requestInputPermissionsActive = actionIsActive("request-input-permissions");
   const refreshStatusActive = actionIsActive("refresh-status");
   const manualFormActive = loading || manualConnectActive || clearManualEndpointActive;
-  const trustedEndpointEvidenceReady = Boolean(manualEndpoint.trim());
-  const trustedEndpointEvidenceTitle = trustedEndpointEvidenceReady
-    ? "Copy trusted IP evidence"
-    : "Paste the copied endpoint before copying trusted IP evidence.";
   const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
     [trustedDevices]
@@ -1471,6 +1475,21 @@ function App() {
     () => trustedDevices.find((device) => device.id === endpointUpdateDeviceId) ?? null,
     [endpointUpdateDeviceId, trustedDevices]
   );
+  const manualEndpointValidation = useMemo(
+    () => validateManualEndpoint(manualEndpoint, status.privateNetworkOnly),
+    [manualEndpoint, status.privateNetworkOnly]
+  );
+  const manualEndpointReady = manualEndpointValidation.ok;
+  const manualEndpointHint =
+    manualEndpoint.trim().length > 0
+      ? manualEndpointValidation.message
+      : endpointUpdateDevice
+        ? "Copy the current endpoint from the other computer. Verify IP checks this trusted device without re-pairing."
+        : "Missing ports use 44777. Localhost, loopback, unspecified, and link-local IPv6 endpoints are rejected. Public IP literals are blocked while Private network only is on.";
+  const trustedEndpointEvidenceReady = manualEndpointReady;
+  const trustedEndpointEvidenceTitle = trustedEndpointEvidenceReady
+    ? "Copy trusted IP evidence"
+    : "Paste a valid copied endpoint before copying trusted IP evidence.";
   useEffect(() => {
     if (!endpointUpdateDeviceId || endpointUpdateDevice) return;
     restoreManualPairAfterTrustedUpdate(
@@ -2477,6 +2496,8 @@ function App() {
               <input
                 id="manual-endpoint"
                 aria-describedby="manual-endpoint-hint"
+                aria-invalid={manualEndpoint.trim().length > 0 && !manualEndpointReady}
+                className={manualEndpoint.trim().length > 0 && !manualEndpointReady ? "input-error" : ""}
                 placeholder="host, host:port, IPv4, IPv6, or [IPv6]"
                 value={manualEndpoint}
                 disabled={manualFormActive}
@@ -2485,16 +2506,17 @@ function App() {
                   setManualEndpointDirty(true);
                 }}
               />
-              <small id="manual-endpoint-hint">
-                {endpointUpdateDevice
-                  ? "Copy the current endpoint from the other computer. Verify IP checks this trusted device without re-pairing."
-                  : "Missing ports use 44777. Localhost, loopback, unspecified, and link-local IPv6 endpoints are rejected. Public IP literals are blocked while Private network only is on."}
+              <small
+                id="manual-endpoint-hint"
+                className={manualEndpoint.trim().length > 0 && !manualEndpointReady ? "error" : ""}
+              >
+                {manualEndpointHint}
               </small>
             </div>
             <button
               className="secondary-button"
               type="submit"
-              disabled={manualFormActive || !manualEndpoint.trim()}
+              disabled={manualFormActive || !manualEndpointReady}
             >
               <Link size={17} />
               {manualConnectActive
