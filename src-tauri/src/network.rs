@@ -17,8 +17,7 @@ use tokio::{
 };
 
 use crate::{
-    crypto,
-    input,
+    crypto, input,
     runtime::{
         pairing_code, pairing_dh_keypair, pairing_dh_public_key_is_well_formed, pairing_nonce,
         ConfirmPairingRequest, DeviceEndpointUpdateRequest, DeviceTrustRequest, InputEvent,
@@ -84,7 +83,10 @@ pub async fn scan_lan(store: RuntimeStore) -> NetworkAction {
             true,
             format!("LAN discovery scan sent to {sent_count} broadcast target(s)."),
         ),
-        Ok(_) => action(false, "LAN discovery scan had no broadcast targets.".to_string()),
+        Ok(_) => action(
+            false,
+            "LAN discovery scan had no broadcast targets.".to_string(),
+        ),
         Err(error) => action(false, format!("LAN discovery scan failed: {error}")),
     }
 }
@@ -246,7 +248,8 @@ fn reconnect_failure_message(
         Ok(Some(ControlMessage::Pong {
             source,
             challenge: response_challenge,
-        })) if reconnect_pong_identity_matches(&source, target) && response_challenge != challenge =>
+        })) if reconnect_pong_identity_matches(&source, target)
+            && response_challenge != challenge =>
         {
             "Authenticated reconnect replied with a stale challenge.".to_string()
         }
@@ -340,8 +343,7 @@ pub async fn initiate_pairing(store: RuntimeStore, request: PairRequest) -> Netw
             if !pairing_dh_public_key_is_well_formed(&remote_dh_public_key) {
                 return action(
                     false,
-                    "Pairing acknowledgement used an invalid key exchange public key."
-                        .to_string(),
+                    "Pairing acknowledgement used an invalid key exchange public key.".to_string(),
                 );
             }
             if peer.device_id == store.local_device_id() {
@@ -517,11 +519,7 @@ pub async fn send_test_input(store: RuntimeStore, request: SendInputRequest) -> 
             }
             Err(error) => {
                 let message = format!("Failed to send input event: {error}");
-                store.record_trusted_connection_failure(
-                    &request.device_id,
-                    &endpoint,
-                    &message,
-                );
+                store.record_trusted_connection_failure(&request.device_id, &endpoint, &message);
                 last_failure = Some(message);
             }
         }
@@ -598,13 +596,8 @@ pub async fn check_trusted_device(
                 Err(error) => action(false, error),
             };
         } else {
-            let failure_message =
-                reconnect_failure_message(reconnect_result, &target, &challenge);
-            store.record_trusted_connection_failure(
-                &target.device_id,
-                &endpoint,
-                &failure_message,
-            );
+            let failure_message = reconnect_failure_message(reconnect_result, &target, &challenge);
+            store.record_trusted_connection_failure(&target.device_id, &endpoint, &failure_message);
             last_failure = Some(failure_message);
         }
     }
@@ -624,7 +617,10 @@ pub async fn update_trusted_endpoint(
     let target = match store.trusted_target_for_endpoint(&request.device_id, request.endpoint) {
         Ok(target) => target,
         Err(message) if message == crate::runtime::INVALID_ENDPOINT_MESSAGE => {
-            return action(false, "Enter a reachable LAN endpoint, not localhost.".to_string())
+            return action(
+                false,
+                "Enter a reachable LAN endpoint, not localhost.".to_string(),
+            )
         }
         Err(message) => return action(false, message),
     };
@@ -651,7 +647,10 @@ pub async fn update_trusted_endpoint(
         ) {
             Ok(()) => action(
                 true,
-                format!("Trusted endpoint updated and verified at {}.", target.endpoint),
+                format!(
+                    "Trusted endpoint updated and verified at {}.",
+                    target.endpoint
+                ),
             ),
             Err(error) => action(false, error),
         };
@@ -778,7 +777,10 @@ async fn send_input_to_target(
                 let message =
                     "Input event target replied with an unexpected control message.".to_string();
                 store.record_trusted_connection_failure(&target.device_id, endpoint, &message);
-                last_error = Some(std::io::Error::new(std::io::ErrorKind::InvalidData, message));
+                last_error = Some(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    message,
+                ));
             }
             Ok(None) => {
                 let message = "Input event target closed before acknowledging.".to_string();
@@ -790,11 +792,7 @@ async fn send_input_to_target(
             }
             Err(error) => {
                 let message = format!("Failed to send input event: {error}");
-                store.record_trusted_connection_failure(
-                    &target.device_id,
-                    endpoint,
-                    &message,
-                );
+                store.record_trusted_connection_failure(&target.device_id, endpoint, &message);
                 last_error = Some(error);
             }
         }
@@ -832,11 +830,7 @@ fn record_successful_input_source(
     let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
         return Err("Trusted source advertised an invalid control port.".to_string());
     };
-    store.record_trusted_connection(
-        source.device_id.clone(),
-        source_endpoint,
-        None,
-    )
+    store.record_trusted_connection(source.device_id.clone(), source_endpoint, None)
 }
 
 fn record_failed_input_source(
@@ -848,11 +842,7 @@ fn record_failed_input_source(
     let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
         return;
     };
-    store.record_trusted_connection_failure(
-        &source.device_id,
-        &source_endpoint,
-        message,
-    );
+    store.record_trusted_connection_failure(&source.device_id, &source_endpoint, message);
 }
 
 fn record_auth_failed_input_source(
@@ -883,11 +873,7 @@ fn record_failed_reconnect_source(
     let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
         return;
     };
-    store.record_trusted_connection_failure(
-        &source.device_id,
-        &source_endpoint,
-        message,
-    );
+    store.record_trusted_connection_failure(&source.device_id, &source_endpoint, message);
 }
 
 fn start_control_listener(app: AppHandle, store: RuntimeStore) {
@@ -1023,10 +1009,7 @@ async fn handle_control_stream(
     sender: SocketAddr,
 ) {
     if let Some(message) = private_network_control_rejection(&store, sender) {
-        let _ = app.emit(
-            "remoteshare://network-error",
-            message,
-        );
+        let _ = app.emit("remoteshare://network-error", message);
         return;
     }
 
@@ -1049,8 +1032,7 @@ async fn handle_control_stream(
             dh_public_key: remote_dh_public_key,
         } => {
             if !pairing_dh_public_key_is_well_formed(&remote_dh_public_key) {
-                let reason =
-                    "Pairing request used an invalid key exchange public key.".to_string();
+                let reason = "Pairing request used an invalid key exchange public key.".to_string();
                 let rejection = ControlMessage::PairRejected {
                     reason: reason.clone(),
                 };
@@ -1179,8 +1161,8 @@ async fn handle_control_stream(
                         ok: false,
                         message: message.clone(),
                     };
-                    let _ = write_control_message(&mut stream, &response, Some(shared_secret))
-                        .await;
+                    let _ =
+                        write_control_message(&mut stream, &response, Some(shared_secret)).await;
                 }
                 let _ = app.emit("remoteshare://network-error", message);
                 let _ = app.emit("remoteshare://devices-changed", ());
@@ -1301,7 +1283,9 @@ fn is_private_or_local_address(address: IpAddr) -> bool {
                     || mapped_address.is_link_local();
             }
 
-            address.is_loopback() || is_ipv6_unique_local(address) || is_ipv6_unicast_link_local(address)
+            address.is_loopback()
+                || is_ipv6_unique_local(address)
+                || is_ipv6_unicast_link_local(address)
         }
     }
 }
@@ -1749,9 +1733,12 @@ fn source_endpoint(sender: SocketAddr, control_port: u16) -> Option<String> {
 fn discovery_reply_target(sender: SocketAddr) -> SocketAddr {
     match sender {
         SocketAddr::V4(sender) => SocketAddr::V4(SocketAddrV4::new(*sender.ip(), DISCOVERY_PORT)),
-        SocketAddr::V6(sender) => {
-            SocketAddr::V6(SocketAddrV6::new(*sender.ip(), DISCOVERY_PORT, 0, sender.scope_id()))
-        }
+        SocketAddr::V6(sender) => SocketAddr::V6(SocketAddrV6::new(
+            *sender.ip(),
+            DISCOVERY_PORT,
+            0,
+            sender.scope_id(),
+        )),
     }
 }
 
@@ -2421,12 +2408,10 @@ Wireless LAN adapter Wi-Fi:
                 .expect("message should be present");
             assert!(envelope.message.is_none());
             assert!(envelope.encrypted.is_some());
-            let received = super::received_control_message_from_envelope(
-                envelope,
-                Some(&server_secret),
-            )
-            .expect("encrypted message should decrypt")
-            .expect("decrypted message should be present");
+            let received =
+                super::received_control_message_from_envelope(envelope, Some(&server_secret))
+                    .expect("encrypted message should decrypt")
+                    .expect("decrypted message should be present");
             super::verify_received_message(&received, &server_secret)
                 .expect("input event should be authenticated");
             assert!(matches!(
@@ -2521,13 +2506,11 @@ Wireless LAN adapter Wi-Fi:
 
         let wrong_secret_envelope = super::control_envelope_for_message(&message, Some(secret))
             .expect("trusted control envelope should build");
-        assert!(
-            super::received_control_message_from_envelope(
-                wrong_secret_envelope,
-                Some("wrong-secret"),
-            )
-            .is_err()
-        );
+        assert!(super::received_control_message_from_envelope(
+            wrong_secret_envelope,
+            Some("wrong-secret"),
+        )
+        .is_err());
 
         let mut mismatched_key_envelope =
             super::control_envelope_for_message(&message, Some(secret))
@@ -2537,13 +2520,11 @@ Wireless LAN adapter Wi-Fi:
             .as_mut()
             .expect("trusted control message should be encrypted")
             .key_id = "other-device".to_string();
-        assert!(
-            super::received_control_message_from_envelope(
-                mismatched_key_envelope,
-                Some(secret),
-            )
-            .is_err()
-        );
+        assert!(super::received_control_message_from_envelope(
+            mismatched_key_envelope,
+            Some(secret),
+        )
+        .is_err());
     }
 
     #[tokio::test]
@@ -2566,13 +2547,11 @@ Wireless LAN adapter Wi-Fi:
         let event = RuntimeStore::test_input_event();
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("client should connect");
-            let received = super::read_control_message_with_secret(
-                &mut stream,
-                Some("shared-secret"),
-            )
-                .await
-                .expect("message should read")
-                .expect("message should be present");
+            let received =
+                super::read_control_message_with_secret(&mut stream, Some("shared-secret"))
+                    .await
+                    .expect("message should read")
+                    .expect("message should be present");
             super::verify_received_message(&received, "shared-secret")
                 .expect("capture event should be authenticated");
             assert!(matches!(
@@ -2595,10 +2574,7 @@ Wireless LAN adapter Wi-Fi:
             "Rejected input event: receive control is disabled.{}",
             super::TRUSTED_ENDPOINT_RECOVERY_HINT
         );
-        assert_eq!(
-            error.to_string(),
-            expected_rejection
-        );
+        assert_eq!(error.to_string(), expected_rejection);
         server.await.expect("server task should finish");
 
         let status = store.status();
@@ -2618,7 +2594,9 @@ Wireless LAN adapter Wi-Fi:
     #[test]
     fn private_guard_accepts_ipv4_mapped_ipv6_private_addresses() {
         let address = "::ffff:192.168.1.44".parse().unwrap();
-        assert!(super::is_private_or_local_address(std::net::IpAddr::V6(address)));
+        assert!(super::is_private_or_local_address(std::net::IpAddr::V6(
+            address
+        )));
     }
 
     #[test]
@@ -2708,7 +2686,9 @@ Wireless LAN adapter Wi-Fi:
 
     #[test]
     fn authenticated_input_failure_ignores_invalid_source_control_port() {
-        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-failure-invalid-port"));
+        crate::identity::set_test_config_dir(unique_test_dir(
+            "incoming-input-failure-invalid-port",
+        ));
 
         let store = trusted_store_for_network_test("192.168.1.50:44777");
         let mut source = peer("trusted-device", "trusted-fingerprint");
@@ -3382,9 +3362,7 @@ Wireless LAN adapter Wi-Fi:
         }
     }
 
-    async fn bind_private_lan_listener_or_skip(
-        test_name: &str,
-    ) -> Option<(TcpListener, String)> {
+    async fn bind_private_lan_listener_or_skip(test_name: &str) -> Option<(TcpListener, String)> {
         let mut addresses = super::platform_local_ipv4_addresses()
             .into_iter()
             .filter(|address| address.is_private())
