@@ -254,6 +254,9 @@ function connectionFailureHint(device: Device) {
   if (failure.endpointSource === "health") {
     return "Last reconnect endpoint may be stale. Copy the current endpoint from the other computer, then use Edit IP and Verify IP.";
   }
+  if (failure.endpointSource === "manual") {
+    return "Manual IP verification failed. Check the copied endpoint, firewall, and port 44777, then use Set IP and Verify IP again.";
+  }
   if (device.trusted && device.inputControlReady) {
     return "Copy the current endpoint from the other computer, then use Set IP and Verify IP.";
   }
