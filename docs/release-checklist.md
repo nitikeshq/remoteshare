@@ -144,7 +144,7 @@ npm run prepare:lan-smoke-report -- release-assets reports/completed-lan-smoke-r
 
 Tagged GitHub releases attach a prefilled `lan-smoke-report.md`; download it, complete the hardware evidence rows, then verify the completed copy.
 
-To avoid mixing stale local artifacts with the current draft release, download the tagged draft release assets into a new empty directory and verify the GitHub asset list, sizes, digests, manifest, and checksums in one step:
+To avoid mixing stale local artifacts with the current draft release, download the tagged draft release assets into a new empty directory and verify the GitHub asset list, sizes, digests, manifest, checksums, prefilled `lan-smoke-report.md`, and `release-candidate-summary.md` in one step:
 
 ```bash
 npm run download:release-assets -- v$(node -p "require('./package.json').version") release-assets

@@ -60,6 +60,36 @@ try {
   assertMissing(failedOutputDir, "github-release.json");
   assertMissing(failedOutputDir, "RELEASE-MANIFEST.json");
 
+  const staleSmokeFixture = releaseFixture("stale-smoke-report", {
+    mutateAsset: (assetName, body) =>
+      assetName === "lan-smoke-report.md" ? "# stale smoke report\n" : body
+  });
+  const staleSmokeFakeBin = fakeGhBin(staleSmokeFixture);
+  const staleSmokeOutputDir = path.join(root, "stale-smoke-output");
+  runDownloader(
+    staleSmokeFakeBin,
+    [`v${packageVersion}`, staleSmokeOutputDir],
+    false,
+    "stale downloaded LAN smoke report should fail",
+    ["Prefilled LAN smoke report must match downloaded release assets"]
+  );
+  assertMissing(staleSmokeOutputDir, "lan-smoke-report.md");
+
+  const staleSummaryFixture = releaseFixture("stale-release-summary", {
+    mutateAsset: (assetName, body) =>
+      assetName === "release-candidate-summary.md" ? "# stale release candidate\n" : body
+  });
+  const staleSummaryFakeBin = fakeGhBin(staleSummaryFixture);
+  const staleSummaryOutputDir = path.join(root, "stale-summary-output");
+  runDownloader(
+    staleSummaryFakeBin,
+    [`v${packageVersion}`, staleSummaryOutputDir],
+    false,
+    "stale downloaded release candidate summary should fail",
+    ["Release candidate summary must match downloaded release assets"]
+  );
+  assertMissing(staleSummaryOutputDir, "release-candidate-summary.md");
+
   console.log("Download release assets tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
@@ -86,20 +116,27 @@ function releaseFixture(name, options = {}) {
     path.join(assetsRoot, "SHA256SUMS.txt"),
     `${artifacts.map((artifact) => `${artifact.sha256}  ${artifact.file}`).sort().join("\n")}\n`
   );
-  fs.writeFileSync(
-    path.join(assetsRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify(
-      options.mutateManifest?.({ version: packageVersion, generatedAt, artifacts }) ?? {
-        version: packageVersion,
-        generatedAt,
-        artifacts
-      },
-      null,
-      2
-    )}\n`
-  );
-  fs.writeFileSync(path.join(assetsRoot, "lan-smoke-report.md"), "# LAN smoke report\n");
-  fs.writeFileSync(path.join(assetsRoot, "release-candidate-summary.md"), "# Release candidate\n");
+  const manifestPath = path.join(assetsRoot, "RELEASE-MANIFEST.json");
+  const manifest = { version: packageVersion, generatedAt, artifacts };
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const smokeReportPath = path.join(assetsRoot, "lan-smoke-report.md");
+  const summaryPath = path.join(assetsRoot, "release-candidate-summary.md");
+  run(process.execPath, ["scripts/prepare-lan-smoke-report.mjs", assetsRoot, smokeReportPath]);
+  run(process.execPath, ["scripts/release-candidate-summary.mjs", assetsRoot, summaryPath]);
+
+  const mutatedManifest = options.mutateManifest?.(manifest);
+  if (mutatedManifest) {
+    fs.writeFileSync(manifestPath, `${JSON.stringify(mutatedManifest, null, 2)}\n`);
+  }
+
+  for (const assetName of ["lan-smoke-report.md", "release-candidate-summary.md"]) {
+    const assetPath = path.join(assetsRoot, assetName);
+    const body = fs.readFileSync(assetPath);
+    const mutated = options.mutateAsset?.(assetName, body);
+    if (mutated !== undefined) {
+      fs.writeFileSync(assetPath, mutated);
+    }
+  }
 
   const releaseJson = path.join(root, name, "github-release.json");
   const assetNames = [
@@ -191,6 +228,13 @@ function runDownloader(fakeBin, args, shouldPass, label, expectedOutput) {
     if (!output.includes(expected)) {
       throw new Error(`${label}: expected output to include ${expected}\n${output}`);
     }
+  }
+}
+
+function run(command, args) {
+  const result = spawnSync(command, args, { encoding: "utf8" });
+  if (result.status !== 0) {
+    throw new Error(`${command} ${args.join(" ")} failed.\n${result.stdout}\n${result.stderr}`);
   }
 }
 

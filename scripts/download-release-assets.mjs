@@ -45,6 +45,18 @@ try {
   run("gh", ["release", "download", tag, "--dir", stagingDir]);
   run(process.execPath, ["scripts/verify-github-release-assets.mjs", releaseJsonPath, stagingDir]);
   run(process.execPath, ["scripts/verify-release-manifest.mjs", stagingDir]);
+  verifyGeneratedAsset(
+    stagingDir,
+    "lan-smoke-report.md",
+    "scripts/prepare-lan-smoke-report.mjs",
+    "Prefilled LAN smoke report must match downloaded release assets."
+  );
+  verifyGeneratedAsset(
+    stagingDir,
+    "release-candidate-summary.md",
+    "scripts/release-candidate-summary.mjs",
+    "Release candidate summary must match downloaded release assets."
+  );
 
   if (fs.existsSync(outputDir)) {
     fs.rmSync(outputDir, { recursive: true, force: true });
@@ -76,4 +88,24 @@ function run(command, commandArgs, options = {}) {
   }
 
   return result;
+}
+
+function verifyGeneratedAsset(stagingDir, fileName, script, mismatchMessage) {
+  const downloadedPath = path.join(stagingDir, fileName);
+  if (!fs.existsSync(downloadedPath)) {
+    throw new Error(`Downloaded release asset is missing: ${fileName}`);
+  }
+
+  const tempDirectory = fs.mkdtempSync(path.join(stagingDir, ".verify-generated-"));
+  const expectedPath = path.join(tempDirectory, fileName);
+  try {
+    run(process.execPath, [script, stagingDir, expectedPath], { echoOutput: false });
+    const downloaded = fs.readFileSync(downloadedPath, "utf8");
+    const expected = fs.readFileSync(expectedPath, "utf8");
+    if (downloaded !== expected) {
+      throw new Error(mismatchMessage);
+    }
+  } finally {
+    fs.rmSync(tempDirectory, { recursive: true, force: true });
+  }
 }

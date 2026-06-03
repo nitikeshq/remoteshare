@@ -11,6 +11,7 @@ import {
 const releaseAssetsRoot = process.argv[2] ?? "release-assets";
 const outputPath = process.argv[3] ?? path.join(releaseAssetsRoot, "release-candidate-summary.md");
 const manifestPath = path.join(releaseAssetsRoot, "RELEASE-MANIFEST.json");
+const readinessAssetsPath = "release-assets";
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
 if (!fs.existsSync(manifestPath)) {
@@ -75,7 +76,7 @@ ${rows}
 
 \`\`\`bash
 npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md
-npm run verify:release-readiness -- ${releaseAssetsRoot} path/to/completed-lan-smoke-report.md
+npm run verify:release-readiness -- ${readinessAssetsPath} path/to/completed-lan-smoke-report.md
 \`\`\`
 
 Do not publish the draft release until both verification commands pass against the completed real Mac-to-Windows LAN smoke report.
