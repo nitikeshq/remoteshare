@@ -66,7 +66,7 @@ ${rows}
 2. Install the Windows EXE on the Windows receiver/client.
 3. Complete \`lan-smoke-report.md\` for both auto-discovery and manual fallback runs.
 4. Use the setup checklist \`Copy\` button on each computer to paste role, platform, first-MVP input direction, and checklist step evidence.
-5. Use the pending pairing row \`Copy\` button to paste pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence.
+5. Use the pending pairing row \`Copy\` button to paste pairing direction, this computer, visible code, typed-code state, local/remote approval, and expiry evidence.
 6. Use the Trusted Device Audit peer row \`Evidence\` button to paste this computer, local fingerprint, peer, peer role, and peer fingerprint evidence.
 7. Record a Test date that is on or after the release manifest date and not in the future.
 8. Use the Startup health \`Copy\` button to paste \`TCP:\`, \`UDP:\`, \`Start:\`, and started/reconnect timing evidence after restart.

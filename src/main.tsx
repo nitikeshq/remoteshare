@@ -543,10 +543,11 @@ function pairingEntryKey(pairing: PendingPairing) {
   return `${pairing.id}:${pairing.code}:${pairing.createdAtMs}:${pairing.expiresAtMs}`;
 }
 
-function pairingEvidence(pairing: PendingPairing, enteredCode: string, nowMs: number) {
+function pairingEvidence(status: RuntimeStatus, pairing: PendingPairing, enteredCode: string, nowMs: number) {
   const entryState = pairingCodeEntryState(pairing, enteredCode, nowMs);
   return [
     `Pairing: ${pairingDirectionLabel(pairing)}`,
+    `This computer: ${status.thisDevice}`,
     `Device: ${pairing.name}`,
     `Endpoint: ${pairing.endpoint}`,
     `Visible code: ${pairing.code}`,
@@ -1135,7 +1136,7 @@ function App() {
   }
 
   async function copyPairingEvidence(pairing: PendingPairing, enteredCode: string) {
-    const evidence = pairingEvidence(pairing, enteredCode, pairingNowMs);
+    const evidence = pairingEvidence(status, pairing, enteredCode, pairingNowMs);
     try {
       await navigator.clipboard.writeText(evidence);
       showActionMessage("Copied pairing evidence.");

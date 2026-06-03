@@ -447,7 +447,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Pair action started | started |
 | Same six-digit code shown on both machines | confirmed |
 | Six-digit code typed on both machines | confirmed |
-| Pairing evidence copied from pending row | Pairing: Outgoing; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
+| Pairing evidence copied from pending row | Pairing: Outgoing; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
 | \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEvidence} |
@@ -476,7 +476,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Pair action started | started |
 | Same six-digit code shown on both machines | confirmed |
 | Six-digit code typed on both machines | confirmed |
-| Pairing evidence copied from pending row | Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
+| Pairing evidence copied from pending row | Pairing: Incoming; This computer: Mac sender; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
 | \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEvidence} |

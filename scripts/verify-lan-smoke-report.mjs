@@ -279,13 +279,14 @@ function requirePairingEvidence(table, section) {
   const value = requireFilled(table, "Pairing evidence copied from pending row", section).toLowerCase();
   if (
     !/pairing:\s*(incoming|outgoing)/.test(value) ||
+    !/this\s+computer:\s*[^;|]+/.test(value) ||
     !/visible\s+code:\s*\d{6}/.test(value) ||
     !/typed\s+code\s+state:\s*(codes\s+match|expired|code\s+mismatch|\d+\s+digits?\s+left|type\s+other\s+code)/.test(value) ||
     !/local:\s*(approved|pending)/.test(value) ||
     !/remote:\s*(approved|pending)/.test(value) ||
     !/expires:/.test(value)
   ) {
-    throw new Error(`${section} pairing evidence must paste the pending-row copy output with direction, visible code, typed-code state, local/remote approval, and expiry.`);
+    throw new Error(`${section} pairing evidence must paste the pending-row copy output with direction, this computer, visible code, typed-code state, local/remote approval, and expiry.`);
   }
 }
 

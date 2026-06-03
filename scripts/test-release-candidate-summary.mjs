@@ -25,7 +25,7 @@ try {
   assertIncludes(summary, "setup checklist `Copy` button", "setup copy evidence");
   assertIncludes(summary, "role, platform, first-MVP input direction, and checklist step evidence", "setup copied fields");
   assertIncludes(summary, "pending pairing row `Copy` button", "pairing copy evidence");
-  assertIncludes(summary, "pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
+  assertIncludes(summary, "pairing direction, this computer, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
   assertIncludes(summary, "Trusted Device Audit peer row `Evidence` button", "fingerprint audit evidence");
   assertIncludes(summary, "local fingerprint, peer, peer role, and peer fingerprint evidence", "fingerprint audit copied fields");
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
