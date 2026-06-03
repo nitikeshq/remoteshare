@@ -29,6 +29,7 @@ try {
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
+  assertIncludes(summary, "endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
   assertIncludes(summary, "copied endpoint label shown in the peer `This computer` row as Best LAN IPv4, LAN IPv4, or LAN IPv6", "manual copied endpoint label evidence");
   assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
