@@ -19,6 +19,8 @@ pub(crate) const INVALID_ENDPOINT_MESSAGE: &str =
     "Endpoint must be a valid non-local host, host:port, IPv4, or IPv6 address.";
 pub(crate) const PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE: &str =
     "Private network only is enabled. Use a private LAN endpoint or turn off Private network only.";
+pub(crate) const TRUSTED_ENDPOINT_REPAIR_MESSAGE: &str =
+    "Trusted device needs to be re-paired before endpoint verification.";
 
 #[derive(Debug, Clone)]
 struct EndpointSanitization {
@@ -1503,7 +1505,7 @@ impl RuntimeStore {
             .find(|device| device.id == device_id)
             .ok_or_else(|| "Device is not trusted.".to_string())?;
         let shared_secret = device.shared_secret.clone().ok_or_else(|| {
-            "Trusted device needs to be re-paired before endpoint verification.".to_string()
+            TRUSTED_ENDPOINT_REPAIR_MESSAGE.to_string()
         })?;
 
         Ok(TrustedTarget {
@@ -2965,7 +2967,7 @@ mod tests {
 
     use super::{
         input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE,
-        PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE,
+        PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE, TRUSTED_ENDPOINT_REPAIR_MESSAGE,
     };
     use super::{
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
@@ -4938,6 +4940,37 @@ mod tests {
             .trusted_target_for_endpoint("trusted-device", "8.8.8.8".to_string())
             .expect("public endpoint should be allowed after private guard is off");
         assert_eq!(public_target.endpoint, "8.8.8.8:44777");
+    }
+
+    #[test]
+    fn trusted_endpoint_update_target_rejects_stale_device_without_secret() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-update-needs-repair"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: None,
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let error = store
+            .trusted_target_for_endpoint("trusted-device", "192.168.1.50".to_string())
+            .expect_err("trusted endpoint update should require a shared secret");
+        assert_eq!(error, TRUSTED_ENDPOINT_REPAIR_MESSAGE);
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
+        assert!(state.connection_failures.get("trusted-device").is_none());
     }
 
     #[test]
