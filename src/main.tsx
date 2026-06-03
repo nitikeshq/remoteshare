@@ -460,6 +460,12 @@ function mvpReceiveStep(
   };
 }
 
+function receiveShortcutLabel(allowIncomingControl: boolean, devicesNeedingReceive: number) {
+  if (!allowIncomingControl && devicesNeedingReceive > 0) return "Enable all";
+  if (!allowIncomingControl) return "Enable global";
+  return "Enable devices";
+}
+
 function pairingCodeEntryState(pairing: PendingPairing, enteredCode: string, nowMs: number) {
   if (nowMs >= pairing.expiresAtMs) {
     return {
@@ -1036,6 +1042,10 @@ function App() {
     canReceiveInput(status.mode) &&
     trustedDevices.length > 0 &&
     (!status.allowIncomingControl || trustedDevicesNeedingReceive.length > 0);
+  const receiveShortcutButtonLabel = receiveShortcutLabel(
+    status.allowIncomingControl,
+    trustedDevicesNeedingReceive.length
+  );
   const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
     [trustedDevices]
@@ -1348,10 +1358,14 @@ function App() {
               <button
                 className="secondary-button compact"
                 onClick={enableReceiveForTrustedDevices}
-                title="Enable incoming control for trusted devices."
+                title={
+                  status.allowIncomingControl
+                    ? "Enable Receive for trusted devices with a shared input secret."
+                    : "Enable global incoming control and trusted-device Receive toggles."
+                }
                 type="button"
               >
-                Enable
+                {receiveShortcutButtonLabel}
               </button>
             )}
           </div>
