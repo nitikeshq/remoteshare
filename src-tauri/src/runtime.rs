@@ -1046,10 +1046,20 @@ impl RuntimeStore {
         let mut state = self.state.lock().expect("runtime state poisoned");
         let now = now_ms();
         prune_runtime_state(&mut state, now);
-        let fallback = state.discovered_peers.get(&target.device_id);
+        let expected_peer = target.expected_peer.as_ref();
+        let fallback = state
+            .discovered_peers
+            .get(&target.device_id)
+            .filter(|peer| peer_is_fresh(peer, now))
+            .filter(|peer| {
+                expected_peer.is_none_or(|expected| {
+                    pairing_peer_matches_announcement(expected, &peer.announcement)
+                })
+            });
         let device_id = peer
             .as_ref()
             .map(|peer| peer.device_id.clone())
+            .or_else(|| expected_peer.map(|peer| peer.device_id.clone()))
             .unwrap_or_else(|| target.device_id.clone());
         if device_id == state.persisted.identity.id {
             return Err("Cannot pair this computer with itself.".to_string());
@@ -1074,16 +1084,19 @@ impl RuntimeStore {
             name: peer
                 .as_ref()
                 .map(|peer| peer.name.clone())
+                .or_else(|| expected_peer.map(|peer| peer.name.clone()))
                 .or_else(|| fallback.map(|peer| peer.announcement.name.clone()))
                 .unwrap_or_else(|| target.endpoint.clone()),
             platform: peer
                 .as_ref()
                 .map(|peer| peer.platform.clone())
+                .or_else(|| expected_peer.map(|peer| peer.platform.clone()))
                 .or_else(|| fallback.map(|peer| peer.announcement.platform.clone()))
                 .unwrap_or_else(|| "unknown".to_string()),
             role: peer
                 .as_ref()
                 .map(|peer| peer.role.clone())
+                .or_else(|| expected_peer.map(|peer| peer.role.clone()))
                 .or_else(|| fallback.map(|peer| peer.announcement.role.clone()))
                 .unwrap_or(ComputerRole::Client),
             endpoint: target.endpoint.clone(),
@@ -1091,11 +1104,13 @@ impl RuntimeStore {
             public_key_fingerprint: peer
                 .as_ref()
                 .map(|peer| peer.public_key_fingerprint.clone())
+                .or_else(|| expected_peer.map(|peer| peer.public_key_fingerprint.clone()))
                 .or_else(|| fallback.map(|peer| peer.announcement.public_key_fingerprint.clone()))
                 .unwrap_or_else(|| target.device_id.clone()),
             public_key: peer
                 .as_ref()
                 .map(|peer| peer.public_key.clone())
+                .or_else(|| expected_peer.map(|peer| peer.public_key.clone()))
                 .or_else(|| fallback.map(|peer| peer.announcement.public_key.clone()))
                 .unwrap_or_default(),
             local_nonce,
@@ -2095,6 +2110,12 @@ fn pairing_peer_from_announcement(announcement: &PeerAnnouncement) -> PairingPee
         public_key_fingerprint: announcement.public_key_fingerprint.clone(),
         public_key: announcement.public_key.clone(),
     }
+}
+
+fn pairing_peer_matches_announcement(peer: &PairingPeer, announcement: &PeerAnnouncement) -> bool {
+    peer.device_id == announcement.device_id
+        && peer.public_key_fingerprint == announcement.public_key_fingerprint
+        && (peer.public_key.is_empty() || peer.public_key == announcement.public_key)
 }
 
 fn pairing_peer_from_trusted_device(device: &TrustedDevice) -> PairingPeer {
@@ -5173,6 +5194,72 @@ mod tests {
         assert_eq!(expected_peer.device_id, "trusted-device");
         assert_eq!(expected_peer.public_key_fingerprint, "trusted-fingerprint");
         assert_eq!(expected_peer.public_key, "trusted-public-key");
+    }
+
+    #[test]
+    fn outgoing_pairing_registration_prefers_expected_identity_over_stale_discovery() {
+        crate::identity::set_test_config_dir(unique_test_dir("outgoing-pairing-expected-identity"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.discovered_peers.insert(
+                "trusted-device".to_string(),
+                DiscoveredPeer {
+                    announcement: PeerAnnouncement {
+                        protocol_version: 1,
+                        device_id: "trusted-device".to_string(),
+                        name: "Stale Windows".to_string(),
+                        platform: "windows".to_string(),
+                        control_port: 44777,
+                        public_key_fingerprint: "stale-fingerprint".to_string(),
+                        role: ComputerRole::Client,
+                        public_key: "stale-public-key".to_string(),
+                        scan_request: false,
+                    },
+                    endpoint: "192.168.1.66:44777".to_string(),
+                    last_seen_at_ms: now_ms().saturating_sub(PEER_TIMEOUT_MS + 1),
+                },
+            );
+        }
+
+        let target = PairingTarget {
+            device_id: "trusted-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: Some(PairingPeer {
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                control_port: 44777,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: "trusted-public-key".to_string(),
+            }),
+        };
+
+        store
+            .register_outgoing_pairing(
+                &target,
+                None,
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                "local-private-key".to_string(),
+                "local-public-key".to_string(),
+                "remote-public-key".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should register with expected identity metadata");
+
+        let pairing = store
+            .status()
+            .pending_pairings
+            .into_iter()
+            .find(|pairing| pairing.device_id == "trusted-device")
+            .expect("pending pairing should be visible");
+        assert_eq!(pairing.name, "Trusted Windows");
+        assert_eq!(pairing.public_key_fingerprint, "trusted-fingerprint");
+        assert_eq!(pairing.public_key, "trusted-public-key");
+        assert_eq!(pairing.endpoint, "192.168.1.50:44777");
     }
 
     #[test]
