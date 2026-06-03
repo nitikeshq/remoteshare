@@ -39,7 +39,41 @@ try {
       artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe")
     ]
   });
-  runSummary(missingDeb, path.join(root, "missing-deb.md"), false, "missing deb should fail", "missing deb artifact");
+  runSummary(missingDeb, path.join(root, "missing-deb.md"), false, "missing deb should fail", "missing artifact type(s): deb");
+
+  const duplicateType = fixture("duplicate-type", {
+    version: "0.1.13",
+    artifacts: [
+      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
+      artifact("exe", "RemoteShare_0.1.13_arm64-setup.exe", "windows exe 2"),
+      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+    ]
+  });
+  runSummary(
+    duplicateType,
+    path.join(root, "duplicate-type.md"),
+    false,
+    "duplicate manifest type should fail",
+    "duplicate type(s): exe"
+  );
+
+  const invalidType = fixture("invalid-type", {
+    version: "0.1.13",
+    artifacts: [
+      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
+      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb"),
+      artifact("msi", "RemoteShare_0.1.13_x64.msi", "windows msi")
+    ]
+  });
+  runSummary(
+    invalidType,
+    path.join(root, "invalid-type.md"),
+    false,
+    "invalid manifest type should fail",
+    "invalid type: msi"
+  );
 
   const wrongVersion = fixture("wrong-version", {
     version: "0.2.0",

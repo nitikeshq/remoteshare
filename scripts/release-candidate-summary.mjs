@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  publishArtifactStatus,
+  requiredArtifactTypes
+} from "./release-artifacts-lib.mjs";
 
 const releaseAssetsRoot = process.argv[2] ?? "release-assets";
 const outputPath = process.argv[3] ?? path.join(releaseAssetsRoot, "release-candidate-summary.md");
@@ -22,7 +26,20 @@ if (!Array.isArray(manifest.artifacts)) {
   throw new Error("Release manifest must contain an artifacts array.");
 }
 
-const artifacts = ["dmg", "exe", "deb"].map((type) => artifactForType(type));
+const manifestArtifacts = manifest.artifacts.map(validateManifestArtifact);
+const { duplicateTypes, missingTypes } = publishArtifactStatus(manifestArtifacts);
+
+if (missingTypes.length > 0) {
+  throw new Error(`Release manifest missing artifact type(s): ${missingTypes.join(", ")}`);
+}
+
+if (duplicateTypes.length > 0) {
+  throw new Error(
+    `Release manifest must contain exactly one artifact per type; duplicate type(s): ${duplicateTypes.join(", ")}`
+  );
+}
+
+const artifacts = [...requiredArtifactTypes.keys()].map((type) => artifactForType(type));
 const rows = artifacts
   .map((artifact) => `| ${artifact.type} | ${artifact.file} | ${artifact.sha256} | ${artifact.sizeBytes} |`)
   .join("\n");
@@ -62,23 +79,9 @@ fs.writeFileSync(outputPath, summary);
 console.log(`Prepared release candidate summary: ${outputPath}`);
 
 function artifactForType(type) {
-  const artifact = manifest.artifacts.find((candidate) => candidate.type === type);
+  const artifact = manifestArtifacts.find((candidate) => candidate.type === type);
   if (!artifact) {
     throw new Error(`Release manifest is missing ${type} artifact.`);
-  }
-
-  if (
-    typeof artifact.file !== "string" ||
-    typeof artifact.sha256 !== "string" ||
-    typeof artifact.sizeBytes !== "number"
-  ) {
-    throw new Error(`Release manifest ${type} artifact must include file, sha256, and sizeBytes.`);
-  }
-
-  if (!artifact.file.includes(`_${packageJson.version}_`)) {
-    throw new Error(
-      `Release manifest ${type} artifact filename must include package version ${packageJson.version}.`
-    );
   }
 
   const artifactPath = path.join(releaseAssetsRoot, artifact.file);
@@ -101,4 +104,42 @@ function artifactForType(type) {
   }
 
   return artifact;
+}
+
+function validateManifestArtifact(artifact, index) {
+  if (!artifact || typeof artifact !== "object") {
+    throw new Error(`Release manifest artifact ${index} must be an object.`);
+  }
+
+  const { file, sha256, sizeBytes, type } = artifact;
+  if (typeof type !== "string" || !requiredArtifactTypes.has(type)) {
+    throw new Error(`Release manifest artifact ${index} has invalid type: ${String(type)}.`);
+  }
+
+  if (typeof file !== "string" || file.length === 0 || path.basename(file) !== file) {
+    throw new Error(`Release manifest artifact ${index} must use a basename-only file path.`);
+  }
+
+  const expectedExtension = requiredArtifactTypes.get(type);
+  if (path.extname(file).toLowerCase() !== expectedExtension) {
+    throw new Error(
+      `Release manifest ${type} artifact must use ${expectedExtension} extension: ${file}.`
+    );
+  }
+
+  if (!file.includes(`_${packageJson.version}_`)) {
+    throw new Error(
+      `Release manifest ${type} artifact filename must include package version ${packageJson.version}.`
+    );
+  }
+
+  if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new Error(`Release manifest ${type} artifact has invalid sha256.`);
+  }
+
+  if (!Number.isInteger(sizeBytes) || sizeBytes <= 0) {
+    throw new Error(`Release manifest ${type} artifact has invalid sizeBytes.`);
+  }
+
+  return { file, sha256, sizeBytes, type };
 }
