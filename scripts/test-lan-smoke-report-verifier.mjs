@@ -211,6 +211,32 @@ try {
     "Manual Fallback Run discovery evidence must explain that discovery was disabled, skipped, unavailable, or failed"
   );
 
+  const successfulManualDiscovery = writeReport("successful-manual-discovery.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualDiscoveryFallback: "discovery worked and found the peer"
+  });
+  runVerifier(
+    successfulManualDiscovery,
+    false,
+    "successful manual discovery fallback should fail",
+    "Manual Fallback Run discovery evidence must explain that discovery was disabled, skipped, unavailable, or failed"
+  );
+
+  const notDiscoveredManualFallback = writeReport("not-discovered-manual-fallback.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualDiscoveryFallback: "peer not discovered on UDP; used manual fallback"
+  });
+  runVerifier(
+    notDiscoveredManualFallback,
+    true,
+    "not discovered manual fallback should pass",
+    "Verified LAN smoke report"
+  );
+
   const vagueManualEndpointCopy = writeReport("vague-manual-endpoint-copy.md", {
     autoPass: "Pass",
     manualPass: "Pass",

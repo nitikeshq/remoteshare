@@ -260,7 +260,10 @@ function requireEndpointSourceEvidence(table, field, section, expectedPattern) {
 
 function requireManualFallbackEvidence(table) {
   const discovery = requireFilled(table, "Discovery disabled, skipped, or failed", "Manual Fallback Run").toLowerCase();
-  if (!/(disabled|skipped|failed|blocked|unavailable|not found|not discovered|udp|discovery)/.test(discovery)) {
+  const discoveryFallbackFailurePattern =
+    /(disabled|skipped|failed|blocked|unavailable|not\s+found|not\s+discovered|udp\s+(blocked|failed|unavailable)|discovery\s+(disabled|skipped|failed|blocked|unavailable))/;
+  const discoverySuccessPattern = /\b(works|worked|succeeded|success|successful|enabled|shown|available)\b/;
+  if (!discoveryFallbackFailurePattern.test(discovery) || discoverySuccessPattern.test(discovery)) {
     throw new Error("Manual Fallback Run discovery evidence must explain that discovery was disabled, skipped, unavailable, or failed.");
   }
 
