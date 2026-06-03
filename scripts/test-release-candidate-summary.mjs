@@ -90,6 +90,10 @@ try {
   fs.mkdirSync(missingManifest, { recursive: true });
   runSummary(missingManifest, path.join(root, "missing.md"), false, "missing manifest should fail", "Missing release manifest");
 
+  const existingOutput = path.join(root, "existing.md");
+  fs.writeFileSync(existingOutput, "previous summary\n");
+  runSummary(valid, existingOutput, false, "existing summary should fail", "Release candidate summary already exists");
+
   const invalidManifest = path.join(root, "invalid-manifest");
   fs.mkdirSync(invalidManifest, { recursive: true });
   fs.writeFileSync(path.join(invalidManifest, "RELEASE-MANIFEST.json"), "{not json");

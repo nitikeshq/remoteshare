@@ -18,6 +18,10 @@ if (!fs.existsSync(manifestPath)) {
   throw new Error(`Missing release manifest: ${manifestPath}`);
 }
 
+if (fs.existsSync(outputPath)) {
+  throw new Error(`Release candidate summary already exists: ${outputPath}`);
+}
+
 const manifest = readReleaseManifest(manifestPath);
 if (manifest.version !== packageJson.version) {
   throw new Error(
