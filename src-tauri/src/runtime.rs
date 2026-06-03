@@ -718,11 +718,19 @@ impl RuntimeStore {
             }
             Err(error) => {
                 if request.auto_start.is_some() {
+                    let saved_auto_start = state.persisted.settings.auto_start;
+                    let rollback_result = set_autostart_enabled(saved_auto_start);
+                    let detail = match rollback_result {
+                        Ok(()) => format!(
+                            "Start-at-login setting failed to save and was rolled back to the previous saved value: {error}"
+                        ),
+                        Err(rollback_error) => format!(
+                            "Start-at-login setting failed to save and rollback also failed: {error}; rollback: {rollback_error}"
+                        ),
+                    };
                     state.network_health.startup_registration = ServiceHealth {
                         state: ServiceHealthState::Failed,
-                        detail: format!(
-                            "Start-at-login setting changed, but RemoteShare settings failed to save: {error}"
-                        ),
+                        detail,
                         updated_at_ms: Some(now_ms()),
                     };
                 }
@@ -2792,6 +2800,11 @@ fn startup_registration_success_detail(auto_start: bool) -> String {
 fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
     #[cfg(test)]
     {
+        TEST_AUTOSTART_REGISTRATION_CALLS
+            .get_or_init(|| Mutex::new(Vec::new()))
+            .lock()
+            .expect("test autostart calls lock poisoned")
+            .push(enabled);
         if let Some(result) = TEST_AUTOSTART_REGISTRATION_RESULT
             .get_or_init(|| Mutex::new(None))
             .lock()
@@ -2810,6 +2823,10 @@ static TEST_AUTOSTART_REGISTRATION_RESULT: std::sync::OnceLock<Mutex<Option<Resu
     std::sync::OnceLock::new();
 
 #[cfg(test)]
+static TEST_AUTOSTART_REGISTRATION_CALLS: std::sync::OnceLock<Mutex<Vec<bool>>> =
+    std::sync::OnceLock::new();
+
+#[cfg(test)]
 fn skip_autostart_registration_for_tests() {
     set_autostart_registration_result_for_tests(Ok(()));
 }
@@ -2825,6 +2842,20 @@ fn set_autostart_registration_result_for_tests(result: Result<(), String>) {
         .get_or_init(|| Mutex::new(None))
         .lock()
         .expect("test autostart result lock poisoned") = Some(result);
+    TEST_AUTOSTART_REGISTRATION_CALLS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .expect("test autostart calls lock poisoned")
+        .clear();
+}
+
+#[cfg(test)]
+fn autostart_registration_calls_for_tests() -> Vec<bool> {
+    TEST_AUTOSTART_REGISTRATION_CALLS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .expect("test autostart calls lock poisoned")
+        .clone()
 }
 
 #[cfg(test)]
@@ -2841,7 +2872,8 @@ mod tests {
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
         PairingDirection, PairingPeer, PairingTarget, PeerAnnouncement, PendingPairing,
         DiscoveredPeer, RuntimeStore, ServiceHealthState, PEER_TIMEOUT_MS,
-        fail_autostart_registration_for_tests, skip_autostart_registration_for_tests,
+        autostart_registration_calls_for_tests, fail_autostart_registration_for_tests,
+        skip_autostart_registration_for_tests,
     };
 
     #[test]
@@ -3067,7 +3099,10 @@ mod tests {
             .network_health
             .startup_registration
             .detail
-            .starts_with("Start-at-login setting changed, but RemoteShare settings failed to save:"));
+            .starts_with(
+                "Start-at-login setting failed to save and was rolled back to the previous saved value:"
+            ));
+        assert_eq!(autostart_registration_calls_for_tests(), vec![false, true]);
     }
 
     #[test]
