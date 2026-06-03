@@ -1,7 +1,10 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { validateManifestArtifactTypes } from "./release-artifacts-lib.mjs";
+import {
+  validateManifestArtifactTypes,
+  validateReleaseManifestArtifact
+} from "./release-artifacts-lib.mjs";
 
 const releaseAssetsRoot = process.argv[2] ?? "release-assets";
 const manifestPath = path.join(releaseAssetsRoot, "RELEASE-MANIFEST.json");
@@ -23,6 +26,9 @@ if (!Array.isArray(manifest.artifacts)) {
 }
 
 validateManifestArtifactTypes(manifest.artifacts);
+const manifestArtifacts = manifest.artifacts.map((artifact, index) =>
+  validateReleaseManifestArtifact(artifact, index, packageJson.version)
+);
 
 const dmg = artifactForType("dmg");
 const exe = artifactForType("exe");
@@ -37,32 +43,9 @@ console.log(`| Linux installer file | ${deb.file} |`);
 console.log(`| Linux installer SHA256 | ${deb.sha256} |`);
 
 function artifactForType(type) {
-  const artifact = manifest.artifacts.find((candidate) => candidate.type === type);
+  const artifact = manifestArtifacts.find((candidate) => candidate.type === type);
   if (!artifact) {
     throw new Error(`Release manifest is missing ${type} artifact.`);
-  }
-
-  if (typeof artifact.file !== "string" || artifact.file.length === 0 || path.basename(artifact.file) !== artifact.file) {
-    throw new Error(`Release manifest ${type} artifact must use a basename-only file path.`);
-  }
-
-  if (!artifact.file.includes(`_${packageJson.version}_`)) {
-    throw new Error(
-      `Release manifest ${type} artifact filename must include package version ${packageJson.version}.`
-    );
-  }
-
-  const expectedExtension = type === "dmg" ? ".dmg" : type === "exe" ? ".exe" : ".deb";
-  if (path.extname(artifact.file).toLowerCase() !== expectedExtension) {
-    throw new Error(`Release manifest ${type} artifact must use ${expectedExtension} extension.`);
-  }
-
-  if (typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(artifact.sha256)) {
-    throw new Error(`Release manifest ${type} artifact has invalid sha256.`);
-  }
-
-  if (!Number.isInteger(artifact.sizeBytes) || artifact.sizeBytes <= 0) {
-    throw new Error(`Release manifest ${type} artifact has invalid sizeBytes.`);
   }
 
   const artifactPath = path.join(releaseAssetsRoot, artifact.file);
