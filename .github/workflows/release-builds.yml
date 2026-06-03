@@ -99,6 +99,9 @@ jobs:
       - name: Test GitHub release asset verifier
         run: npm run test:github-release-assets
 
+      - name: Test assembled release asset verifier
+        run: npm run test:assembled-release-assets
+
       - name: Test release asset download helper
         run: npm run test:download-release-assets
 
@@ -204,6 +207,9 @@ jobs:
       - name: Prepare release candidate summary
         run: npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md
 
+      - name: Verify assembled release assets
+        run: npm run verify:assembled-release-assets -- release-assets
+
       - name: Publish release candidate summary to job summary
         shell: bash
         run: cat release-assets/release-candidate-summary.md >> "$GITHUB_STEP_SUMMARY"
@@ -266,6 +272,9 @@ jobs:
 
       - name: Prepare release candidate summary
         run: npm run release:candidate-summary -- release-assets release-assets/release-candidate-summary.md
+
+      - name: Verify assembled release assets
+        run: npm run verify:assembled-release-assets -- release-assets
 
       - name: Publish release candidate summary to job summary
         shell: bash
