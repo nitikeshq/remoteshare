@@ -378,10 +378,11 @@ function requireEndpointSourceEvidence(table, field, section, expectedPattern) {
     !/trusted\s+reconnect/.test(value) ||
     !/endpoint\s+source:\s*/.test(value) ||
     !/endpoint:\s*[^;|]+/.test(value) ||
+    !/latency:\s*[0-9]+(\.[0-9]+)?\s*ms/.test(value) ||
     /(fail|failed|failure|blocked|denied|error|not\s+(shown|discovery|reconnect|saved|manual|verified|set|currently\s+reachable))/.test(valueWithoutExpectedNegative) ||
     !expectedPattern.test(value)
   ) {
-    throw new Error(`${section} endpoint source evidence must paste the reconnect Copy output with the concrete endpoint source shown in the UI.`);
+    throw new Error(`${section} endpoint source evidence must paste the reconnect Copy output with measured Latency and the concrete endpoint source shown in the UI.`);
   }
 }
 

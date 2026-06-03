@@ -53,7 +53,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 
 1. Restart one app or wake one computer from sleep.
 2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row, then use the trusted row reconnect `Copy` button to capture auto reconnect, device, check result, measured latency, last-seen timing, endpoint source, endpoint, input-control readiness, last failure, and recovery evidence.
-3. A successful reconnect should update last-seen timing, record a measured latency, and show the endpoint source as discovery, reconnect, or saved endpoint. Paste the reconnect `Copy` output for the check and endpoint-source report rows; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
+3. A successful reconnect should update last-seen timing, record a measured latency, and show the endpoint source as discovery, reconnect, or saved endpoint. Paste the reconnect `Copy` output for the check and endpoint-source report rows so both rows include measured latency; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
 4. Use the diagnostics panel's Startup health `Copy` button after restart so the report records `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing evidence.
 5. If reconnect fails, use `Edit IP`, replace the field with the copied endpoint from the other computer, use `Copy` to capture trusted IP recovery evidence, then use `Verify IP` to update the trusted endpoint without pairing again.
 

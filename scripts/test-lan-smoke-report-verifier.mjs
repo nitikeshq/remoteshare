@@ -558,13 +558,27 @@ try {
     manualPass: "Pass",
     omitLine: "",
     autoEndpointSource:
-      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 8 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
   });
   runVerifier(
     savedAutoEndpointSource,
     true,
     "auto saved endpoint source should pass",
     "Verified LAN smoke report"
+  );
+
+  const endpointSourceWithoutLatency = writeReport("endpoint-source-without-latency.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoEndpointSource:
+      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+  });
+  runVerifier(
+    endpointSourceWithoutLatency,
+    false,
+    "endpoint source without latency should fail",
+    "Auto-Discovery Run endpoint source evidence must paste the reconnect Copy output with measured Latency"
   );
 
   const contradictoryAutoEndpointSource = writeReport("contradictory-auto-endpoint-source.md", {

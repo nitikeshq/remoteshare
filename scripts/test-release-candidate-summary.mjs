@@ -61,11 +61,13 @@ try {
   assertIncludes(summary, "receiver Input Transport row `Copy` output", "receiver capture input transport copy evidence");
   assertIncludes(summary, "accepted incoming mouse move, mouse click, scroll, and key events", "capture evidence");
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
+  assertIncludes(summary, "it must include measured latency", "auto endpoint source latency evidence");
   assertIncludes(summary, "local endpoint `Evidence` output", "manual endpoint evidence copy");
   assertIncludes(summary, "Local endpoint", "manual endpoint copied marker");
   assertIncludes(summary, "Label: Best LAN IPv4", "manual copied endpoint label evidence");
   assertIncludes(summary, "private-network state", "manual endpoint private-network evidence");
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
+  assertIncludes(summary, "include measured latency", "manual endpoint source latency evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "trusted IP update `Copy` button", "trusted IP copy evidence");
   assertIncludes(summary, "this computer, device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
