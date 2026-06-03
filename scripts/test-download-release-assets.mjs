@@ -208,6 +208,7 @@ exec "${process.execPath}" "$(dirname "$0")/gh.mjs" "$@"
   );
   return {
     path: bin,
+    command: path.join(bin, process.platform === "win32" ? "gh.cmd" : "gh"),
     env: {
       REMOTESHARE_FAKE_GH_ASSETS: fixture.assetsRoot,
       REMOTESHARE_FAKE_GH_RELEASE_JSON: fixture.releaseJson
@@ -218,7 +219,8 @@ exec "${process.execPath}" "$(dirname "$0")/gh.mjs" "$@"
 function runDownloader(fakeBin, args, shouldPass, label, expectedOutput) {
   const env = withPrependedPath({
     ...process.env,
-    ...fakeBin.env
+    ...fakeBin.env,
+    REMOTESHARE_GH_COMMAND: fakeBin.command
   }, fakeBin.path);
   const result = spawnSync(process.execPath, [downloader, ...args], {
     encoding: "utf8",

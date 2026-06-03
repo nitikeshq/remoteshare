@@ -5,6 +5,7 @@ import path from "node:path";
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 const expectedTag = `v${packageVersion}`;
 const args = process.argv.slice(2);
+const ghCommand = process.env.REMOTESHARE_GH_COMMAND || "gh";
 
 if (args.includes("--help") || args.includes("-h")) {
   console.log("Usage: node scripts/download-release-assets.mjs [tag] [output-dir]");
@@ -33,7 +34,7 @@ const stagingDir = fs.mkdtempSync(path.join(outputParent, ".remoteshare-release-
 
 try {
   const releaseJsonPath = path.join(stagingDir, "github-release.json");
-  const release = run("gh", [
+  const release = run(ghCommand, [
     "release",
     "view",
     tag,
@@ -42,7 +43,7 @@ try {
   ], { echoOutput: false });
   fs.writeFileSync(releaseJsonPath, release.stdout);
 
-  run("gh", ["release", "download", tag, "--dir", stagingDir]);
+  run(ghCommand, ["release", "download", tag, "--dir", stagingDir]);
   run(process.execPath, ["scripts/verify-github-release-assets.mjs", releaseJsonPath, stagingDir]);
   run(process.execPath, ["scripts/verify-release-manifest.mjs", stagingDir]);
   verifyGeneratedAsset(

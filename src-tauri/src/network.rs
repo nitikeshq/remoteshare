@@ -1872,6 +1872,9 @@ async fn send_control_message_for_response_with_secret(
     let Some(received) = read_control_message_with_secret(&mut stream, shared_secret).await? else {
         return Ok(None);
     };
+    if let Some(secret) = shared_secret {
+        verify_received_message(&received, secret)?;
+    }
 
     Ok(Some(received.message))
 }
@@ -2551,7 +2554,7 @@ Wireless LAN adapter Wi-Fi:
             return;
         };
         let endpoint = listener.local_addr().expect("listener should have address");
-        let store = trusted_store_for_network_test("127.0.0.1:44777");
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
         let target = TrustedReconnectTarget {
             device_id: "trusted-device".to_string(),
             endpoints: vec![endpoint.to_string()],
