@@ -146,12 +146,17 @@ requireFingerprintEvidence(autoDiscovery, "Auto-Discovery Run");
 requireFingerprintEvidence(manualFallback, "Manual Fallback Run");
 requireReconnectEvidence(autoDiscovery, "Auto-Discovery Run");
 requireReconnectEvidence(manualFallback, "Manual Fallback Run");
-requireEndpointSourceEvidence(autoDiscovery, "Endpoint source shown", "Auto-Discovery Run", /discovery|reconnect|saved\s+endpoint/);
+requireEndpointSourceEvidence(
+  autoDiscovery,
+  "Endpoint source shown",
+  "Auto-Discovery Run",
+  /\b(discovery|reconnect|saved\s+endpoint)\b/
+);
 requireEndpointSourceEvidence(
   manualFallback,
   "Endpoint source shown as saved endpoint or manual IP",
   "Manual Fallback Run",
-  /(saved\s+endpoint|manual\s+(ip|endpoint)|set\s+ip|verified\s+endpoint)/
+  /\b(saved\s+endpoint|manual\s+(ip|endpoint)|set\s+ip|verified\s+endpoint)\b/
 );
 requireInputSmokeEvidence(autoDiscovery, "Auto-Discovery Run");
 requireInputSmokeEvidence(manualFallback, "Manual Fallback Run");

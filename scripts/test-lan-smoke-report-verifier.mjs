@@ -423,6 +423,19 @@ try {
     "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
   );
 
+  const embeddedAutoEndpointSource = writeReport("embedded-auto-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoEndpointSource: "rediscovery"
+  });
+  runVerifier(
+    embeddedAutoEndpointSource,
+    false,
+    "embedded auto endpoint source should fail",
+    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
   const vagueManualEndpointSource = writeReport("vague-manual-endpoint-source.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -433,6 +446,19 @@ try {
     vagueManualEndpointSource,
     false,
     "vague manual endpoint source should fail",
+    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
+  const embeddedManualEndpointSource = writeReport("embedded-manual-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointSource: "manual ipad"
+  });
+  runVerifier(
+    embeddedManualEndpointSource,
+    false,
+    "embedded manual endpoint source should fail",
     "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
   );
 
