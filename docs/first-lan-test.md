@@ -59,7 +59,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## Input Smoke Test
 
 1. Confirm the receiver role is `Client` or `Both`, then use `Enable all`, `Enable global`, or `Enable devices` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
-2. Confirm the receiving trusted row shows `Receive` enabled.
+2. Confirm the receiving trusted row shows `Receive` enabled, then use its `Copy` button to capture `Allow incoming control: enabled`, `Device receive: enabled`, and `Input control: ready` evidence.
 3. Use `Test` on the sender.
 4. The receiver should show an accepted input transport event.
 5. Verify macOS Input Monitoring and Accessibility are granted, then use `Capture` on the sender.
@@ -86,7 +86,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
 | Startup health | TCP ready, UDP ready, and start-at-login not failed after restart | TCP ready, UDP ready, and start-at-login not failed after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
-| Input test result | Receiver logs accepted input transport event | Receiver logs accepted input transport event |
+| Input test result | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled |
 | Capture result | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible |
 | Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or trusted IP update `Copy` output with manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |
 
@@ -96,10 +96,10 @@ Minimum pass criteria:
 - `Trusted` appears on both machines with the expected peer fingerprint.
 - `Auto reconnect` remains enabled after restart.
 - `Check` succeeds after at least one app restart, wake, or Wi-Fi reconnect.
-- `Test` sends an accepted `key press r` input transport event to the receiver.
+- `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled.
 - Capture starts on the macOS sender, forwards accepted mouse move, mouse click, scroll, and key events to the Windows receiver, then stops cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
-- Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
+- Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must paste the trusted IP update `Copy` output and mention the manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
 
 ## Troubleshooting
 

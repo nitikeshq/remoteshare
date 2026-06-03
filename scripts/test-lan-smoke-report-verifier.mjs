@@ -637,6 +637,32 @@ try {
     "Auto-Discovery Run input smoke evidence must mention an accepted key press r event"
   );
 
+  const vagueAllowIncomingControl = writeReport("vague-allow-incoming-control.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoAllowIncomingControl: "enabled"
+  });
+  runVerifier(
+    vagueAllowIncomingControl,
+    false,
+    "vague allow incoming control evidence should fail",
+    "Auto-Discovery Run Allow incoming control evidence must paste the receive Copy output"
+  );
+
+  const vaguePerDeviceReceive = writeReport("vague-per-device-receive.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualPerDeviceReceive: "enabled"
+  });
+  runVerifier(
+    vaguePerDeviceReceive,
+    false,
+    "vague per-device receive evidence should fail",
+    "Manual Fallback Run per-device Receive evidence must paste the receive Copy output"
+  );
+
   const vagueInputTransportContext = writeReport("vague-input-transport-context.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -1061,6 +1087,18 @@ function writeReport(name, options) {
   const manualEndpointSource = options.manualEndpointSource ?? "saved endpoint";
   const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";
   const manualInputSmoke = options.manualInputSmoke ?? "accepted key press r delivered";
+  const autoAllowIncomingControl =
+    options.autoAllowIncomingControl ??
+    "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";
+  const manualAllowIncomingControl =
+    options.manualAllowIncomingControl ??
+    "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";
+  const autoPerDeviceReceive =
+    options.autoPerDeviceReceive ??
+    "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";
+  const manualPerDeviceReceive =
+    options.manualPerDeviceReceive ??
+    "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";
   const autoInputTransportContext =
     options.autoInputTransportContext ?? "Input Transport row shows Mac sender source device and 2 seconds ago";
   const manualInputTransportContext =
@@ -1171,8 +1209,8 @@ function writeReport(name, options) {
     `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${autoStartupHealth} |`,
     `| \`Check\` succeeded after restart/wake | ${autoReconnect} |`,
     `| Endpoint source shown | ${autoEndpointSource} |`,
-    "| `Allow incoming control` enabled on receiver | enabled |",
-    "| Per-device `Receive` enabled | enabled |",
+    `| \`Allow incoming control\` enabled on receiver | ${autoAllowIncomingControl} |`,
+    `| Per-device \`Receive\` enabled | ${autoPerDeviceReceive} |`,
     `| Sender \`Test\` delivered accepted \`key press r\` input event | ${autoInputSmoke} |`,
     `| Input Transport source device and relative time shown | ${autoInputTransportContext} |`,
     `| Capture started on sender and stopped cleanly | ${autoCaptureStartStop} |`,
@@ -1201,8 +1239,8 @@ function writeReport(name, options) {
     `| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ${manualStartupHealth} |`,
     `| \`Check\` succeeded after restart/wake | ${manualReconnect} |`,
     `| Endpoint source shown as saved endpoint or manual IP | ${manualEndpointSource} |`,
-    "| `Allow incoming control` enabled on receiver | enabled |",
-    "| Per-device `Receive` enabled | enabled |",
+    `| \`Allow incoming control\` enabled on receiver | ${manualAllowIncomingControl} |`,
+    `| Per-device \`Receive\` enabled | ${manualPerDeviceReceive} |`,
     `| Sender \`Test\` delivered accepted \`key press r\` input event | ${manualInputSmoke} |`,
     `| Input Transport source device and relative time shown | ${manualInputTransportContext} |`,
     `| Capture started on sender and stopped cleanly | ${manualCaptureStartStop} |`,

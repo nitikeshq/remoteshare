@@ -133,8 +133,6 @@ const successFields = [
   "Full fingerprint copied or visually compared",
   "`Auto reconnect` enabled after restart/wake",
   "`Check` succeeded after restart/wake",
-  "`Allow incoming control` enabled on receiver",
-  "Per-device `Receive` enabled",
   "Sender `Test` delivered accepted `key press r` input event",
   "Capture started on sender and stopped cleanly",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver"
@@ -162,6 +160,8 @@ requireEndpointSourceEvidence(
   "Manual Fallback Run",
   /\b(saved\s+endpoint|manual\s+(ip|endpoint)|set\s+ip|verified\s+endpoint)\b/
 );
+requireReceiveControlEvidence(autoDiscovery, "Auto-Discovery Run");
+requireReceiveControlEvidence(manualFallback, "Manual Fallback Run");
 requireInputSmokeEvidence(autoDiscovery, "Auto-Discovery Run");
 requireInputSmokeEvidence(manualFallback, "Manual Fallback Run");
 requireCaptureEvidence(autoDiscovery, "Auto-Discovery Run");
@@ -370,6 +370,26 @@ function requireInputSmokeEvidence(table, section) {
     !/(time|relative|ago|ms|sec|second|min|minute)/.test(transportContext)
   ) {
     throw new Error(`${section} input transport evidence must mention the source device and relative time shown in the receiver UI.`);
+  }
+}
+
+function requireReceiveControlEvidence(table, section) {
+  const globalReceive = requireFilled(table, "`Allow incoming control` enabled on receiver", section).toLowerCase();
+  if (
+    !/receive\s+control/.test(globalReceive) ||
+    !/allow\s+incoming\s+control:\s*enabled/.test(globalReceive)
+  ) {
+    throw new Error(`${section} Allow incoming control evidence must paste the receive Copy output with Allow incoming control: enabled.`);
+  }
+
+  const deviceReceive = requireFilled(table, "Per-device `Receive` enabled", section).toLowerCase();
+  if (
+    !/receive\s+control/.test(deviceReceive) ||
+    !/device:\s*[^;|]+/.test(deviceReceive) ||
+    !/device\s+receive:\s*enabled/.test(deviceReceive) ||
+    !/input\s+control:\s*ready/.test(deviceReceive)
+  ) {
+    throw new Error(`${section} per-device Receive evidence must paste the receive Copy output with device, Device receive: enabled, and Input control: ready.`);
   }
 }
 

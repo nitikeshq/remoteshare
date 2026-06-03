@@ -444,8 +444,8 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
 | \`Check\` succeeded after restart/wake | succeeded after restart |
 | Endpoint source shown | discovery |
-| \`Allow incoming control\` enabled on receiver | enabled |
-| Per-device \`Receive\` enabled | enabled |
+| \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
+| Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
 | Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 2 seconds ago |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
@@ -473,8 +473,8 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
 | \`Check\` succeeded after restart/wake | succeeded after restart |
 | Endpoint source shown as saved endpoint or manual IP | saved endpoint |
-| \`Allow incoming control\` enabled on receiver | enabled |
-| Per-device \`Receive\` enabled | enabled |
+| \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
+| Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
 | Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 3 seconds ago |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |

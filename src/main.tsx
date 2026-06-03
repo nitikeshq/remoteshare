@@ -582,6 +582,18 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
   ].join(" | ");
 }
 
+function receiveControlEvidence(status: RuntimeStatus, device: Device) {
+  return [
+    "Receive control",
+    `This computer: ${status.thisDevice}`,
+    `Role: ${roleLabel(status.mode)}`,
+    `Allow incoming control: ${status.allowIncomingControl ? "enabled" : "disabled"}`,
+    `Device: ${device.name}`,
+    `Device receive: ${device.allowIncomingControl ? "enabled" : "disabled"}`,
+    `Input control: ${device.inputControlReady ? "ready" : "needs re-pair"}`
+  ].join("; ");
+}
+
 function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
   const failure = connectionFailureDiagnostic(device);
   const hint = connectionFailureHint(device);
@@ -1000,6 +1012,16 @@ function App() {
       showActionMessage("Copied capture evidence.");
     } catch {
       showActionMessage(`Copy failed. Capture evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyReceiveControlEvidence(device: Device) {
+    const evidence = receiveControlEvidence(status, device);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied receive evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Receive evidence: ${evidence}`, true);
     }
   }
 
@@ -1918,25 +1940,36 @@ function App() {
                   </button>
                 )}
                 {device.trusted && (
-                  <label
-                    className={`row-toggle ${device.inputControlReady ? "" : "row-toggle-disabled"}`}
-                    title={
-                      !receiveRoleReady
-                        ? "Set this computer role to Client or Both before receiving input."
-                        : device.inputControlReady
-                        ? "Allow this trusted device to control this computer."
-                        : "Re-pair this device before enabling receive."
-                    }
-                  >
-                    <span>Receive</span>
-                    <input
-                      type="checkbox"
-                      checked={device.allowIncomingControl}
-                      disabled={!device.inputControlReady || !receiveRoleReady || deviceActionActive}
-                      onChange={(event) => updateDeviceControl(device, event.target.checked)}
-                    />
-                    {!device.inputControlReady && <em>Re-pair</em>}
-                  </label>
+                  <>
+                    <label
+                      className={`row-toggle ${device.inputControlReady ? "" : "row-toggle-disabled"}`}
+                      title={
+                        !receiveRoleReady
+                          ? "Set this computer role to Client or Both before receiving input."
+                          : device.inputControlReady
+                          ? "Allow this trusted device to control this computer."
+                          : "Re-pair this device before enabling receive."
+                      }
+                    >
+                      <span>Receive</span>
+                      <input
+                        type="checkbox"
+                        checked={device.allowIncomingControl}
+                        disabled={!device.inputControlReady || !receiveRoleReady || deviceActionActive}
+                        onChange={(event) => updateDeviceControl(device, event.target.checked)}
+                      />
+                      {!device.inputControlReady && <em>Re-pair</em>}
+                    </label>
+                    <button
+                      className="receive-evidence-copy"
+                      onClick={() => copyReceiveControlEvidence(device)}
+                      title="Copy receive evidence"
+                      type="button"
+                    >
+                      <Copy size={12} />
+                      <span>Copy</span>
+                    </button>
+                  </>
                 )}
               </article>
               );

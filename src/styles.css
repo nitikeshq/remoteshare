@@ -605,7 +605,8 @@ input {
   font-weight: 700;
 }
 
-.event-evidence-copy {
+.event-evidence-copy,
+.receive-evidence-copy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -621,7 +622,8 @@ input {
   font-weight: 700;
 }
 
-.event-evidence-copy span {
+.event-evidence-copy span,
+.receive-evidence-copy span {
   color: inherit;
   font-size: inherit;
 }

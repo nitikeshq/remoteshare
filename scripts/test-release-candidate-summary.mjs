@@ -28,6 +28,10 @@ try {
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
   assertIncludes(summary, "startup health TCP ready, UDP ready, and start-at-login not failed", "startup health detail evidence");
   assertIncludes(summary, "accepted `key press r` test input", "test input evidence");
+  assertIncludes(summary, "trusted row receive `Copy` button", "receive copy evidence");
+  assertIncludes(summary, "Allow incoming control: enabled", "global receive evidence");
+  assertIncludes(summary, "Device receive: enabled", "per-device receive evidence");
+  assertIncludes(summary, "Input control: ready", "input-control-ready evidence");
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
