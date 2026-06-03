@@ -1108,6 +1108,19 @@ try {
     "Test Context field must show success: Windows firewall status"
   );
 
+  const vagueFirewall = writeReport("vague-firewall.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macosFirewallStatus: "allowed"
+  });
+  runVerifier(
+    vagueFirewall,
+    false,
+    "vague firewall should fail",
+    "Test Context macOS firewall status must mention allowed firewall rules for TCP 44777 and UDP 44778"
+  );
+
   const deniedInputMonitoring = writeReport("denied-input-monitoring.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -1396,8 +1409,12 @@ function writeReport(name, options) {
   const inputDirection = options.inputDirection ?? macSetupEvidence;
   const macRole = options.macRole ?? macSetupEvidence;
   const windowsRole = options.windowsRole ?? windowsSetupEvidence;
-  const macosFirewallStatus = options.macosFirewallStatus ?? "allowed";
-  const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
+  const macosFirewallStatus =
+    options.macosFirewallStatus ??
+    "allowed incoming connections for RemoteShare; TCP 44777 allowed; UDP 44778 allowed";
+  const windowsFirewallStatus =
+    options.windowsFirewallStatus ??
+    "allowed on Windows Private network; TCP 44777 allowed; UDP 44778 allowed";
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? macSetupEvidence;
   const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? macSetupEvidence;
   const testDate = options.testDate ?? "2026-06-02";

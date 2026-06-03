@@ -438,8 +438,8 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Linux installer SHA256 | ${linuxSha256} |
 | Router/SSID/band | Lab Wi-Fi / 5 GHz |
 | Same subnet confirmed | yes |
-| macOS firewall status | allowed |
-| Windows firewall status | allowed |
+| macOS firewall status | allowed incoming connections for RemoteShare; TCP 44777 allowed; UDP 44778 allowed |
+| Windows firewall status | allowed on Windows Private network; TCP 44777 allowed; UDP 44778 allowed |
 | macOS Accessibility permission | ${macSetupEvidence} |
 | macOS Input Monitoring permission | ${macSetupEvidence} |
 

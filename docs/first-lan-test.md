@@ -15,6 +15,7 @@ Use this runbook for the first macOS-to-Windows RemoteShare MVP test. In this mi
 ## Firewall Setup
 
 RemoteShare uses TCP `44777` for pairing/control and UDP `44778` for LAN discovery. Configure both computers before testing.
+In the smoke report firewall rows, record allowed/successful firewall evidence that names both TCP `44777` and UDP `44778`.
 
 ### Windows
 

@@ -26,6 +26,7 @@ try {
   assertIncludes(summary, "role, platform, first-MVP input direction, and checklist step evidence", "setup copied fields");
   assertIncludes(summary, "Mac input permissions: done", "mac permission setup evidence");
   assertIncludes(summary, "Accessibility and Input Monitoring", "mac permission copied fields");
+  assertIncludes(summary, "allowed/successful rules for TCP `44777` and UDP `44778`", "firewall port evidence");
   assertIncludes(summary, "pending pairing row `Copy` button", "pairing copy evidence");
   assertIncludes(summary, "pairing direction, this computer, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
   assertIncludes(summary, "pair-action, visible-code, typed-code, and pairing-evidence rows", "pairing row coverage");

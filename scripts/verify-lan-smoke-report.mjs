@@ -111,8 +111,8 @@ requireSuccess(context, "Same subnet confirmed", "Test Context");
 requireIsoDate(context, "Test date", "Test Context");
 requireInputDirection(context);
 requireMvpRoles(context);
-requireSuccess(context, "macOS firewall status", "Test Context");
-requireSuccess(context, "Windows firewall status", "Test Context");
+requireFirewallPortEvidence(context, "macOS firewall status");
+requireFirewallPortEvidence(context, "Windows firewall status");
 requireMacInputPermissionEvidence(context, "macOS Accessibility permission");
 requireMacInputPermissionEvidence(context, "macOS Input Monitoring permission");
 requirePackageVersion(context, "RemoteShare version/tag", "Test Context");
@@ -262,6 +262,15 @@ function requireMacInputPermissionEvidence(table, field) {
     !/input\s+monitoring/.test(value)
   ) {
     throw new Error(`Test Context ${field} must paste the Mac sender setup checklist Copy output with Mac input permissions: done for Accessibility and Input Monitoring.`);
+  }
+}
+
+function requireFirewallPortEvidence(table, field) {
+  const value = requireFilled(table, field, "Test Context");
+  requireSuccess(table, field, "Test Context");
+  const normalized = value.toLowerCase();
+  if (!/\btcp\b/.test(normalized) || !/(^|\D)44777(\D|$)/.test(normalized) || !/\budp\b/.test(normalized) || !/(^|\D)44778(\D|$)/.test(normalized)) {
+    throw new Error(`Test Context ${field} must mention allowed firewall rules for TCP 44777 and UDP 44778.`);
   }
 }
 
