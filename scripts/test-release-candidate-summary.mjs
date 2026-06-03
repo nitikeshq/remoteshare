@@ -29,6 +29,7 @@ try {
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
   assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
+  assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
   assertIncludes(summary, "Do not publish the draft release until both verification commands pass", "draft publish gate");
 

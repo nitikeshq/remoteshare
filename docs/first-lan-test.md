@@ -40,7 +40,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 2. Set the macOS sender role to `Main` and the Windows receiver role to `Client`. `Both` is acceptable for later bidirectional tests, but not needed for the first smoke run. The setup checklist is role-aware: on macOS it expects the sender role, Mac input permissions, the Windows client as peer, and Windows receive setup; on Windows it expects the receiver role, Windows injection readiness, the Mac sender as peer, and local receive permission.
 3. Click `Scan LAN` on either computer.
 4. If the other computer appears, click `Pair`.
-5. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer.
+5. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer. Before pairing manually, record a successful TCP `44777` probe such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 6. If multiple endpoints are shown, prefer the IPv4 Wi-Fi/LAN address on the same subnet as the other computer. Unique-local or routable IPv6 endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
 7. Confirm that both computers show the same six-digit code.
 8. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
@@ -79,7 +79,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | macOS role shown | Main | Main |
 | Windows role shown | Client | Client |
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
-| Manual endpoint used | None | Discovery skipped/failed and endpoint copied from `This computer` on peer |
+| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
 | Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
@@ -97,13 +97,13 @@ Minimum pass criteria:
 - `Check` succeeds after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver.
 - Capture starts on the macOS sender, forwards accepted mouse move, mouse click, scroll, and key events to the Windows receiver, then stops cleanly.
-- Manual fallback succeeds when UDP discovery is unavailable but TCP `44777` is reachable.
+- Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 - Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
 
 ## Troubleshooting
 
 - No LAN discovery: confirm both devices are on the same subnet and UDP `44778` is not blocked.
-- Manual pair fails: confirm TCP `44777` is reachable and the endpoint is copied from the other computer, not the same computer.
+- Manual pair fails: confirm a TCP `44777` probe succeeds and the endpoint is copied from the other computer, not the same computer.
 - Manual pair rejects `localhost`, localhost aliases such as `localhost.localdomain`, loopback addresses such as `127.0.0.1` or `::1`, unspecified bind addresses such as `0.0.0.0`, and public literal IPs while `Private network only` is enabled; copy an endpoint from the other computer instead.
 - On Windows, confirm the active network profile is Private, then run `Test-NetConnection <other-computer-ip> -Port 44777` in PowerShell.
 - If ping is allowed on the network, confirm both computers can ping each other before testing manual pairing.
