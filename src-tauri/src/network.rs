@@ -1000,10 +1000,10 @@ async fn handle_control_stream(
     mut stream: TcpStream,
     sender: SocketAddr,
 ) {
-    if store.private_network_only_enabled() && !is_private_or_local_address(sender.ip()) {
+    if let Some(message) = private_network_control_rejection(&store, sender) {
         let _ = app.emit(
             "remoteshare://network-error",
-            format!("Rejected control connection from non-private address {sender}."),
+            message,
         );
         return;
     }
@@ -1282,6 +1282,16 @@ fn is_private_or_local_address(address: IpAddr) -> bool {
             address.is_loopback() || is_ipv6_unique_local(address) || is_ipv6_unicast_link_local(address)
         }
     }
+}
+
+fn private_network_control_rejection(store: &RuntimeStore, sender: SocketAddr) -> Option<String> {
+    if store.private_network_only_enabled() && !is_private_or_local_address(sender.ip()) {
+        return Some(format!(
+            "Rejected control connection from non-private address {sender}."
+        ));
+    }
+
+    None
 }
 
 fn is_ipv6_unique_local(address: Ipv6Addr) -> bool {
@@ -3131,6 +3141,39 @@ Wireless LAN adapter Wi-Fi:
                 "{address} should be rejected by the private-network guard"
             );
         }
+    }
+
+    #[test]
+    fn private_network_control_rejection_blocks_public_sender_by_default() {
+        crate::identity::set_test_config_dir(unique_test_dir("private-control-reject"));
+        let store = RuntimeStore::load_or_init();
+        let sender = "8.8.8.8:44777".parse().unwrap();
+
+        let rejection = super::private_network_control_rejection(&store, sender)
+            .expect("public sender should be rejected while private guard is enabled");
+
+        assert_eq!(
+            rejection,
+            "Rejected control connection from non-private address 8.8.8.8:44777."
+        );
+    }
+
+    #[test]
+    fn private_network_control_rejection_allows_public_sender_when_guard_is_off() {
+        crate::identity::set_test_config_dir(unique_test_dir("private-control-allowed"));
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(crate::runtime::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok);
+
+        let sender = "8.8.8.8:44777".parse().unwrap();
+
+        assert!(super::private_network_control_rejection(&store, sender).is_none());
     }
 
     fn trusted_target() -> TrustedTarget {
