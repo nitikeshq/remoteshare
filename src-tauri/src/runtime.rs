@@ -1399,22 +1399,35 @@ impl RuntimeStore {
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
         if !state.persisted.settings.role.can_send_input() {
+            clear_capture_state(&mut state);
             return None;
         }
 
-        let device_id = state.capture.target_device_id.as_ref()?;
         if !state.capture.active {
             return None;
         }
 
-        let device = state
+        let Some(device_id) = state.capture.target_device_id.clone() else {
+            clear_capture_state(&mut state);
+            return None;
+        };
+
+        let Some(device) = state
             .persisted
             .trusted_devices
             .iter()
-            .find(|device| &device.id == device_id)?;
-        let shared_secret = device.shared_secret.clone()?;
+            .find(|device| device.id == device_id)
+        else {
+            clear_capture_state(&mut state);
+            return None;
+        };
+        let Some(shared_secret) = device.shared_secret.clone() else {
+            clear_capture_state(&mut state);
+            return None;
+        };
         let endpoints = trusted_device_endpoints(&state, device);
         if endpoints.is_empty() {
+            clear_capture_state(&mut state);
             return None;
         }
 
@@ -2203,6 +2216,12 @@ fn prune_runtime_state(state: &mut RuntimeState, now: u128) {
     state
         .connection_failures
         .retain(|_, failure| now.saturating_sub(failure.failed_at_ms) <= PEER_RETENTION_MS);
+}
+
+fn clear_capture_state(state: &mut RuntimeState) {
+    state.capture.active = false;
+    state.capture.target_device_id = None;
+    state.capture.started_at_ms = None;
 }
 
 fn pairing_is_expired(pairing: &PendingPairing, now: u128) -> bool {
@@ -5431,6 +5450,54 @@ mod tests {
         assert!(!store.stop_capture_if_target("other-device"));
         assert!(store.status().capture.active);
         assert!(store.stop_capture_if_target("trusted-device"));
+        assert!(!store.status().capture.active);
+    }
+
+    #[test]
+    fn active_capture_target_clears_capture_without_usable_endpoint() {
+        crate::identity::set_test_config_dir(unique_test_dir("capture-clears-no-endpoint"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(false),
+            allow_incoming_control: None,
+        });
+        assert!(action.ok, "{}", action.message);
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("8.8.8.8:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let capture = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+        assert!(capture.ok, "{}", capture.message);
+        assert!(store.status().capture.active);
+
+        let private_guard = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: None,
+            trusted_reconnect: None,
+            private_network_only: Some(true),
+            allow_incoming_control: None,
+        });
+        assert!(private_guard.ok, "{}", private_guard.message);
+
+        assert!(store.active_capture_target().is_none());
         assert!(!store.status().capture.active);
     }
 
