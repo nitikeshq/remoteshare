@@ -554,6 +554,28 @@ impl RuntimeStore {
         };
     }
 
+    #[cfg_attr(debug_assertions, allow(dead_code))]
+    pub fn sync_startup_registration(&self) -> NetworkAction {
+        let auto_start = self.auto_start_enabled();
+        match set_autostart_enabled(auto_start) {
+            Ok(()) => {
+                self.record_startup_registration(
+                    true,
+                    startup_registration_success_detail(auto_start),
+                );
+                NetworkAction {
+                    ok: true,
+                    message: startup_registration_success_detail(auto_start),
+                }
+            }
+            Err(error) => {
+                let message = format!("Start-at-login registration failed: {error}");
+                self.record_startup_registration(false, message.clone());
+                NetworkAction { ok: false, message }
+            }
+        }
+    }
+
     pub fn remember_manual_endpoint(&self, endpoint: String) -> Result<(), String> {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
@@ -1529,7 +1551,7 @@ impl RuntimeStore {
         state.persisted.settings.private_network_only
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg_attr(debug_assertions, allow(dead_code))]
     pub fn auto_start_enabled(&self) -> bool {
         let state = self.state.lock().expect("runtime state poisoned");
         state.persisted.settings.auto_start
@@ -4112,6 +4134,60 @@ mod tests {
         assert_eq!(
             status.network_health.startup_registration.detail,
             "Start at login is registered."
+        );
+    }
+
+    #[test]
+    fn startup_registration_sync_reports_saved_enabled_state() {
+        skip_autostart_registration_for_tests();
+        crate::identity::set_test_config_dir(unique_test_dir("startup-registration-sync-enabled"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.sync_startup_registration();
+
+        assert!(action.ok, "{}", action.message);
+        assert_eq!(action.message, "Start at login is registered.");
+        let status = store.status();
+        assert!(status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Ready
+        );
+        assert_eq!(
+            status.network_health.startup_registration.detail,
+            "Start at login is registered."
+        );
+    }
+
+    #[test]
+    fn startup_registration_sync_reports_saved_disabled_state() {
+        skip_autostart_registration_for_tests();
+        crate::identity::set_test_config_dir(unique_test_dir("startup-registration-sync-disabled"));
+
+        let store = RuntimeStore::load_or_init();
+        let update = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: Some(false),
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+        assert!(update.ok, "{}", update.message);
+        store.record_startup_registration(false, "Previous startup failure.".to_string());
+
+        let action = store.sync_startup_registration();
+
+        assert!(action.ok, "{}", action.message);
+        assert_eq!(action.message, "Start at login is disabled.");
+        let status = store.status();
+        assert!(!status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Ready
+        );
+        assert_eq!(
+            status.network_health.startup_registration.detail,
+            "Start at login is disabled."
         );
     }
 

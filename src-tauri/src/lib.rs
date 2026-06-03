@@ -166,25 +166,9 @@ pub fn run() {
             network::start_supervisor(app.handle().clone(), store.clone());
             #[cfg(not(debug_assertions))]
             {
-                let auto_start = app.state::<RuntimeStore>().auto_start_enabled();
-                if let Err(error) = autostart::set_enabled(auto_start) {
-                    store.record_startup_registration(
-                        false,
-                        format!("Start-at-login registration failed: {error}"),
-                    );
-                    let _ = app.emit(
-                        "remoteshare://network-error",
-                        format!("Start-at-login registration failed: {error}"),
-                    );
-                } else {
-                    store.record_startup_registration(
-                        true,
-                        if auto_start {
-                            "Start at login is registered.".to_string()
-                        } else {
-                            "Start at login is disabled.".to_string()
-                        },
-                    );
+                let action = store.sync_startup_registration();
+                if !action.ok {
+                    let _ = app.emit("remoteshare://network-error", action.message);
                 }
             }
             #[cfg(debug_assertions)]
