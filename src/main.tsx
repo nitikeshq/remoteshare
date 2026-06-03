@@ -879,7 +879,7 @@ function App() {
 
   async function copyAuditFingerprint(label: string, fingerprint: string | null) {
     if (!fingerprint) {
-      showActionMessage(`${label} fingerprint unavailable.`, true);
+      showActionMessage(`${label} full fingerprint unavailable.`, true);
       return;
     }
 
@@ -893,7 +893,7 @@ function App() {
 
   async function copyFingerprint(device: Device) {
     if (!device.publicKeyFingerprint) {
-      showActionMessage("Fingerprint unavailable for this device.", true);
+      showActionMessage(`Full fingerprint unavailable for ${device.name}.`, true);
       return;
     }
 
@@ -901,7 +901,7 @@ function App() {
       await navigator.clipboard.writeText(device.publicKeyFingerprint);
       showActionMessage(`Copied full fingerprint for ${device.name}.`);
     } catch {
-      showActionMessage(`Copy failed. Fingerprint: ${device.publicKeyFingerprint}`, true);
+      showActionMessage(`Copy failed. Full fingerprint for ${device.name}: ${device.publicKeyFingerprint}`, true);
     }
   }
 
