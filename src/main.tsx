@@ -251,6 +251,9 @@ function connectionFailureHint(device: Device) {
   if (failure.endpointSource === "discovery") {
     return "Discovery found the device, but TCP control failed. Check firewall rules for port 44777.";
   }
+  if (failure.endpointSource === "health") {
+    return "Last reconnect endpoint may be stale. Copy the current endpoint from the other computer, then use Edit IP and Verify IP.";
+  }
   if (device.trusted && device.inputControlReady) {
     return "Copy the current endpoint from the other computer, then use Set IP and Verify IP.";
   }
