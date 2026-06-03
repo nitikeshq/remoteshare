@@ -551,6 +551,14 @@ function captureButtonTitle(captureReady: boolean, captureActive: boolean, role:
   return "Forward local keyboard and mouse input to this trusted device.";
 }
 
+function reconnectCheckTitle(trustedReconnect: boolean, checkableCount: number) {
+  if (!trustedReconnect) return "Turn on Auto reconnect to run trusted checks.";
+  if (checkableCount === 0) {
+    return "Pair a trusted device with a known endpoint, or use Set IP and Verify IP first.";
+  }
+  return "Run trusted reconnect checks for all trusted devices with a known endpoint.";
+}
+
 function inputReadiness(permissions: InputPermissionStatus, platform: string) {
   const normalizedPlatformValue = normalizedPlatform(platform);
   const captureReady = permissions.captureEngine === "ready";
@@ -1314,11 +1322,7 @@ function App() {
               className="secondary-button compact"
               disabled={checkingTrustedDevices || !reconnectChecksAvailable}
               onClick={checkAllTrustedDevices}
-              title={
-                status.trustedReconnect
-                  ? "Run trusted reconnect checks for all trusted devices with a known endpoint."
-                  : "Turn on Auto reconnect to run trusted checks."
-              }
+              title={reconnectCheckTitle(status.trustedReconnect, checkableTrustedDevices.length)}
               type="button"
             >
               {checkingTrustedDevices ? "Checking" : "Check"}
