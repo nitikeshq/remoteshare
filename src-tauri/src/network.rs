@@ -163,7 +163,7 @@ fn start_reconnect_loop(app: AppHandle, store: RuntimeStore) {
                     }
 
                     if let Some((device_id, _endpoint)) = last_failure {
-                        schedule_reconnect_retry(&mut retry_state, &device_id, endpoints);
+                        schedule_reconnect_retry(&mut retry_state, &device_id, endpoints, now);
                         let _ = app.emit("remoteshare://devices-changed", ());
                     }
                 }
@@ -244,12 +244,13 @@ fn schedule_reconnect_retry(
     retry_state: &mut HashMap<String, ReconnectRetry>,
     device_id: &str,
     endpoints: Vec<String>,
+    now: Instant,
 ) {
     let entry = retry_state
         .entry(device_id.to_string())
         .or_insert(ReconnectRetry {
             failures: 0,
-            next_attempt_at: Instant::now(),
+            next_attempt_at: now,
             endpoints: endpoints.clone(),
         });
     entry.failures = entry.failures.saturating_add(1).min(8);
@@ -259,7 +260,7 @@ fn schedule_reconnect_retry(
     let delay = RECONNECT_INTERVAL
         .saturating_mul(multiplier)
         .min(RECONNECT_MAX_BACKOFF);
-    entry.next_attempt_at = Instant::now() + delay;
+    entry.next_attempt_at = now + delay;
 }
 
 pub async fn initiate_pairing(store: RuntimeStore, request: PairRequest) -> NetworkAction {
@@ -2681,6 +2682,7 @@ Wireless LAN adapter Wi-Fi:
             &mut retry_state,
             &first_target.device_id,
             first_target.endpoints.clone(),
+            now,
         );
 
         assert!(super::reconnect_retry_should_wait(
@@ -2695,6 +2697,38 @@ Wireless LAN adapter Wi-Fi:
             &changed_target,
             now
         ));
+    }
+
+    #[test]
+    fn reconnect_retry_schedules_from_loop_timestamp() {
+        let mut retry_state = HashMap::new();
+        let target = trusted_reconnect_target(vec!["192.168.1.50:44777"]);
+        let now = Instant::now();
+
+        super::schedule_reconnect_retry(
+            &mut retry_state,
+            &target.device_id,
+            target.endpoints.clone(),
+            now,
+        );
+        let first_retry = retry_state
+            .get(&target.device_id)
+            .expect("retry should be scheduled");
+        assert_eq!(first_retry.next_attempt_at, now + super::RECONNECT_INTERVAL);
+
+        super::schedule_reconnect_retry(
+            &mut retry_state,
+            &target.device_id,
+            target.endpoints.clone(),
+            now + Duration::from_secs(5),
+        );
+        let second_retry = retry_state
+            .get(&target.device_id)
+            .expect("retry should stay scheduled");
+        assert_eq!(
+            second_retry.next_attempt_at,
+            now + Duration::from_secs(5) + super::RECONNECT_INTERVAL * 2
+        );
     }
 
     #[test]
