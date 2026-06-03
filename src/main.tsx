@@ -696,6 +696,17 @@ function App() {
     event.preventDefault();
     if (!manualEndpoint.trim()) return;
 
+    if (
+      endpointUpdateDeviceId &&
+      !status.devices.some((device) => device.id === endpointUpdateDeviceId && device.trusted)
+    ) {
+      setEndpointUpdateDeviceId(null);
+      setManualEndpoint(status.discovery.manualEndpoint ?? "");
+      setManualEndpointDirty(false);
+      showActionMessage("Trusted IP update target is no longer available. Manual pair field restored.", true);
+      return;
+    }
+
     setLoading(true);
     try {
       const action = endpointUpdateDeviceId
@@ -984,6 +995,13 @@ function App() {
     () => trustedDevices.find((device) => device.id === endpointUpdateDeviceId) ?? null,
     [endpointUpdateDeviceId, trustedDevices]
   );
+  useEffect(() => {
+    if (!endpointUpdateDeviceId || endpointUpdateDevice) return;
+    setEndpointUpdateDeviceId(null);
+    setManualEndpoint(status.discovery.manualEndpoint ?? "");
+    setManualEndpointDirty(false);
+    showActionMessage("Trusted IP update target is no longer available. Manual pair field restored.", true);
+  }, [endpointUpdateDevice, endpointUpdateDeviceId, status.discovery.manualEndpoint]);
   const reconnectChecksAvailable =
     status.trustedReconnect && checkableTrustedDevices.length > 0;
   const captureTarget = useMemo(
