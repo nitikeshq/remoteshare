@@ -2326,6 +2326,10 @@ pub fn pairing_dh_keypair() -> (String, String) {
     crypto::x25519_keypair()
 }
 
+pub fn pairing_dh_public_key_is_well_formed(public_key: &str) -> bool {
+    crypto::x25519_public_key_is_well_formed(public_key)
+}
+
 fn pending_pairing_shared_secret(
     local_device_id: &str,
     pairing: &PendingPairing,

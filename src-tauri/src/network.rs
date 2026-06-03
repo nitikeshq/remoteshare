@@ -20,9 +20,9 @@ use crate::{
     crypto,
     input,
     runtime::{
-        pairing_code, pairing_dh_keypair, pairing_nonce, ConfirmPairingRequest,
-        DeviceEndpointUpdateRequest, DeviceTrustRequest, InputEvent, InputEventKind,
-        NetworkAction, PairRequest, PairingPeer, RuntimeStore, SendInputRequest,
+        pairing_code, pairing_dh_keypair, pairing_dh_public_key_is_well_formed, pairing_nonce,
+        ConfirmPairingRequest, DeviceEndpointUpdateRequest, DeviceTrustRequest, InputEvent,
+        InputEventKind, NetworkAction, PairRequest, PairingPeer, RuntimeStore, SendInputRequest,
         TrustedReconnectTarget, TrustedTarget,
     },
 };
@@ -312,6 +312,13 @@ pub async fn initiate_pairing(store: RuntimeStore, request: PairRequest) -> Netw
                 Ok(ack) => ack,
                 Err(reason) => return action(false, reason),
             };
+            if !pairing_dh_public_key_is_well_formed(&remote_dh_public_key) {
+                return action(
+                    false,
+                    "Pairing acknowledgement used an invalid key exchange public key."
+                        .to_string(),
+                );
+            }
             if peer.device_id == store.local_device_id() {
                 return action(false, "Cannot pair this computer with itself.".to_string());
             }
@@ -986,6 +993,20 @@ async fn handle_control_stream(
             nonce: remote_nonce,
             dh_public_key: remote_dh_public_key,
         } => {
+            if !pairing_dh_public_key_is_well_formed(&remote_dh_public_key) {
+                let reason =
+                    "Pairing request used an invalid key exchange public key.".to_string();
+                let rejection = ControlMessage::PairRejected {
+                    reason: reason.clone(),
+                };
+                let _ = write_control_message(&mut stream, &rejection, None).await;
+                let _ = app.emit(
+                    "remoteshare://network-error",
+                    format!("Pairing request rejected: {reason}"),
+                );
+                let _ = app.emit("remoteshare://devices-changed", ());
+                return;
+            }
             let endpoint = endpoint(sender, peer.control_port);
             let local_nonce = pairing_nonce();
             let (local_dh_private_key, local_dh_public_key) = pairing_dh_keypair();

@@ -89,6 +89,10 @@ pub fn x25519_shared_secret(
     Ok(hex(secret.diffie_hellman(&public).as_bytes()))
 }
 
+pub fn x25519_public_key_is_well_formed(public_key: &str) -> bool {
+    hex32(public_key).is_ok()
+}
+
 pub fn control_mac(shared_secret: &str, nonce: &str, message_payload: &[u8]) -> String {
     let mut payload = Vec::with_capacity(
         b"remoteshare-control-mac-v1".len() + nonce.len() + message_payload.len(),
@@ -217,7 +221,8 @@ fn hmac_sha256_hex(key: &[u8], payload: &[u8]) -> String {
 mod tests {
     use super::{
         decrypt_control_payload, encrypt_control_payload, fingerprint_from_public_key,
-        hmac_sha256_hex, pairing_code, x25519_keypair, x25519_shared_secret,
+        hmac_sha256_hex, pairing_code, x25519_keypair, x25519_public_key_is_well_formed,
+        x25519_shared_secret,
     };
 
     #[test]
@@ -254,6 +259,16 @@ mod tests {
         let second = x25519_shared_secret(&second_private, &first_public).unwrap();
 
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn x25519_public_key_well_formed_requires_32_byte_hex() {
+        let (_private_key, public_key) = x25519_keypair();
+
+        assert!(x25519_public_key_is_well_formed(&public_key));
+        assert!(!x25519_public_key_is_well_formed(""));
+        assert!(!x25519_public_key_is_well_formed("not-hex"));
+        assert!(!x25519_public_key_is_well_formed("00"));
     }
 
     #[test]
