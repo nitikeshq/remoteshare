@@ -357,6 +357,20 @@ try {
     "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output"
   );
 
+  const missingReconnectLatency = writeReport("missing-reconnect-latency.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoReconnect:
+      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+  });
+  runVerifier(
+    missingReconnectLatency,
+    false,
+    "missing reconnect latency should fail",
+    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output with Check: reachable and measured Latency"
+  );
+
   const positivePrefixFailure = writeReport("positive-prefix-failure.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -1221,9 +1235,9 @@ try {
 function writeReport(name, options) {
   const file = path.join(root, name);
   const autoReconnectEvidence =
-    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 7 ms; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const manualReconnectEvidence =
-    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 9 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const autoReconnect = options.autoReconnect ?? autoReconnectEvidence;
   const manualReconnect = options.manualReconnect ?? manualReconnectEvidence;
   const autoReconnectEnabled = options.autoReconnectEnabled ?? autoReconnectEvidence;

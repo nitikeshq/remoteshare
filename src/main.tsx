@@ -208,6 +208,10 @@ function connectionLabel(device: Device) {
   return `Manual IP ${device.latencyMs ?? "-"} ms`;
 }
 
+function latencyEvidenceLabel(device: Device) {
+  return device.latencyMs !== null ? `${device.latencyMs} ms` : "not measured";
+}
+
 function shortFingerprint(fingerprint: string | null) {
   if (!fingerprint) return "fingerprint unavailable";
   return fingerprint.length > 16
@@ -653,6 +657,7 @@ function reconnectEvidence(status: RuntimeStatus, device: Device) {
     `Device: ${device.name}`,
     `Check: ${device.online ? "reachable" : "not currently reachable"}`,
     `Last seen: ${lastSeenLabel(device.lastSeenAtMs)}`,
+    `Latency: ${latencyEvidenceLabel(device)}`,
     `Endpoint source: ${endpointSourceLabel(device)}`,
     `Endpoint: ${device.endpoint ?? "none"}`,
     `Input control: ${device.inputControlReady ? "ready" : "needs re-pair"}`,

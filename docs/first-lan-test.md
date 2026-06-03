@@ -52,8 +52,8 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## Reconnect
 
 1. Restart one app or wake one computer from sleep.
-2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row, then use the trusted row reconnect `Copy` button to capture auto reconnect, device, check result, last-seen timing, endpoint source, endpoint, input-control readiness, last failure, and recovery evidence.
-3. A successful reconnect should update last-seen timing and show the endpoint source as discovery, reconnect, or saved endpoint. Paste the reconnect `Copy` output for the check and endpoint-source report rows; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
+2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row, then use the trusted row reconnect `Copy` button to capture auto reconnect, device, check result, measured latency, last-seen timing, endpoint source, endpoint, input-control readiness, last failure, and recovery evidence.
+3. A successful reconnect should update last-seen timing, record a measured latency, and show the endpoint source as discovery, reconnect, or saved endpoint. Paste the reconnect `Copy` output for the check and endpoint-source report rows; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
 4. Use the diagnostics panel's Startup health `Copy` button after restart so the report records `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing evidence.
 5. If reconnect fails, use `Edit IP`, replace the field with the copied endpoint from the other computer, use `Copy` to capture trusted IP recovery evidence, then use `Verify IP` to update the trusted endpoint without pairing again.
 
@@ -85,7 +85,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, local endpoint `Evidence` output records label `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Trusted Device Audit `Evidence` output pasted | Trusted Device Audit `Evidence` output pasted |
-| Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake |
+| Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` and `Latency: N ms` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` and `Latency: N ms` after app restart or wake |
 | Startup health | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
 | Input test result | Sender Input Transport `Copy` output shows `Input Transport: Outgoing`, `This computer`, `Summary: key press r`, target device, relative time, and `Status: Accepted`; receiver Input Transport `Copy` output shows `Input Transport: Incoming`, `This computer`, `Summary: key press r`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled | Sender Input Transport `Copy` output shows `Input Transport: Outgoing`, `This computer`, `Summary: key press r`, target device, relative time, and `Status: Accepted`; receiver Input Transport `Copy` output shows `Input Transport: Incoming`, `This computer`, `Summary: key press r`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled |
@@ -97,7 +97,7 @@ Minimum pass criteria:
 - Both machines show the same typed pairing code before trust is stored.
 - `Trusted` appears on both machines with the expected peer fingerprint.
 - Trusted row reconnect `Copy` output shows `Auto reconnect: enabled` after restart.
-- Trusted row reconnect `Copy` output shows `Check: reachable` after at least one app restart, wake, or Wi-Fi reconnect.
+- Trusted row reconnect `Copy` output shows `Check: reachable` and measured `Latency: N ms` after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled; sender and receiver Input Transport `Copy` output prove the outgoing and incoming accepted event records.
 - Capture starts on the macOS sender, the active capture `Copy` output is pasted before Stop, receiver Input Transport `Copy` output proves accepted incoming mouse move, mouse click, scroll, and key events, then stopped capture `Copy` output proves capture stopped cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.

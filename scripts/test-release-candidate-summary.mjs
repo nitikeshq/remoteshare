@@ -38,7 +38,7 @@ try {
   assertIncludes(summary, "trusted row reconnect `Copy` button", "reconnect copy evidence");
   assertIncludes(summary, "Auto reconnect: enabled", "auto reconnect copied field");
   assertIncludes(summary, "Check: reachable", "reconnect check copied field");
-  assertIncludes(summary, "last-seen timing, endpoint source, endpoint, last failure, and recovery evidence", "reconnect copied fields");
+  assertIncludes(summary, "measured latency, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence", "reconnect copied fields");
   assertIncludes(summary, "accepted test input", "test input evidence");
   assertIncludes(summary, "trusted row receive `Copy` button", "receive copy evidence");
   assertIncludes(summary, "Allow incoming control: enabled", "global receive evidence");

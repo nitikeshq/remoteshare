@@ -362,9 +362,10 @@ function requireReconnectEvidence(table, section) {
     !/check:\s*reachable/.test(check) ||
     !/device:\s*[^;|]+/.test(check) ||
     !/last\s+seen:/.test(check) ||
+    !/latency:\s*[0-9]+(\.[0-9]+)?\s*ms/.test(check) ||
     !/(restart|wake)/.test(check)
   ) {
-    throw new Error(`${section} reconnect check evidence must paste the reconnect Copy output with Check: reachable after restart or wake.`);
+    throw new Error(`${section} reconnect check evidence must paste the reconnect Copy output with Check: reachable and measured Latency after restart or wake.`);
   }
 }
 
