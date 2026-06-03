@@ -465,6 +465,11 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
 | Failure reason visible before retry | none |
 | Pass/fail | Pass |
+
+## Notes
+
+- Blocking issues: none
+- Retest required: no
 `
   );
   return file;

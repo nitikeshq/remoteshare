@@ -484,12 +484,18 @@ function requireManualEndpoint(table, field, section) {
 function requireNoBlockingNotes(markdown) {
   const notes = parseNotes(markdown);
   const blockingIssues = notes.get("blocking issues");
-  if (blockingIssues && !isNoneNote(blockingIssues)) {
+  if (!blockingIssues) {
+    throw new Error("LAN smoke report Notes must include `Blocking issues: none` for release readiness.");
+  }
+  if (!isNoneNote(blockingIssues)) {
     throw new Error("LAN smoke report Notes must not list unresolved blocking issues for release readiness.");
   }
 
   const retestRequired = notes.get("retest required");
-  if (retestRequired && !isNoneNote(retestRequired)) {
+  if (!retestRequired) {
+    throw new Error("LAN smoke report Notes must include `Retest required: no` for release readiness.");
+  }
+  if (!isNoneNote(retestRequired)) {
     throw new Error("LAN smoke report Notes must not require retest for release readiness.");
   }
 }

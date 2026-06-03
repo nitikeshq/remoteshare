@@ -204,6 +204,32 @@ try {
     "LAN smoke report Notes must not require retest for release readiness"
   );
 
+  const passedWithoutBlockingIssueNotes = writeReport("passed-without-blocking-issue-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Retest required: no"]
+  });
+  runVerifier(
+    passedWithoutBlockingIssueNotes,
+    false,
+    "passed report without blocking issue notes should fail",
+    "LAN smoke report Notes must include `Blocking issues: none` for release readiness"
+  );
+
+  const passedWithoutRetestNotes = writeReport("passed-without-retest-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: none"]
+  });
+  runVerifier(
+    passedWithoutRetestNotes,
+    false,
+    "passed report without retest notes should fail",
+    "LAN smoke report Notes must include `Retest required: no` for release readiness"
+  );
+
   const passedWithClearNotes = writeReport("passed-with-clear-notes.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -864,6 +890,7 @@ function writeReport(name, options) {
   const extraContextRows = options.extraContextRows ?? [];
   const extraAutoRows = options.extraAutoRows ?? [];
   const extraManualRows = options.extraManualRows ?? [];
+  const notes = options.notes ?? ["", "## Notes", "", "- Blocking issues: none", "- Retest required: no"];
   const lines = [
     "# LAN Smoke Report",
     "",
@@ -948,7 +975,7 @@ function writeReport(name, options) {
     `| Failure reason visible before retry | ${manualFailureReason} |`,
     ...extraManualRows,
     `| Pass/fail | ${options.manualPass} |`,
-    ...(options.notes ?? [])
+    ...notes
   ].filter((line) => line !== options.omitLine);
 
   fs.writeFileSync(file, `${lines.join("\n")}\n`);
