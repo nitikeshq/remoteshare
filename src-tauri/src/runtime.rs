@@ -981,6 +981,7 @@ impl RuntimeStore {
     }
 
     pub fn pairing_target(&self, request: PairRequest) -> Result<PairingTarget, String> {
+        let manual_endpoint_requested = request.manual_endpoint;
         let endpoint = match request.endpoint {
             Some(endpoint) => Some(
                 normalized_endpoint(&endpoint)
@@ -993,6 +994,10 @@ impl RuntimeStore {
         prune_runtime_state(&mut state, now);
 
         if let Some(endpoint) = endpoint {
+            if request.device_id.is_none() && !manual_endpoint_requested {
+                return Err("Endpoint-only pairing requests must be marked as manual pairing."
+                    .to_string());
+            }
             if !private_guard_allows_endpoint(
                 &endpoint,
                 state.persisted.settings.private_network_only,
@@ -4954,6 +4959,25 @@ mod tests {
         assert_eq!(target.device_id, "192.168.1.50:44777");
         assert_eq!(target.endpoint, "192.168.1.50:44777");
         assert!(target.expected_peer.is_none());
+    }
+
+    #[test]
+    fn endpoint_only_pairing_target_requires_manual_flag() {
+        crate::identity::set_test_config_dir(unique_test_dir("endpoint-only-requires-manual"));
+
+        let store = RuntimeStore::load_or_init();
+        let error = store
+            .pairing_target(super::PairRequest {
+                device_id: None,
+                endpoint: Some("192.168.1.50".to_string()),
+                manual_endpoint: false,
+            })
+            .expect_err("endpoint-only target should be marked manual");
+
+        assert_eq!(
+            error,
+            "Endpoint-only pairing requests must be marked as manual pairing."
+        );
     }
 
     #[test]
