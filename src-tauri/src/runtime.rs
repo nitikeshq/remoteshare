@@ -1320,6 +1320,18 @@ impl RuntimeStore {
 
     pub fn cancel_pairing(&self, request: CancelPairingRequest) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
+        if state
+            .pending_pairings
+            .get(&request.pairing_id)
+            .is_some_and(|pairing| pairing_is_expired(pairing, now_ms()))
+        {
+            state.pending_pairings.remove(&request.pairing_id);
+            return NetworkAction {
+                ok: true,
+                message: "Expired pairing request cleared.".to_string(),
+            };
+        }
+
         prune_runtime_state(&mut state, now_ms());
         if state.pending_pairings.remove(&request.pairing_id).is_some() {
             NetworkAction {
@@ -6457,7 +6469,7 @@ mod tests {
     }
 
     #[test]
-    fn cancelling_pairing_prunes_expired_pending_request() {
+    fn cancelling_pairing_clears_expired_pending_request() {
         crate::identity::set_test_config_dir(unique_test_dir("cancel-prunes-expired-pairing"));
 
         let store = RuntimeStore::load_or_init();
@@ -6473,8 +6485,8 @@ mod tests {
             pairing_id: "pair-old-device".to_string(),
         });
 
-        assert!(!action.ok);
-        assert_eq!(action.message, "Pairing request not found.");
+        assert!(action.ok);
+        assert_eq!(action.message, "Expired pairing request cleared.");
         assert!(store
             .state
             .lock()
