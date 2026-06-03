@@ -1262,7 +1262,7 @@ impl RuntimeStore {
 
         let pairing = state
             .pending_pairings
-            .get_mut(&id)
+            .get(&id)
             .ok_or_else(|| "Matching pairing request not found.".to_string())?;
 
         if pairing.code != code {
@@ -1285,6 +1285,17 @@ impl RuntimeStore {
             return Err("Accepted pairing public key does not match fingerprint.".to_string());
         }
 
+        let endpoint =
+            normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
+        if !private_guard_allows_endpoint(&endpoint, state.persisted.settings.private_network_only)
+        {
+            return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+        }
+
+        let pairing = state
+            .pending_pairings
+            .get_mut(&id)
+            .ok_or_else(|| "Matching pairing request not found.".to_string())?;
         pairing.name = peer.name;
         pairing.platform = peer.platform;
         pairing.control_port = peer.control_port;
@@ -4664,7 +4675,9 @@ mod tests {
             .status()
             .pending_pairings
             .iter()
-            .any(|pairing| pairing.id == pairing_id && !pairing.remote_approved));
+            .any(|pairing| pairing.id == pairing_id
+                && !pairing.remote_approved
+                && pairing.endpoint == "192.168.1.50:44777"));
     }
 
     #[test]
@@ -4674,7 +4687,7 @@ mod tests {
         let store = RuntimeStore::load_or_init();
         let target = PairingTarget {
             device_id: "remote-device".to_string(),
-            endpoint: "8.8.8.8:44777".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
             expected_peer: None,
         };
         let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
@@ -4728,7 +4741,9 @@ mod tests {
             .status()
             .pending_pairings
             .iter()
-            .any(|pairing| pairing.id == pairing_id));
+            .any(|pairing| pairing.id == pairing_id
+                && !pairing.remote_approved
+                && pairing.endpoint == "192.168.1.50:44777"));
     }
 
     #[test]

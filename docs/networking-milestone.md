@@ -88,6 +88,7 @@ Current scaffold behavior:
 - Pending pairing rows show local and remote approval state so testers can see which side is still waiting.
 - The UI keeps `Confirm` disabled until the typed six-digit code from the other computer matches the locally visible comparison code, and it labels six-digit mismatches before a backend request is sent.
 - Remote pairing approvals must match the pending pairing's device ID, comparison code, fingerprint, and advertised identity public key before they can mark the remote side approved.
+- Remote pairing approvals validate the replied endpoint before mutating the pending pairing, so invalid or private-guard-blocked approval endpoints cannot overwrite the last known pairing endpoint.
 - A trusted device is stored only after both local approval and remote approval are present.
 - Trusted device records store the peer identity public key when the peer advertises one. Discovery, pairing acknowledgements, and pairing approvals reject a provided identity public key when its fingerprint does not match the advertised fingerprint.
 - New trusted pairings derive and store a per-device shared control secret from ephemeral X25519 key agreement plus the pairing nonces.
