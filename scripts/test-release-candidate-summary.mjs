@@ -51,9 +51,12 @@ try {
   assertIncludes(summary, "Input Transport: Incoming", "receiver input event direction");
   assertIncludes(summary, "Summary: key press r", "input event summary evidence");
   assertIncludes(summary, "source device, relative time, and `Status: Accepted`", "receiver input event copied fields");
-  assertIncludes(summary, "capture `Copy` button", "capture copy evidence");
+  assertIncludes(summary, "active capture `Copy` button", "active capture copy evidence");
+  assertIncludes(summary, "stopped capture `Copy` button", "stopped capture copy evidence");
   assertIncludes(summary, "Capture: active", "active capture copied field");
+  assertIncludes(summary, "Capture: stopped", "stopped capture copied field");
   assertIncludes(summary, "`This computer`, target, and started/elapsed-time evidence", "capture machine evidence");
+  assertIncludes(summary, "Result: stopped cleanly", "stopped capture result evidence");
   assertIncludes(summary, "started/elapsed-time evidence", "capture timing copied field");
   assertIncludes(summary, "receiver Input Transport row `Copy` output", "receiver capture input transport copy evidence");
   assertIncludes(summary, "accepted incoming mouse move, mouse click, scroll, and key events", "capture evidence");

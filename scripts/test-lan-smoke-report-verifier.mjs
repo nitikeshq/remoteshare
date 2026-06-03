@@ -812,7 +812,7 @@ try {
     vagueCaptureStartStop,
     false,
     "vague capture start-stop should fail",
-    "Auto-Discovery Run capture evidence must show capture started and stopped cleanly"
+    "Auto-Discovery Run capture start/stop evidence must paste the stopped capture Copy output"
   );
 
   const vagueCaptureTiming = writeReport("vague-capture-timing.md", {
@@ -1266,8 +1266,12 @@ function writeReport(name, options) {
   const manualFingerprint =
     options.manualFingerprint ??
     "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-  const autoCaptureStartStop = options.autoCaptureStartStop ?? "started and stopped cleanly";
-  const manualCaptureStartStop = options.manualCaptureStartStop ?? "started and stopped cleanly";
+  const autoCaptureStartStop =
+    options.autoCaptureStartStop ??
+    "Confirmed; Capture: stopped; This computer: Mac sender; Target: Windows receiver; Started: 4s ago; Stopped: now; Result: stopped cleanly";
+  const manualCaptureStartStop =
+    options.manualCaptureStartStop ??
+    "Confirmed; Capture: stopped; This computer: Mac sender; Target: Windows receiver; Started: 5s ago; Stopped: now; Result: stopped cleanly";
   const autoCaptureTiming =
     options.autoCaptureTiming ?? "Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago";
   const manualCaptureTiming =

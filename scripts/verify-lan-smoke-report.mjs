@@ -492,8 +492,19 @@ function requireCaptureEvidence(table, section) {
     "Capture started on sender and stopped cleanly",
     section
   ).toLowerCase();
-  if (!/start(ed)?/.test(startStop) || !/stop(ped)?/.test(startStop) || /fail|failed|blocked|denied|error/.test(startStop)) {
-    throw new Error(`${section} capture evidence must show capture started and stopped cleanly.`);
+  const startStopWithoutExpectedNegative = startStop
+    .replace(/\bstopped\s+cleanly\b/g, "")
+    .replace(/\bnot\s+failed\b/g, "");
+  if (
+    !/capture:\s*stopped/.test(startStop) ||
+    !/this\s+computer:\s*[^;|]+/.test(startStop) ||
+    !/target:\s*(windows|receiver|client|trusted|[^\s|;]+)/.test(startStop) ||
+    !/started:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(startStop) ||
+    !/stopped:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(startStop) ||
+    !/result:\s*stopped\s+cleanly/.test(startStop) ||
+    /fail|failed|blocked|denied|error/.test(startStopWithoutExpectedNegative)
+  ) {
+    throw new Error(`${section} capture start/stop evidence must paste the stopped capture Copy output with Capture: stopped, This computer, Target, Started, Stopped, and Result: stopped cleanly fields.`);
   }
 
   const captureTiming = requireFilled(

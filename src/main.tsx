@@ -593,6 +593,22 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
   ].join("; ");
 }
 
+function captureStoppedEvidence(
+  status: RuntimeStatus,
+  targetName: string | null | undefined,
+  startedAtMs: number | null | undefined,
+  stoppedAtMs: number
+) {
+  return [
+    "Capture: stopped",
+    `This computer: ${status.thisDevice}`,
+    `Target: ${targetName ?? "trusted device"}`,
+    `Started: ${elapsedLabel(startedAtMs ?? stoppedAtMs)}`,
+    `Stopped: ${elapsedLabel(stoppedAtMs)}`,
+    "Result: stopped cleanly"
+  ].join("; ");
+}
+
 function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: string) {
   return [
     "Local endpoint",
@@ -793,6 +809,7 @@ function App() {
   const [pairingNowMs, setPairingNowMs] = useState(() => Date.now());
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState(false);
+  const [lastCaptureStopEvidence, setLastCaptureStopEvidence] = useState<string | null>(null);
 
   function showActionMessage(message: string, error = false) {
     setActionMessage(message);
@@ -1099,7 +1116,9 @@ function App() {
   }
 
   async function copyCaptureEvidence() {
-    const evidence = captureEvidence(status, captureTarget?.name);
+    const evidence = status.capture.active
+      ? captureEvidence(status, captureTarget?.name)
+      : lastCaptureStopEvidence ?? captureEvidence(status, captureTarget?.name);
     try {
       await navigator.clipboard.writeText(evidence);
       showActionMessage("Copied capture evidence.");
@@ -1352,14 +1371,24 @@ function App() {
       const action = await invokeNetworkAction("start_capture", {
         request: { deviceId: device.id }
       });
+      if (action.ok) {
+        setLastCaptureStopEvidence(null);
+      }
       showActionMessage(action.message, !action.ok);
       await refreshStatus();
     });
   }
 
   async function stopCapture() {
+    const stopEvidence =
+      status.capture.active
+        ? captureStoppedEvidence(status, captureTarget?.name, status.capture.startedAtMs, Date.now())
+        : null;
     await runExclusiveAction("stop-capture", async () => {
       const action = await invokeNetworkAction("stop_capture");
+      if (action.ok && stopEvidence) {
+        setLastCaptureStopEvidence(stopEvidence);
+      }
       showActionMessage(action.message, !action.ok);
       await refreshStatus();
     });
@@ -1709,11 +1738,11 @@ function App() {
                     )}`}
               </small>
             </div>
-            {status.capture.active && (
+            {(status.capture.active || lastCaptureStopEvidence) && (
               <button
                 className="metric-evidence-copy"
                 onClick={copyCaptureEvidence}
-                title="Copy capture evidence"
+                title={status.capture.active ? "Copy active capture evidence" : "Copy stopped capture evidence"}
                 type="button"
               >
                 <Copy size={13} />
