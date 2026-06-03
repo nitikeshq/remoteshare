@@ -56,6 +56,32 @@ try {
     "Checksum file contains stale entry not present in manifest"
   );
 
+  const unmanifestedInstallerAssets = releaseFixture("unmanifested-installer");
+  fs.writeFileSync(
+    path.join(unmanifestedInstallerAssets, `RemoteShare_${packageVersion}_extra.dmg`),
+    "unmanifested dmg"
+  );
+  runVerifier(
+    unmanifestedInstallerAssets,
+    smokeReport,
+    false,
+    "unmanifested release installer should fail",
+    "Release assets contain installer artifact(s) not present in manifest"
+  );
+
+  const unexpectedInstallerAssets = releaseFixture("unexpected-installer");
+  fs.writeFileSync(
+    path.join(unexpectedInstallerAssets, `RemoteShare_${packageVersion}_x64.msi`),
+    "unexpected msi"
+  );
+  runVerifier(
+    unexpectedInstallerAssets,
+    smokeReport,
+    false,
+    "unexpected release installer should fail",
+    "Release assets contain unexpected installer artifact(s)"
+  );
+
   const missingSummaryAssets = releaseFixture("missing-summary");
   fs.rmSync(path.join(missingSummaryAssets, "release-candidate-summary.md"));
   runVerifier(
