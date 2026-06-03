@@ -573,7 +573,7 @@ function startupHealthEvidence(status: RuntimeStatus) {
     status.networkHealth.lastReconnectAttemptAtMs
       ? `Reconnect: ${lastSeenLabel(status.networkHealth.lastReconnectAttemptAtMs)}`
       : `Started: ${lastSeenLabel(status.networkHealth.startedAtMs)}`
-  ].join(" | ");
+  ].join("; ");
 }
 
 function captureEvidence(status: RuntimeStatus, targetName: string | null | undefined) {

@@ -28,7 +28,9 @@ try {
   assertIncludes(summary, "pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
   assertIncludes(summary, "Trusted Device Audit", "fingerprint audit evidence");
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
-  assertIncludes(summary, "startup health TCP ready, UDP ready, and start-at-login not failed", "startup health detail evidence");
+  assertIncludes(summary, "Startup health `Copy` button", "startup health copy evidence");
+  assertIncludes(summary, "`TCP:`, `UDP:`, `Start:`", "startup health copied fields");
+  assertIncludes(summary, "started/reconnect timing evidence", "startup health timing evidence");
   assertIncludes(summary, "trusted row reconnect `Copy` button", "reconnect copy evidence");
   assertIncludes(summary, "Auto reconnect: enabled", "auto reconnect copied field");
   assertIncludes(summary, "Check: reachable", "reconnect check copied field");

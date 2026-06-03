@@ -69,7 +69,7 @@ ${rows}
 5. Use the pending pairing row \`Copy\` button to paste pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence.
 6. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
 7. Record a Test date that is on or after the release manifest date and not in the future.
-8. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
+8. Use the Startup health \`Copy\` button to paste \`TCP:\`, \`UDP:\`, \`Start:\`, and started/reconnect timing evidence after restart.
 9. After restart/wake, use the trusted row reconnect \`Copy\` button to paste \`Auto reconnect: enabled\`, \`Check: reachable\`, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence.
 10. Use the trusted row receive \`Copy\` button to paste \`Allow incoming control: enabled\`, \`Device receive: enabled\`, and \`Input control: ready\` evidence before input.
 11. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.

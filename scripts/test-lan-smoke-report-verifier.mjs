@@ -15,17 +15,17 @@ try {
   });
   runVerifier(valid, true, "valid smoke report should pass", "Verified LAN smoke report");
 
-  const explicitStartupNotFailed = writeReport("explicit-startup-not-failed.md", {
+  const copiedStartupHealth = writeReport("copied-startup-health.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoStartupHealth: "ready: TCP ready, UDP ready, start-at-login not failed",
-    manualStartupHealth: "ready: TCP ready, UDP ready, start-at-login not failed"
+    autoStartupHealth: "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login not failed; Reconnect: 3s ago",
+    manualStartupHealth: "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago"
   });
   runVerifier(
-    explicitStartupNotFailed,
+    copiedStartupHealth,
     true,
-    "explicit startup not failed evidence should pass",
+    "copied startup health evidence should pass",
     "Verified LAN smoke report"
   );
 
@@ -432,20 +432,33 @@ try {
     vagueStartupHealth,
     false,
     "vague startup health should fail",
-    "Auto-Discovery Run startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed"
+    "Auto-Discovery Run startup health evidence must paste the startup health Copy output"
+  );
+
+  const unlabeledStartupHealth = writeReport("unlabeled-startup-health.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoStartupHealth: "TCP ready, UDP ready, start-at-login ok, started 3s ago"
+  });
+  runVerifier(
+    unlabeledStartupHealth,
+    false,
+    "unlabeled startup health should fail",
+    "Auto-Discovery Run startup health evidence must paste the startup health Copy output"
   );
 
   const failedStartupHealth = writeReport("failed-startup-health.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoStartupHealth: "ready: TCP ready, UDP ready, start-at-login failed"
+    autoStartupHealth: "TCP: TCP ready; UDP: UDP ready; Start: start-at-login failed; Started: 3s ago"
   });
   runVerifier(
     failedStartupHealth,
     false,
     "failed startup health should fail",
-    "Auto-Discovery Run startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed"
+    "Auto-Discovery Run startup health evidence must paste the startup health Copy output"
   );
 
   const vagueAutoEndpointSource = writeReport("vague-auto-endpoint-source.md", {
@@ -1134,8 +1147,12 @@ function writeReport(name, options) {
   const manualReconnect = options.manualReconnect ?? manualReconnectEvidence;
   const autoReconnectEnabled = options.autoReconnectEnabled ?? autoReconnectEvidence;
   const manualReconnectEnabled = options.manualReconnectEnabled ?? manualReconnectEvidence;
-  const autoStartupHealth = options.autoStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
-  const manualStartupHealth = options.manualStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
+  const autoStartupHealth =
+    options.autoStartupHealth ??
+    "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago";
+  const manualStartupHealth =
+    options.manualStartupHealth ??
+    "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago";
   const autoEndpointSource = options.autoEndpointSource ?? autoReconnectEvidence;
   const manualEndpointSource = options.manualEndpointSource ?? manualReconnectEvidence;
   const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";

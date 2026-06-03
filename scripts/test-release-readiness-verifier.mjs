@@ -451,7 +451,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
 | \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEvidence} |
-| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
+| Startup health shows TCP ready, UDP ready, and start-at-login not failed | TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago |
 | \`Check\` succeeded after restart/wake | ${autoReconnectEvidence} |
 | Endpoint source shown | ${autoReconnectEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
@@ -480,7 +480,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
 | \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEvidence} |
-| Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
+| Startup health shows TCP ready, UDP ready, and start-at-login not failed | TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago |
 | \`Check\` succeeded after restart/wake | ${manualReconnectEvidence} |
 | Endpoint source shown as saved endpoint or manual IP | ${manualReconnectEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
