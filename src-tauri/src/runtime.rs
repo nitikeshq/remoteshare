@@ -1384,6 +1384,7 @@ impl RuntimeStore {
             .ok_or_else(|| "Matching pairing request not found.".to_string())?;
         pairing.name = peer.name;
         pairing.platform = peer.platform;
+        pairing.role = peer.role;
         pairing.control_port = peer.control_port;
         pairing.endpoint = endpoint;
         pairing.public_key = peer.public_key;
@@ -5621,6 +5622,70 @@ mod tests {
             store.trusted_reconnect_targets()[0].endpoints,
             vec!["192.168.1.50:44777".to_string()]
         );
+    }
+
+    #[test]
+    fn completed_pairing_uses_approved_peer_role() {
+        crate::identity::set_test_config_dir(unique_test_dir("complete-updates-peer-role"));
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: None,
+        };
+        let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
+        let (_remote_private_key, remote_public_key) = crate::crypto::x25519_keypair();
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                local_private_key,
+                local_public_key,
+                remote_public_key,
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id,
+                code: "123456".to_string(),
+            })
+            .expect("local approval should be recorded");
+        assert!(store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Both,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "192.168.1.50:44777".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should complete"));
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "remote-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.role, ComputerRole::Both);
     }
 
     #[test]
