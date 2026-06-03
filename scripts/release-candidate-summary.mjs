@@ -18,7 +18,7 @@ if (!fs.existsSync(manifestPath)) {
   throw new Error(`Missing release manifest: ${manifestPath}`);
 }
 
-const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const manifest = readReleaseManifest(manifestPath);
 if (manifest.version !== packageJson.version) {
   throw new Error(
     `Release manifest version must match package version ${packageJson.version}.`
@@ -96,6 +96,17 @@ Linux DEB is included for package coverage evidence, but the first MVP smoke pat
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, summary);
 console.log(`Prepared release candidate summary: ${outputPath}`);
+
+function readReleaseManifest(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid release manifest JSON: ${error.message}`);
+    }
+    throw error;
+  }
+}
 
 function artifactForType(type) {
   const artifact = manifestArtifacts.find((candidate) => candidate.type === type);

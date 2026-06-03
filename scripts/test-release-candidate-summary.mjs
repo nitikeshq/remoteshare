@@ -90,6 +90,17 @@ try {
   fs.mkdirSync(missingManifest, { recursive: true });
   runSummary(missingManifest, path.join(root, "missing.md"), false, "missing manifest should fail", "Missing release manifest");
 
+  const invalidManifest = path.join(root, "invalid-manifest");
+  fs.mkdirSync(invalidManifest, { recursive: true });
+  fs.writeFileSync(path.join(invalidManifest, "RELEASE-MANIFEST.json"), "{not json");
+  runSummary(
+    invalidManifest,
+    path.join(root, "invalid.md"),
+    false,
+    "invalid manifest JSON should fail",
+    "Invalid release manifest JSON"
+  );
+
   const missingDeb = fixture("missing-deb", {
     version: "0.1.13",
     artifacts: [
