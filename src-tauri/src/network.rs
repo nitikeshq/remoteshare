@@ -1061,6 +1061,22 @@ async fn handle_control_stream(
                 .trusted_shared_secret(&source.device_id)
                 .ok()
                 .flatten();
+            if !store.trusted_identity_matches(&source) {
+                let message =
+                    "Rejected input event because trusted identity does not match.".to_string();
+                record_failed_input_source(&store, &source, sender, &message);
+                if let Some(shared_secret) = shared_secret.as_ref() {
+                    let response = ControlMessage::InputAck {
+                        ok: false,
+                        message: message.clone(),
+                    };
+                    let _ = write_control_message(&mut stream, &response, Some(shared_secret))
+                        .await;
+                }
+                let _ = app.emit("remoteshare://network-error", message);
+                let _ = app.emit("remoteshare://devices-changed", ());
+                return;
+            }
             let action = store.authorize_incoming_input(&source);
             let ack = if action.ok {
                 match input::apply_event(&event) {
@@ -2576,6 +2592,30 @@ Wireless LAN adapter Wi-Fi:
             .find(|device| device.id == "trusted-device")
             .expect("trusted device should be visible");
         assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
+    fn incoming_input_identity_failure_records_source_failure_without_input_audit() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-identity-failure"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let source = peer("trusted-device", "wrong-fingerprint");
+        let sender = "192.168.1.70:50123".parse().unwrap();
+        let message = "Rejected input event because trusted identity does not match.";
+
+        assert!(!store.trusted_identity_matches(&source));
+        super::record_failed_input_source(&store, &source, sender, message);
+
+        let status = store.status();
+        let failure = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure.as_ref())
+            .expect("trusted input identity failure should be visible");
+        assert_eq!(failure.endpoint, "192.168.1.70:44777");
+        assert_eq!(failure.message, message);
+        assert!(status.recent_input_events.is_empty());
     }
 
     #[test]
