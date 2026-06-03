@@ -40,6 +40,7 @@ type Device = {
 
 type ConnectionFailure = {
   endpoint: string;
+  endpointSource: Device["endpointSource"];
   failedAtMs: number;
   message: string;
 };
@@ -242,11 +243,12 @@ function connectionFailureDiagnostic(device: Device) {
 }
 
 function connectionFailureHint(device: Device) {
-  if (!device.lastConnectionFailure) return null;
-  if (device.endpointSource === "saved") {
+  const failure = device.lastConnectionFailure;
+  if (!failure) return null;
+  if (failure.endpointSource === "saved") {
     return "Saved endpoint may be stale. Copy the current endpoint from the other computer, then use Edit IP and Verify IP.";
   }
-  if (device.endpointSource === "discovery") {
+  if (failure.endpointSource === "discovery") {
     return "Discovery found the device, but TCP control failed. Check firewall rules for port 44777.";
   }
   if (device.trusted && device.inputControlReady) {

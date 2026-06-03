@@ -217,6 +217,7 @@ pub struct DeviceStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionFailureStatus {
     pub endpoint: String,
+    pub endpoint_source: EndpointSource,
     pub failed_at_ms: u128,
     pub message: String,
 }
@@ -1831,10 +1832,34 @@ fn device_from_trusted_with_health(
         input_control_ready: device.shared_secret.is_some(),
         last_connection_failure: failure.map(|failure| ConnectionFailureStatus {
             endpoint: failure.endpoint.clone(),
+            endpoint_source: failure_endpoint_source(device, peer, health, failure),
             failed_at_ms: failure.failed_at_ms,
             message: failure.message.clone(),
         }),
     }
+}
+
+fn failure_endpoint_source(
+    device: &TrustedDevice,
+    peer: Option<&DiscoveredPeer>,
+    health: Option<&ConnectionHealth>,
+    failure: &ConnectionFailure,
+) -> EndpointSource {
+    if peer.is_some_and(|peer| peer.endpoint == failure.endpoint) {
+        return EndpointSource::Discovery;
+    }
+    if health.is_some_and(|health| health.endpoint == failure.endpoint) {
+        return EndpointSource::Health;
+    }
+    if device.last_endpoint.as_deref() == Some(failure.endpoint.as_str())
+        || device
+            .recent_endpoints
+            .iter()
+            .any(|endpoint| endpoint == &failure.endpoint)
+    {
+        return EndpointSource::Saved;
+    }
+    EndpointSource::None
 }
 
 fn peer_matches_trusted_device(peer: &DiscoveredPeer, device: &TrustedDevice) -> bool {
@@ -5575,7 +5600,7 @@ mod tests {
                 public_key_fingerprint: public_key_fingerprint.clone(),
                 public_key: Some(public_key.clone()),
                 shared_secret: Some("shared-secret".to_string()),
-                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                last_endpoint: Some("192.168.1.51:44777".to_string()),
                 recent_endpoints: Vec::new(),
                 allow_incoming_control: false,
             });
@@ -5609,6 +5634,7 @@ mod tests {
             .and_then(|device| device.last_connection_failure)
             .expect("different endpoint failure should stay visible");
         assert_eq!(failure.endpoint, "192.168.1.51:44777");
+        assert!(matches!(failure.endpoint_source, super::EndpointSource::Saved));
         assert_eq!(failure.message, "connection refused");
     }
 
