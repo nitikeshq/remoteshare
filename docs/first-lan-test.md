@@ -84,7 +84,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
 | Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
 | Startup health | TCP ready, UDP ready, and start-at-login not failed after restart | TCP ready, UDP ready, and start-at-login not failed after restart |
-| Endpoint source shown | Discovery or reconnect | Saved endpoint or manual IP |
+| Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event | Receiver logs accepted input transport event |
 | Capture result | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible |
 | Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |

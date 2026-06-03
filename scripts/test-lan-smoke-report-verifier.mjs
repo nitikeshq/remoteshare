@@ -436,6 +436,19 @@ try {
     "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
   );
 
+  const savedAutoEndpointSource = writeReport("saved-auto-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoEndpointSource: "saved endpoint"
+  });
+  runVerifier(
+    savedAutoEndpointSource,
+    true,
+    "auto saved endpoint source should pass",
+    "Verified LAN smoke report"
+  );
+
   const contradictoryAutoEndpointSource = writeReport("contradictory-auto-endpoint-source.md", {
     autoPass: "Pass",
     manualPass: "Pass",

@@ -146,7 +146,7 @@ requireFingerprintEvidence(autoDiscovery, "Auto-Discovery Run");
 requireFingerprintEvidence(manualFallback, "Manual Fallback Run");
 requireReconnectEvidence(autoDiscovery, "Auto-Discovery Run");
 requireReconnectEvidence(manualFallback, "Manual Fallback Run");
-requireEndpointSourceEvidence(autoDiscovery, "Endpoint source shown", "Auto-Discovery Run", /discovery|reconnect/);
+requireEndpointSourceEvidence(autoDiscovery, "Endpoint source shown", "Auto-Discovery Run", /discovery|reconnect|saved\s+endpoint/);
 requireEndpointSourceEvidence(
   manualFallback,
   "Endpoint source shown as saved endpoint or manual IP",
