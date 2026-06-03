@@ -192,6 +192,17 @@ try {
     "must include exact package version"
   );
 
+  const suffixedVersionReport = smokeReportFixture("suffixed-version.md", "Pass", {
+    version: `v${packageVersion}-beta`
+  });
+  runVerifier(
+    releaseAssets,
+    suffixedVersionReport,
+    false,
+    "LAN smoke version suffix should fail",
+    "must include exact package version"
+  );
+
   const staleDateReport = smokeReportFixture("stale-date.md", "Pass", {
     testDate: "2026-05-31"
   });

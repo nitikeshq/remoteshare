@@ -394,7 +394,7 @@ function requirePackageVersion(table, field, section) {
 
 function packageVersionTokenPattern(version) {
   const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.]|$)`);
+  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.+-]|$)`);
 }
 
 function requireInstallerFile(table, field, section, extension) {

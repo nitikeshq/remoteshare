@@ -121,7 +121,7 @@ function assertSmokeVersionMatches(context, expectedVersion) {
 
 function packageVersionTokenPattern(version) {
   const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.]|$)`);
+  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.+-]|$)`);
 }
 
 function assertSmokeDateMatchesManifest(context, manifest) {

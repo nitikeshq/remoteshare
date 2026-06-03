@@ -82,6 +82,19 @@ try {
     "Test Context field must include exact package version"
   );
 
+  const suffixedVersion = writeReport("suffixed-version.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    version: `v${packageVersion}-beta`
+  });
+  runVerifier(
+    suffixedVersion,
+    false,
+    "version suffix should fail",
+    "Test Context field must include exact package version"
+  );
+
   const duplicateContextField = writeReport("duplicate-context-field.md", {
     autoPass: "Pass",
     manualPass: "Pass",
