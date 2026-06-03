@@ -87,7 +87,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Endpoint source shown | Discovery or reconnect | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event | Receiver logs accepted input transport event |
 | Capture result | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible |
-| Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or visible UI diagnostic/recovery hint |
+| Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |
 
 Minimum pass criteria:
 
@@ -98,7 +98,7 @@ Minimum pass criteria:
 - `Test` sends an accepted `key press r` input transport event to the receiver.
 - Capture starts on the macOS sender, forwards accepted mouse move, mouse click, scroll, and key events to the Windows receiver, then stops cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable but TCP `44777` is reachable.
-- Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying.
+- Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must mention the manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
 
 ## Troubleshooting
 
