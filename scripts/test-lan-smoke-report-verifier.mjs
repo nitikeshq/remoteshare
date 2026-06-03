@@ -698,6 +698,19 @@ try {
     "Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output"
   );
 
+  const mismatchedManualEndpoint = writeReport("mismatched-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "192.168.1.21:44777"
+  });
+  runVerifier(
+    mismatchedManualEndpoint,
+    false,
+    "mismatched manual endpoint should fail",
+    "Manual Fallback Run Endpoint used must match the endpoint pasted from the peer computer's local endpoint Evidence output"
+  );
+
   const vagueManualTcpReachability = writeReport("vague-manual-tcp-reachability.md", {
     autoPass: "Pass",
     manualPass: "Pass",

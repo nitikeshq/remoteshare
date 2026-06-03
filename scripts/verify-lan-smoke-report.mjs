@@ -170,6 +170,7 @@ requireManualFallbackEvidence(manualFallback);
 requireManualEndpointLabelEvidence(manualFallback);
 requireManualTcpReachabilityEvidence(manualFallback);
 requireManualEndpoint(manualFallback, "Endpoint used", "Manual Fallback Run");
+requireManualEndpointMatchesCopiedEvidence(manualFallback);
 requireNoBlockingNotes(report);
 
 console.log(`Verified LAN smoke report: ${path.relative(process.cwd(), reportPath)}`);
@@ -415,6 +416,25 @@ function requireManualEndpointLabelEvidence(table) {
   }
 }
 
+function requireManualEndpointMatchesCopiedEvidence(table) {
+  const copiedEndpoint = endpointFromLocalEndpointEvidence(
+    requireFilled(table, "Manual endpoint copied from peer `This computer` row", "Manual Fallback Run")
+  );
+  const labelEndpoint = endpointFromLocalEndpointEvidence(
+    requireFilled(table, "Copied endpoint label shown", "Manual Fallback Run")
+  );
+  const manualEndpoint = requireFilled(table, "Endpoint used", "Manual Fallback Run");
+
+  if (
+    !copiedEndpoint ||
+    !labelEndpoint ||
+    endpointKey(copiedEndpoint) !== endpointKey(labelEndpoint) ||
+    endpointKey(copiedEndpoint) !== endpointKey(manualEndpoint)
+  ) {
+    throw new Error("Manual Fallback Run Endpoint used must match the endpoint pasted from the peer computer's local endpoint Evidence output.");
+  }
+}
+
 function isLocalEndpointCopyEvidence(value) {
   return (
     /local\s+endpoint/.test(value) &&
@@ -423,6 +443,16 @@ function isLocalEndpointCopyEvidence(value) {
     /\bendpoint:\s*[^;|]+/.test(value) &&
     /\btcp\s+port:\s*44777\b/.test(value)
   );
+}
+
+function endpointFromLocalEndpointEvidence(value) {
+  return value.match(/\bendpoint:\s*([^;|]+)/i)?.[1]?.trim() ?? null;
+}
+
+function endpointKey(value) {
+  const endpoint = parseEndpoint(value);
+  if (!endpoint) return null;
+  return `${endpoint.host.trim().toLowerCase()}:${endpoint.port}`;
 }
 
 function requireManualTcpReachabilityEvidence(table) {

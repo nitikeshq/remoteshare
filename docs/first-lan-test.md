@@ -82,7 +82,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | macOS role shown | Setup `Copy` output from Mac shows Platform: macos and Role: Main | Setup `Copy` output from Mac shows Platform: macos and Role: Main |
 | Windows role shown | Setup `Copy` output from Windows shows Platform: windows and Role: Client | Setup `Copy` output from Windows shows Platform: windows and Role: Client |
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
-| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, local endpoint `Evidence` output records label `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
+| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, local endpoint `Evidence` output records label `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, `Endpoint used` matches the copied endpoint, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Trusted Device Audit `Evidence` output pasted | Trusted Device Audit `Evidence` output pasted |
 | Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` and `Latency: N ms` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` and `Latency: N ms` after app restart or wake |
@@ -100,7 +100,7 @@ Minimum pass criteria:
 - Trusted row reconnect `Copy` output shows `Check: reachable` and measured `Latency: N ms` after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled; sender and receiver Input Transport `Copy` output prove the outgoing and incoming accepted event records.
 - Capture starts on the macOS sender, the active capture `Copy` output is pasted before Stop, receiver Input Transport `Copy` output proves accepted incoming mouse move, mouse click, scroll, and key events, then stopped capture `Copy` output proves capture stopped cleanly.
-- Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
+- Manual fallback succeeds when UDP discovery is unavailable, `Endpoint used` matches the peer local endpoint `Evidence` output, and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 - Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must paste the trusted IP update `Copy` output and mention this computer, the recovery action, manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
 
 ## Troubleshooting
