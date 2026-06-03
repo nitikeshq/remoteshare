@@ -531,9 +531,20 @@ input {
   color: #64748b;
 }
 
-.event-row strong {
+.event-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.event-copy strong {
   color: #1f2933;
   font-weight: 700;
+}
+
+.event-detail {
+  color: #be123c;
+  overflow-wrap: anywhere;
 }
 
 .event-row small {

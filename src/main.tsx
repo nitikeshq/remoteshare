@@ -63,6 +63,7 @@ type InputEventRecord = {
   direction: "incoming" | "outgoing";
   deviceId: string;
   summary: string;
+  detail: string | null;
   accepted: boolean;
   atMs: number;
 };
@@ -294,6 +295,11 @@ function inputEventDirectionLabel(event: InputEventRecord) {
 
 function inputEventDeviceLabel(event: InputEventRecord, devices: Device[]) {
   return devices.find((device) => device.id === event.deviceId)?.name ?? event.deviceId;
+}
+
+function inputEventDetailLabel(event: InputEventRecord) {
+  if (event.accepted || !event.detail) return null;
+  return `Reason: ${event.detail}`;
 }
 
 function approvalLabel(approved: boolean) {
@@ -1502,6 +1508,7 @@ function App() {
             <div className="event-list">
               {status.recentInputEvents.map((event) => {
                 const deviceLabel = inputEventDeviceLabel(event, status.devices);
+                const detailLabel = inputEventDetailLabel(event);
                 return (
                   <div
                     className={`event-row ${event.accepted ? "event-row-success" : "event-row-failed"}`}
@@ -1509,7 +1516,10 @@ function App() {
                   >
                     <Keyboard size={16} />
                     <span>{inputEventDirectionLabel(event)}</span>
-                    <strong>{event.summary}</strong>
+                    <div className="event-copy">
+                      <strong>{event.summary}</strong>
+                      {detailLabel && <span className="event-detail">{detailLabel}</span>}
+                    </div>
                     <small>
                       {deviceLabel} · {elapsedLabel(event.atMs)}
                     </small>

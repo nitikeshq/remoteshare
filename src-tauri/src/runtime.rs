@@ -378,6 +378,7 @@ pub struct InputEventRecord {
     pub direction: InputEventDirection,
     pub device_id: String,
     pub summary: String,
+    pub detail: Option<String>,
     pub accepted: bool,
     pub at_ms: u128,
 }
@@ -1531,6 +1532,7 @@ impl RuntimeStore {
                 direction: InputEventDirection::Outgoing,
                 device_id,
                 summary: input_summary(&event),
+                detail: None,
                 accepted: true,
                 at_ms: now_ms(),
             },
@@ -1617,17 +1619,14 @@ impl RuntimeStore {
     ) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
         let summary = input_summary(&event);
-        let summary_with_detail = detail
-            .as_ref()
-            .map(|detail| format!("{summary} ({detail})"))
-            .unwrap_or_else(|| summary.clone());
 
         push_input_record(
             &mut state,
             InputEventRecord {
                 direction: InputEventDirection::Incoming,
                 device_id: source.device_id,
-                summary: summary_with_detail,
+                summary: summary.clone(),
+                detail: detail.clone(),
                 accepted,
                 at_ms: now_ms(),
             },
@@ -3063,9 +3062,11 @@ mod tests {
             .first()
             .expect("incoming input record should be visible");
         assert!(!event.accepted);
-        assert!(event
-            .summary
-            .contains("injection failed: missing permission"));
+        assert_eq!(event.summary, "key press r");
+        assert_eq!(
+            event.detail.as_deref(),
+            Some("injection failed: missing permission")
+        );
     }
 
     #[test]
