@@ -63,12 +63,13 @@ ${rows}
 2. Install the Windows EXE on the Windows receiver/client.
 3. Complete \`lan-smoke-report.md\` for both auto-discovery and manual fallback runs.
 4. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
-5. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
-6. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
-7. Record active capture target and elapsed start time before pressing Stop.
-8. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
-9. In the manual fallback run, record the endpoint source as saved endpoint or manual IP, and if a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
-10. Verify the completed report:
+5. Record a Test date that is on or after the release manifest date and not in the future.
+6. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
+7. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
+8. Record active capture target and elapsed start time before pressing Stop.
+9. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
+10. In the manual fallback run, record the endpoint source as saved endpoint or manual IP, and if a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
+11. Verify the completed report:
 
 \`\`\`bash
 npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md
