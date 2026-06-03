@@ -1002,6 +1002,17 @@ function App() {
       };
     }
 
+    if (failedTrustedDevices.length > 0) {
+      const failedDevice = failedTrustedDevices[0];
+      return {
+        state: "Reconnect recovery",
+        detail:
+          connectionFailureHint(failedDevice) ??
+          failedDevice.lastConnectionFailure?.message ??
+          "Use the visible failure reason before retrying."
+      };
+    }
+
     if (savedEndpointDevices.length > 0) {
       return {
         state: "Saved endpoints",
@@ -1029,6 +1040,7 @@ function App() {
     };
   }, [
     discoveredDevices.length,
+    failedTrustedDevices,
     savedEndpointDevices.length,
     status.discovery.discoveryPort,
     status.discovery.manualEndpoint,

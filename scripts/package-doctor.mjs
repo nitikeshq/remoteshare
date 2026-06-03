@@ -533,6 +533,7 @@ check("UI exposes failed endpoint edit recovery", appUi.includes("Edit IP") && a
 check("UI restores manual pair field after canceling trusted IP update", appUi.includes("cancelTrustedEndpointUpdate") && appUi.includes("setManualEndpoint(status.discovery.manualEndpoint ?? \"\")") && appUi.includes("Trusted IP update canceled. Manual pair field restored."));
 check("UI hides saved manual clear while verifying trusted IP", appUi.includes("status.discovery.manualEndpoint && !endpointUpdateDeviceId"));
 check("UI surfaces trusted devices that need Set IP", appUi.includes("trustedDevicesNeedingEndpoint") && appUi.includes("Endpoint needed") && appUi.includes("Set IP and Verify IP"));
+check("UI prioritizes reconnect failures in connection path", appUi.includes("Reconnect recovery") && appUi.includes("failedTrustedDevices.length > 0") && appUi.includes("connectionFailureHint(failedDevice)") && networkingMilestone.includes("The connection path summary prioritizes trusted reconnect failures"));
 check("Installer verifier rejects unexpected platform artifacts", installerVerifier.includes("Unexpected installer artifact(s)"));
 check("Installer checksum generation rejects empty installer artifacts", installerChecksums.includes("Empty installer artifact(s)"));
 check("Installer checksum generation rejects wrong package-version filenames", installerChecksums.includes("packageVersion") && installerChecksums.includes("Installer filename(s) must include package version") && installerChecksumTestIncludes("wrong version installer should fail"));
