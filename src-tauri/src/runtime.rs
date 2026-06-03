@@ -3012,6 +3012,37 @@ mod tests {
     }
 
     #[test]
+    fn auto_start_registration_failure_does_not_mutate_runtime_setting() {
+        fail_autostart_registration_for_tests("synthetic autostart failure");
+        crate::identity::set_test_config_dir(unique_test_dir("auto-start-registration-failure"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: Some(false),
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(!action.ok);
+        assert_eq!(
+            action.message,
+            "Failed to update start-at-login setting: synthetic autostart failure"
+        );
+        let status = store.status();
+        assert!(status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Failed
+        );
+        assert_eq!(
+            status.network_health.startup_registration.detail,
+            "Failed to update start-at-login setting: synthetic autostart failure"
+        );
+    }
+
+    #[test]
     fn global_receive_requires_receive_role() {
         crate::identity::set_test_config_dir(unique_test_dir("global-receive-role"));
 
