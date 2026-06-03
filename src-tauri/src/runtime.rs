@@ -5140,6 +5140,52 @@ mod tests {
     }
 
     #[test]
+    fn wrong_local_pairing_code_keeps_request_retryable() {
+        crate::identity::set_test_config_dir(unique_test_dir("pairing-wrong-local-code"));
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: None,
+        };
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                "local-private-key".to_string(),
+                "local-public-key".to_string(),
+                "remote-public-key".to_string(),
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        let error = store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id: pairing_id.clone(),
+                code: "654321".to_string(),
+            })
+            .expect_err("wrong local pairing code should be rejected");
+
+        assert_eq!(error, "Pairing code does not match.");
+        assert!(store
+            .status()
+            .pending_pairings
+            .iter()
+            .any(|pairing| pairing.id == pairing_id && !pairing.local_approved));
+    }
+
+    #[test]
     fn outgoing_pairing_rejects_local_device_identity() {
         crate::identity::set_test_config_dir(unique_test_dir("outgoing-self-pairing"));
 
