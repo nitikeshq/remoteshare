@@ -177,6 +177,23 @@ try {
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
+  const unreadableManifestRoot = fixture(
+    "unreadable-manifest",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ],
+    true,
+    false
+  );
+  fs.mkdirSync(path.join(unreadableManifestRoot, "RELEASE-MANIFEST.json"));
+  runSummary(unreadableManifestRoot, [
+    "Release manifest: invalid",
+    "Release manifest issue: manifest read failed:",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
   const missingGeneratedAtRoot = fixture(
     "missing-generated-at",
     [

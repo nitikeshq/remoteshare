@@ -186,8 +186,17 @@ function readManifestStatus(file) {
     return { files: null, issue: "missing" };
   }
 
+  let manifest;
   try {
-    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { files: null, issue: `invalid JSON: ${error.message}` };
+    }
+    return { files: null, issue: `manifest read failed: ${error.message}` };
+  }
+
+  try {
     if (manifest.version !== packageVersion) {
       return {
         files: null,
@@ -242,7 +251,7 @@ function readManifestStatus(file) {
 
     return { files: new Set(artifacts.map((artifact) => artifact.file)), issue: null };
   } catch (error) {
-    return { files: null, issue: `invalid JSON: ${error.message}` };
+    return { files: null, issue: error.message };
   }
 }
 
