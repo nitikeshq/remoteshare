@@ -284,7 +284,7 @@ function reconnectHealthDetail(device: Device | null, checkableCount: number) {
   }
 
   const hint = connectionFailureHint(device);
-  return `${device.name}: ${device.lastConnectionFailure.message}${hint ? `. ${hint}` : ""}`;
+  return `${device.name}: ${endpointSourceText(device.lastConnectionFailure.endpointSource)} failed: ${device.lastConnectionFailure.message}${hint ? `. ${hint}` : ""}`;
 }
 
 function canEditTrustedEndpoint(device: Device) {
@@ -1063,7 +1063,7 @@ function App() {
     setCheckingTrustedDevices(true);
     try {
       let reachableCount = 0;
-      let lastFailure: { deviceName: string; message: string } | null = null;
+      let lastFailure: { deviceName: string; endpointSource: string; message: string } | null = null;
       for (const device of checkableTrustedDevices) {
         const action = await invokeNetworkAction("check_trusted_device", {
           request: { deviceId: device.id }
@@ -1071,13 +1071,17 @@ function App() {
         if (action.ok) {
           reachableCount += 1;
         } else {
-          lastFailure = { deviceName: device.name, message: action.message };
+          lastFailure = {
+            deviceName: device.name,
+            endpointSource: endpointSourceLabel(device),
+            message: action.message
+          };
         }
       }
 
       showActionMessage(
         lastFailure
-          ? `Checked ${checkableTrustedDevices.length}; ${reachableCount} reachable. Last failure: ${lastFailure.deviceName}: ${lastFailure.message}`
+          ? `Checked ${checkableTrustedDevices.length}; ${reachableCount} reachable. Last failure: ${lastFailure.deviceName} via ${lastFailure.endpointSource}: ${lastFailure.message}`
           : `Checked ${reachableCount} trusted device${reachableCount === 1 ? "" : "s"}.`,
         Boolean(lastFailure)
       );
