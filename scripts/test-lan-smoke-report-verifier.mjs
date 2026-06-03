@@ -524,6 +524,32 @@ try {
     "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
   );
 
+  const localOnlyFingerprint = writeReport("local-only-fingerprint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFingerprint: "Pass - Trusted Device Audit copied full local fingerprint"
+  });
+  runVerifier(
+    localOnlyFingerprint,
+    false,
+    "local-only fingerprint evidence should fail",
+    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+  );
+
+  const peerOnlyFingerprint = writeReport("peer-only-fingerprint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFingerprint: "Pass - Trusted Device Audit copied full peer fingerprint"
+  });
+  runVerifier(
+    peerOnlyFingerprint,
+    false,
+    "peer-only fingerprint evidence should fail",
+    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+  );
+
   const vagueCaptureStartStop = writeReport("vague-capture-start-stop.md", {
     autoPass: "Pass",
     manualPass: "Pass",
