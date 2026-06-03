@@ -30,6 +30,7 @@ try {
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
   assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
+  assertIncludes(summary, "Do not publish the draft release until both verification commands pass", "draft publish gate");
 
   const missingManifest = path.join(root, "missing-manifest");
   fs.mkdirSync(missingManifest, { recursive: true });

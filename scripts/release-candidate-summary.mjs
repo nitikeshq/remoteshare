@@ -76,6 +76,8 @@ npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md
 npm run verify:release-readiness -- ${releaseAssetsRoot} path/to/completed-lan-smoke-report.md
 \`\`\`
 
+Do not publish the draft release until both verification commands pass against the completed real Mac-to-Windows LAN smoke report.
+
 Linux DEB is included for package coverage evidence, but the first MVP smoke path is Mac-to-Windows.
 `;
 
