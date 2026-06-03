@@ -92,6 +92,32 @@ try {
     `Release manifest deb artifact filename must include package version ${packageVersion}`
   );
 
+  const missingFile = fixture("missing-file", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe", { writeFile: false }],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runPreparer(
+    missingFile,
+    path.join(root, "missing-file.md"),
+    false,
+    "missing artifact file should fail",
+    `Release manifest exe artifact file is missing: RemoteShare_${packageVersion}_x64-setup.exe`
+  );
+
+  const hashMismatch = fixture("hash-mismatch", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe", { sha256: "0".repeat(64) }],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runPreparer(
+    hashMismatch,
+    path.join(root, "hash-mismatch.md"),
+    false,
+    "artifact hash mismatch should fail",
+    `Release manifest exe artifact hash mismatch: RemoteShare_${packageVersion}_x64-setup.exe`
+  );
+
   console.log("LAN smoke report preparation tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
@@ -100,12 +126,17 @@ try {
 function fixture(name, files, version = packageVersion) {
   const directory = path.join(root, name);
   fs.mkdirSync(directory, { recursive: true });
-  const artifacts = files.map(([type, file, body]) => ({
-    file,
-    sha256: sha256(body),
-    sizeBytes: Buffer.byteLength(body),
-    type
-  }));
+  const artifacts = files.map(([type, file, body, options = {}]) => {
+    if (options.writeFile !== false) {
+      fs.writeFileSync(path.join(directory, file), body);
+    }
+    return {
+      file,
+      sha256: options.sha256 ?? sha256(body),
+      sizeBytes: options.sizeBytes ?? Buffer.byteLength(body),
+      type
+    };
+  });
   fs.writeFileSync(
     path.join(directory, "RELEASE-MANIFEST.json"),
     `${JSON.stringify({ version, artifacts }, null, 2)}\n`

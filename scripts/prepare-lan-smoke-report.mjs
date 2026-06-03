@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -53,14 +54,42 @@ function artifactForType(type) {
     throw new Error(`Release manifest is missing ${type} artifact.`);
   }
 
-  if (typeof artifact.file !== "string" || typeof artifact.sha256 !== "string") {
-    throw new Error(`Release manifest ${type} artifact must include file and sha256.`);
+  if (typeof artifact.file !== "string" || artifact.file.length === 0 || path.basename(artifact.file) !== artifact.file) {
+    throw new Error(`Release manifest ${type} artifact must use a basename-only file path.`);
   }
 
   if (!artifact.file.includes(`_${packageJson.version}_`)) {
     throw new Error(
       `Release manifest ${type} artifact filename must include package version ${packageJson.version}.`
     );
+  }
+
+  const expectedExtension = type === "dmg" ? ".dmg" : type === "exe" ? ".exe" : ".deb";
+  if (path.extname(artifact.file).toLowerCase() !== expectedExtension) {
+    throw new Error(`Release manifest ${type} artifact must use ${expectedExtension} extension.`);
+  }
+
+  if (typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(artifact.sha256)) {
+    throw new Error(`Release manifest ${type} artifact has invalid sha256.`);
+  }
+
+  if (!Number.isInteger(artifact.sizeBytes) || artifact.sizeBytes <= 0) {
+    throw new Error(`Release manifest ${type} artifact has invalid sizeBytes.`);
+  }
+
+  const artifactPath = path.join(releaseAssetsRoot, artifact.file);
+  if (!fs.existsSync(artifactPath)) {
+    throw new Error(`Release manifest ${type} artifact file is missing: ${artifact.file}`);
+  }
+
+  const bytes = fs.readFileSync(artifactPath);
+  if (bytes.length !== artifact.sizeBytes) {
+    throw new Error(`Release manifest ${type} artifact size mismatch: ${artifact.file}`);
+  }
+
+  const actualHash = crypto.createHash("sha256").update(bytes).digest("hex");
+  if (actualHash !== artifact.sha256) {
+    throw new Error(`Release manifest ${type} artifact hash mismatch: ${artifact.file}`);
   }
 
   return artifact;
