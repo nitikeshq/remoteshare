@@ -1007,7 +1007,7 @@ try {
     manualPass: "Pass",
     omitLine: "",
     manualFailureReason:
-      "Visible recovery hint before retry. Trusted IP update; This computer: Mac sender; Device: Windows receiver; Action: Verify IP without re-pairing; Endpoint field: 192.168.1.20:44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
+      "Visible recovery hint before retry. Trusted IP update; This computer: Mac sender; Device: Windows receiver; Action: Verify IP without re-pairing; Endpoint field: 192.168.1.20:44777; Copied endpoint: 192.168.1.20:44777; TCP port: 44777; Current endpoint: 192.168.1.99:44777; Current source: saved endpoint; Input control: ready; Last failure: Manual IP verification failed on TCP 44777; Recovery: Copy the current endpoint from the other computer, then use Set IP and Verify IP"
   });
   runVerifier(
     trustedIpUpdateCopyFailureReason,

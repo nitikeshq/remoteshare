@@ -690,6 +690,8 @@ function trustedEndpointUpdateEvidence(status: RuntimeStatus, device: Device, en
     `Device: ${device.name}`,
     `Action: ${action}`,
     `Endpoint field: ${endpointField.trim() || "empty"}`,
+    `Copied endpoint: ${endpointField.trim() || "empty"}`,
+    `TCP port: ${status.discovery.port}`,
     `Current endpoint: ${device.endpoint ?? "none"}`,
     `Current source: ${endpointSourceLabel(device)}`,
     `Input control: ${device.inputControlReady ? "ready" : "needs re-pair"}`,

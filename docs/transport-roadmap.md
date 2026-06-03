@@ -11,6 +11,7 @@ Direct LAN is the MVP path.
 - Manual endpoint fallback for blocked discovery.
 - Trusted reconnect using saved endpoints and authenticated ping/pong.
 - Clear diagnostics for discovery, manual, saved, and reconnect paths.
+- Trusted IP update evidence copies the pasted endpoint, TCP `44777` port, current endpoint/source, last failure, and recovery hint for manual fallback retries.
 
 This is the fastest path for macOS-to-Windows testing because it avoids accounts, NAT traversal, and relay latency.
 

@@ -648,12 +648,14 @@ function requireTrustedIpUpdateCopyEvidence(value) {
     !/device:\s*[^;|]+/.test(value) ||
     !/action:\s*(verify\s+ip\s+without\s+re-pairing|pair\s+manually\s+with\s+copied\s+endpoint)/.test(value) ||
     !/endpoint\s+field:\s*[^;|]+/.test(value) ||
+    !/copied\s+endpoint:\s*[^;|]+/.test(value) ||
+    !/tcp\s+port:\s*44777\b/.test(value) ||
     !/current\s+endpoint:\s*[^;|]+/.test(value) ||
     !/current\s+source:\s*[^;|]+/.test(value) ||
     !/last\s+failure:\s*[^;|]+/.test(value) ||
     !/recovery:\s*[^;|]+/.test(value)
   ) {
-    throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with this computer, device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint.");
+    throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with this computer, device, recovery action, endpoint field, copied endpoint, TCP port, current endpoint/source, last failure, and recovery hint.");
   }
 }
 

@@ -79,7 +79,7 @@ try {
   assertIncludes(summary, "include measured latency", "manual endpoint source latency evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "trusted IP update `Copy` button", "trusted IP copy evidence");
-  assertIncludes(summary, "this computer, device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
+  assertIncludes(summary, "this computer, device, recovery action, endpoint field, copied endpoint, TCP port, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
   assertIncludes(summary, "Blocking issues: none", "clear blocking issue notes evidence");
   assertIncludes(summary, "screenshots or logs captured for pairing, reconnect, input, and capture evidence", "captured evidence notes");
   assertIncludes(summary, "Retest required: no", "clear retest notes evidence");
