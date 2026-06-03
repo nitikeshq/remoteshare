@@ -654,7 +654,21 @@ try {
     vagueInputSmoke,
     false,
     "vague input smoke should fail",
-    "Auto-Discovery Run input smoke evidence must mention an accepted key press r event"
+    "Auto-Discovery Run input smoke evidence must paste the sender Input Transport Copy output"
+  );
+
+  const incomingSenderInputSmoke = writeReport("incoming-sender-input-smoke.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoInputSmoke:
+      "Input Transport: Incoming; This computer: Mac sender; Summary: key press r; Device: Windows receiver; Time: 2s ago; Status: Accepted"
+  });
+  runVerifier(
+    incomingSenderInputSmoke,
+    false,
+    "incoming sender input smoke should fail",
+    "Auto-Discovery Run input smoke evidence must paste the sender Input Transport Copy output"
   );
 
   const vagueAllowIncomingControl = writeReport("vague-allow-incoming-control.md", {
@@ -693,7 +707,21 @@ try {
     vagueInputTransportContext,
     false,
     "vague input transport context should fail",
-    "Auto-Discovery Run input transport evidence must paste the Input Transport Copy output"
+    "Auto-Discovery Run input transport evidence must paste the receiver Input Transport Copy output"
+  );
+
+  const outgoingReceiverInputTransportContext = writeReport("outgoing-receiver-input-transport-context.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoInputTransportContext:
+      "Input Transport: Outgoing; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 2s ago; Status: Accepted"
+  });
+  runVerifier(
+    outgoingReceiverInputTransportContext,
+    false,
+    "outgoing receiver input transport context should fail",
+    "Auto-Discovery Run input transport evidence must paste the receiver Input Transport Copy output"
   );
 
   const vagueFingerprint = writeReport("vague-fingerprint.md", {
@@ -1168,8 +1196,12 @@ function writeReport(name, options) {
     "Startup health; This computer: Windows receiver; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago";
   const autoEndpointSource = options.autoEndpointSource ?? autoReconnectEvidence;
   const manualEndpointSource = options.manualEndpointSource ?? manualReconnectEvidence;
-  const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";
-  const manualInputSmoke = options.manualInputSmoke ?? "accepted key press r delivered";
+  const autoInputSmoke =
+    options.autoInputSmoke ??
+    "Input Transport: Outgoing; This computer: Mac sender; Summary: key press r; Device: Windows receiver; Time: 2s ago; Status: Accepted";
+  const manualInputSmoke =
+    options.manualInputSmoke ??
+    "Input Transport: Outgoing; This computer: Mac sender; Summary: key press r; Device: Windows receiver; Time: 3 seconds ago; Status: Accepted";
   const autoAllowIncomingControl =
     options.autoAllowIncomingControl ??
     "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";

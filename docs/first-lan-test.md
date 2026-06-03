@@ -62,10 +62,11 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 1. Confirm the receiver role is `Client` or `Both`, then use `Enable all`, `Enable global`, or `Enable devices` in the input-control summary on the receiving computer, or enable `Allow incoming control` globally and `Receive` on the trusted device row for the sender.
 2. Confirm the receiving trusted row shows `Receive` enabled, then use its `Copy` button to capture `Allow incoming control: enabled`, `Device receive: enabled`, and `Input control: ready` evidence.
 3. Use `Test` on the sender.
-4. The receiver should show an accepted input transport event.
-5. Verify macOS Input Monitoring and Accessibility are granted, then use `Capture` on the sender.
-6. Move the mouse, click, scroll, and press a basic key. The receiver should show accepted mouse move, mouse click, scroll, and key events.
-7. Use `Stop` on the sender and confirm capture stops cleanly.
+4. Use the sender Input Transport row `Copy` button to capture `Input Transport: Outgoing`, `This computer`, `Summary: key press r`, target device, relative time, and `Status: Accepted` evidence.
+5. The receiver should show an accepted input transport event. Use the receiver Input Transport row `Copy` button to capture `Input Transport: Incoming`, `This computer`, `Summary: key press r`, source device, relative time, and `Status: Accepted` evidence.
+6. Verify macOS Input Monitoring and Accessibility are granted, then use `Capture` on the sender.
+7. Move the mouse, click, scroll, and press a basic key. The receiver should show accepted mouse move, mouse click, scroll, and key events.
+8. Use `Stop` on the sender and confirm capture stops cleanly.
 
 ## MVP Acceptance Evidence
 
@@ -87,7 +88,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake |
 | Startup health | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
-| Input test result | Receiver Input Transport `Copy` output shows `Input Transport`, `This computer`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled | Receiver Input Transport `Copy` output shows `Input Transport`, `This computer`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled |
+| Input test result | Sender Input Transport `Copy` output shows `Input Transport: Outgoing`, `This computer`, `Summary: key press r`, target device, relative time, and `Status: Accepted`; receiver Input Transport `Copy` output shows `Input Transport: Incoming`, `This computer`, `Summary: key press r`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled | Sender Input Transport `Copy` output shows `Input Transport: Outgoing`, `This computer`, `Summary: key press r`, target device, relative time, and `Status: Accepted`; receiver Input Transport `Copy` output shows `Input Transport: Incoming`, `This computer`, `Summary: key press r`, source device, relative time, and `Status: Accepted`; receive `Copy` output shows Allow incoming control plus Receive enabled |
 | Capture result | Capture `Copy` output shows `Capture: active`, `This computer`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible | Capture `Copy` output shows `Capture: active`, `This computer`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible |
 | Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or trusted IP update `Copy` output with this computer, recovery action, manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |
 
@@ -97,7 +98,7 @@ Minimum pass criteria:
 - `Trusted` appears on both machines with the expected peer fingerprint.
 - Trusted row reconnect `Copy` output shows `Auto reconnect: enabled` after restart.
 - Trusted row reconnect `Copy` output shows `Check: reachable` after at least one app restart, wake, or Wi-Fi reconnect.
-- `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled.
+- `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled; sender and receiver Input Transport `Copy` output prove the outgoing and incoming accepted event records.
 - Capture starts on the macOS sender, the capture `Copy` output is pasted before Stop, accepted mouse move, mouse click, scroll, and key events are forwarded to the Windows receiver, then capture stops cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 - Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must paste the trusted IP update `Copy` output and mention this computer, the recovery action, manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.

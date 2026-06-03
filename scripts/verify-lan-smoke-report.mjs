@@ -130,7 +130,6 @@ const successFields = [
   "Same six-digit code shown on both machines",
   "Six-digit code typed on both machines",
   "`Trusted` shown on both machines",
-  "Sender `Test` delivered accepted `key press r` input event",
   "Capture started on sender and stopped cleanly",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver"
 ];
@@ -402,8 +401,15 @@ function requireInputSmokeEvidence(table, section) {
     "Sender `Test` delivered accepted `key press r` input event",
     section
   ).toLowerCase();
-  if (!/accepted/.test(value) || !/key\s+press/.test(value) || !/(^|\W)r(\W|$)/.test(value)) {
-    throw new Error(`${section} input smoke evidence must mention an accepted key press r event.`);
+  if (
+    !/input\s+transport:\s*outgoing/.test(value) ||
+    !/this\s+computer:\s*[^;|]+/.test(value) ||
+    !/summary:\s*[^;|]*key\s+press\s+r/.test(value) ||
+    !/device:\s*[^;|]+/.test(value) ||
+    !/time:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(value) ||
+    !/status:\s*accepted/.test(value)
+  ) {
+    throw new Error(`${section} input smoke evidence must paste the sender Input Transport Copy output with Input Transport: outgoing, This computer, Summary: key press r, Device, Time, and Status: accepted fields.`);
   }
 
   const transportContext = requireFilled(
@@ -412,13 +418,14 @@ function requireInputSmokeEvidence(table, section) {
     section
   ).toLowerCase();
   if (
-    !/input\s+transport:\s*(incoming|outgoing)/.test(transportContext) ||
+    !/input\s+transport:\s*incoming/.test(transportContext) ||
     !/this\s+computer:\s*[^;|]+/.test(transportContext) ||
+    !/summary:\s*[^;|]*key\s+press\s+r/.test(transportContext) ||
     !/device:\s*[^;|]+/.test(transportContext) ||
     !/time:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(transportContext) ||
     !/status:\s*accepted/.test(transportContext)
   ) {
-    throw new Error(`${section} input transport evidence must paste the Input Transport Copy output with Input Transport, This computer, Device, Time, and Status: accepted fields from the receiver UI.`);
+    throw new Error(`${section} input transport evidence must paste the receiver Input Transport Copy output with Input Transport: incoming, This computer, Summary: key press r, Device, Time, and Status: accepted fields.`);
   }
 }
 
