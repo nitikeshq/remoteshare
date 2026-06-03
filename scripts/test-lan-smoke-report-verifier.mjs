@@ -361,7 +361,7 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoReconnectEnabled: "after restart; Trusted reconnect; Auto reconnect: enabled"
+    autoReconnectEnabled: "Verification: after restart/wake; Trusted reconnect; Auto reconnect: enabled"
   });
   runVerifier(
     partialAutoReconnect,
@@ -375,13 +375,27 @@ try {
     manualPass: "Pass",
     omitLine: "",
     autoReconnect:
-      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+      "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Verification: after restart/wake; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
   });
   runVerifier(
     missingReconnectLatency,
     false,
     "missing reconnect latency should fail",
-    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output with Check: reachable and measured Latency"
+    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output with Check: reachable, Verification: after restart/wake, and measured Latency"
+  );
+
+  const missingReconnectVerification = writeReport("missing-reconnect-verification.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoReconnect:
+      "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 7 ms; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+  });
+  runVerifier(
+    missingReconnectVerification,
+    false,
+    "missing reconnect verification should fail",
+    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output with Check: reachable, Verification: after restart/wake"
   );
 
   const positivePrefixFailure = writeReport("positive-prefix-failure.md", {
@@ -571,7 +585,7 @@ try {
     manualPass: "Pass",
     omitLine: "",
     autoEndpointSource:
-      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 8 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+      "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Verification: after restart/wake; Last seen: now; Latency: 8 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
   });
   runVerifier(
     savedAutoEndpointSource,
@@ -585,7 +599,7 @@ try {
     manualPass: "Pass",
     omitLine: "",
     autoEndpointSource:
-      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
+      "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Verification: after restart/wake; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
   });
   runVerifier(
     endpointSourceWithoutLatency,
@@ -1356,9 +1370,9 @@ try {
 function writeReport(name, options) {
   const file = path.join(root, name);
   const autoReconnectEvidence =
-    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 7 ms; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+    "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Verification: after restart/wake; Last seen: now; Latency: 7 ms; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const manualReconnectEvidence =
-    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Latency: 9 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+    "Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Verification: after restart/wake; Last seen: now; Latency: 9 ms; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const autoReconnect = options.autoReconnect ?? autoReconnectEvidence;
   const manualReconnect = options.manualReconnect ?? manualReconnectEvidence;
   const autoReconnectEnabled = options.autoReconnectEnabled ?? autoReconnectEvidence;

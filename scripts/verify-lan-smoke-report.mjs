@@ -371,9 +371,9 @@ function requireReconnectEvidence(table, section) {
     !/latency:\s*[0-9]+(\.[0-9]+)?\s*ms/.test(autoReconnect) ||
     !/endpoint\s+source:\s*/.test(autoReconnect) ||
     !/endpoint:\s*[^;|]+/.test(autoReconnect) ||
-    !/(restart|wake)/.test(autoReconnect)
+    !/verification:\s*after\s+restart\/wake/.test(autoReconnect)
   ) {
-    throw new Error(`${section} Auto reconnect evidence must paste the full reconnect Copy output with Auto reconnect: enabled, Check: reachable, measured Latency, endpoint source, and endpoint after restart or wake.`);
+    throw new Error(`${section} Auto reconnect evidence must paste the full reconnect Copy output with Auto reconnect: enabled, Check: reachable, Verification: after restart/wake, measured Latency, endpoint source, and endpoint.`);
   }
 
   const startupHealth = requireFilled(
@@ -403,9 +403,9 @@ function requireReconnectEvidence(table, section) {
     !/device:\s*[^;|]+/.test(check) ||
     !/last\s+seen:/.test(check) ||
     !/latency:\s*[0-9]+(\.[0-9]+)?\s*ms/.test(check) ||
-    !/(restart|wake)/.test(check)
+    !/verification:\s*after\s+restart\/wake/.test(check)
   ) {
-    throw new Error(`${section} reconnect check evidence must paste the reconnect Copy output with Check: reachable and measured Latency after restart or wake.`);
+    throw new Error(`${section} reconnect check evidence must paste the reconnect Copy output with Check: reachable, Verification: after restart/wake, and measured Latency.`);
   }
 }
 
