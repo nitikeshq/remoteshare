@@ -4554,6 +4554,25 @@ mod tests {
     }
 
     #[test]
+    fn status_prunes_expired_pending_pairing_rows() {
+        crate::identity::set_test_config_dir(unique_test_dir("status-prunes-expired-pairing"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.pending_pairings.insert(
+                "pair-old-device".to_string(),
+                expired_pairing("old-device", "111111"),
+            );
+        }
+
+        assert!(store.status().pending_pairings.is_empty());
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(!state.pending_pairings.contains_key("pair-old-device"));
+    }
+
+    #[test]
     fn completed_pairing_normalizes_trusted_endpoint_before_saving() {
         crate::identity::set_test_config_dir(unique_test_dir("complete-normalizes-endpoint"));
 

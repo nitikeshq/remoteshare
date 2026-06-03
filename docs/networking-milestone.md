@@ -79,7 +79,7 @@ Current scaffold behavior:
 - Pair requests exchange fresh nonces and ephemeral X25519 public keys.
 - Pair requests and acknowledgements reject malformed ephemeral X25519 public keys before a pending comparison code is created or shown.
 - Pending requests show a six-digit comparison code derived from both device IDs, both nonces, and both ephemeral public keys.
-- Pending requests expire after 120 seconds and are pruned from runtime state.
+- Pending requests expire after 120 seconds and are pruned from runtime state, including status snapshots used by the UI.
 - Pending pairing requests can be cancelled manually from the UI.
 - A new pairing request cannot replace a non-expired request after either side has approved it; the user must cancel the active request first.
 - Either side can confirm after seeing the matching code.
