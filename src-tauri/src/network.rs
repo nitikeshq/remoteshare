@@ -902,7 +902,7 @@ fn start_control_listener(app: AppHandle, store: RuntimeStore) {
         .await
         {
             Ok(listener) => {
-                listener_labels.push("IPv6");
+                listener_labels.push(control_listener_label("IPv6", &listener));
                 start_control_accept_loop(
                     "IPv6",
                     listener,
@@ -921,7 +921,7 @@ fn start_control_listener(app: AppHandle, store: RuntimeStore) {
         .await
         {
             Ok(listener) => {
-                listener_labels.push("IPv4");
+                listener_labels.push(control_listener_label("IPv4", &listener));
                 start_control_accept_loop(
                     "IPv4",
                     listener,
@@ -948,11 +948,30 @@ fn start_control_listener(app: AppHandle, store: RuntimeStore) {
         } else {
             store.record_control_listener_health(
                 true,
-                format!("TCP 44777 listening on {}.", listener_labels.join(" and ")),
+                control_listener_ready_detail(&listener_labels, &listener_errors),
             );
             let _ = app.emit("remoteshare://devices-changed", ());
         }
     });
+}
+
+fn control_listener_label(label: &str, listener: &TcpListener) -> String {
+    match listener.local_addr() {
+        Ok(address) => format!("{label} {address}"),
+        Err(error) => format!("{label} address unavailable: {error}"),
+    }
+}
+
+fn control_listener_ready_detail(listener_labels: &[String], listener_errors: &[String]) -> String {
+    let ready = listener_labels.join(" and ");
+    if listener_errors.is_empty() {
+        return format!("TCP ready on {ready}.");
+    }
+
+    format!(
+        "TCP ready on {ready}; unavailable listener(s): {}.",
+        listener_errors.join("; ")
+    )
 }
 
 async fn control_listener(address: SocketAddr) -> std::io::Result<TcpListener> {
@@ -3030,6 +3049,31 @@ Wireless LAN adapter Wi-Fi:
                 "Copy the current endpoint from the other computer, use Set IP, then Verify IP."
             ),
             "Copy the current endpoint from the other computer, use Set IP, then Verify IP."
+        );
+    }
+
+    #[test]
+    fn control_listener_ready_detail_names_bound_addresses() {
+        assert_eq!(
+            super::control_listener_ready_detail(
+                &[
+                    "IPv6 [::]:44777".to_string(),
+                    "IPv4 0.0.0.0:44777".to_string(),
+                ],
+                &[]
+            ),
+            "TCP ready on IPv6 [::]:44777 and IPv4 0.0.0.0:44777."
+        );
+    }
+
+    #[test]
+    fn control_listener_ready_detail_keeps_partial_bind_failures_visible() {
+        assert_eq!(
+            super::control_listener_ready_detail(
+                &["IPv6 [::]:44777".to_string()],
+                &["IPv4: address already in use".to_string()]
+            ),
+            "TCP ready on IPv6 [::]:44777; unavailable listener(s): IPv4: address already in use."
         );
     }
 
