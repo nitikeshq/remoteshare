@@ -866,14 +866,14 @@ function App() {
     showActionMessage(endpointMessage);
   }
 
-  async function copyLocalEndpoint(endpoint: string) {
+  async function copyLocalEndpoint(endpoint: string, label: string) {
     try {
       await navigator.clipboard.writeText(endpoint);
       setCopiedEndpoint(endpoint);
-      showActionMessage(`Copied ${endpoint}.`);
+      showActionMessage(`Copied ${label} endpoint ${endpoint}.`);
       window.setTimeout(() => setCopiedEndpoint(null), 1800);
     } catch {
-      showActionMessage(`Copy failed. Endpoint: ${endpoint}`, true);
+      showActionMessage(`Copy failed. ${label} endpoint: ${endpoint}`, true);
     }
   }
 
@@ -1495,21 +1495,24 @@ function App() {
               <strong>{localEndpoints.length > 0 ? "Endpoint visible" : "Endpoint unknown"}</strong>
               {localEndpoints.length > 0 ? (
                 <div className="endpoint-list">
-                  {localEndpoints.map((endpoint, index) => (
-                    <button
-                      className="endpoint-copy"
-                      key={endpoint}
-                      onClick={() => copyLocalEndpoint(endpoint)}
-                      type="button"
-                      title={`Copy ${endpoint}`}
-                    >
-                      <Copy size={13} />
-                      <span className="endpoint-choice-label">
-                        {copiedEndpoint === endpoint ? "Copied" : localEndpointChoiceLabel(endpoint, index)}
-                      </span>
-                      <code>{endpoint}</code>
-                    </button>
-                  ))}
+                  {localEndpoints.map((endpoint, index) => {
+                    const endpointLabel = localEndpointChoiceLabel(endpoint, index);
+                    return (
+                      <button
+                        className="endpoint-copy"
+                        key={endpoint}
+                        onClick={() => copyLocalEndpoint(endpoint, endpointLabel)}
+                        type="button"
+                        title={`Copy ${endpointLabel} endpoint ${endpoint}`}
+                      >
+                        <Copy size={13} />
+                        <span className="endpoint-choice-label">
+                          {copiedEndpoint === endpoint ? "Copied" : endpointLabel}
+                        </span>
+                        <code>{endpoint}</code>
+                      </button>
+                    );
+                  })}
                   <small className="endpoint-hint">
                     Prefer Best LAN IPv4 on the same Wi-Fi/LAN subnet; use LAN IPv6 only when both computers support IPv6.
                   </small>
