@@ -4779,6 +4779,60 @@ mod tests {
     }
 
     #[test]
+    fn verified_manual_trusted_endpoint_clears_stale_saved_failure() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-clears-failure"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.10:44777",
+            "saved endpoint timed out",
+        );
+        assert!(store
+            .status()
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure.as_ref())
+            .is_some());
+
+        store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50".to_string(),
+                Some(7),
+            )
+            .expect("verified manual endpoint should save and clear failure");
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(matches!(device.endpoint_source, super::EndpointSource::Manual));
+        assert!(device.online);
+        assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
     fn manual_trusted_endpoint_failure_is_labeled_manual() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-failure-source"));
 
