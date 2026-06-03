@@ -113,11 +113,15 @@ export function validateReleaseManifestArtifact(artifact, index, packageVersion)
 }
 
 export function isValidReleaseGeneratedAt(value) {
-  return (
-    typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) &&
-    new Date(value).toISOString() === value
-  );
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  ) {
+    return false;
+  }
+
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 export function validateReleaseGeneratedAt(value) {
