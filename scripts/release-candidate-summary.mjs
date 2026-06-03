@@ -63,7 +63,7 @@ ${rows}
 2. Install the Windows EXE on the Windows receiver/client.
 3. Complete \`lan-smoke-report.md\` for both auto-discovery and manual fallback runs.
 4. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
-5. Record startup health TCP, UDP, and Start detail strings after restart.
+5. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
 6. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
 7. Record active capture target and elapsed start time before pressing Stop.
 8. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.

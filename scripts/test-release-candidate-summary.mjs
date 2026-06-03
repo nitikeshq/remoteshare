@@ -22,7 +22,7 @@ try {
   assertIncludes(summary, "RemoteShare_0.1.13_x64-setup.exe", "windows installer row");
   assertIncludes(summary, "npm run verify:release-readiness", "readiness command");
   assertIncludes(summary, "Trusted Device Audit", "fingerprint audit evidence");
-  assertIncludes(summary, "startup health TCP, UDP, and Start detail strings", "startup health detail evidence");
+  assertIncludes(summary, "startup health TCP ready, UDP ready, and start-at-login not failed", "startup health detail evidence");
   assertIncludes(summary, "accepted `key press r` test input", "test input evidence");
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");

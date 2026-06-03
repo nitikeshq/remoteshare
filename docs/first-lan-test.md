@@ -83,7 +83,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
 | Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
-| Startup health | TCP ready and UDP ready after restart | TCP ready and UDP ready after restart |
+| Startup health | TCP ready, UDP ready, and start-at-login not failed after restart | TCP ready, UDP ready, and start-at-login not failed after restart |
 | Endpoint source shown | Discovery or reconnect | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event | Receiver logs accepted input transport event |
 | Capture result | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible |
