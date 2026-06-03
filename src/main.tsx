@@ -582,6 +582,21 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
   ].join(" | ");
 }
 
+function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
+  const failure = connectionFailureDiagnostic(device);
+  const hint = connectionFailureHint(device);
+  return [
+    "Trusted IP update",
+    `Device: ${device.name}`,
+    `Endpoint field: ${endpointField.trim() || "empty"}`,
+    `Current endpoint: ${device.endpoint ?? "none"}`,
+    `Current source: ${endpointSourceLabel(device)}`,
+    `Input control: ${device.inputControlReady ? "ready" : "needs re-pair"}`,
+    `Last failure: ${failure ?? "none"}`,
+    `Recovery: ${hint ?? "none"}`
+  ].join("; ");
+}
+
 function commandErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -995,6 +1010,16 @@ function App() {
       showActionMessage("Copied pairing evidence.");
     } catch {
       showActionMessage(`Copy failed. Pairing evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyTrustedEndpointUpdateEvidence(device: Device) {
+    const evidence = trustedEndpointUpdateEvidence(device, manualEndpoint);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied trusted IP evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Trusted IP evidence: ${evidence}`, true);
     }
   }
 
@@ -2199,6 +2224,18 @@ function App() {
                 onClick={cancelTrustedEndpointUpdate}
               >
                 Cancel
+              </button>
+            )}
+            {endpointUpdateDevice && (
+              <button
+                className="manual-evidence-copy"
+                type="button"
+                disabled={manualFormActive}
+                onClick={() => copyTrustedEndpointUpdateEvidence(endpointUpdateDevice)}
+                title="Copy trusted IP evidence"
+              >
+                <Copy size={12} />
+                <span>Copy</span>
               </button>
             )}
             {status.discovery.manualEndpoint && !endpointUpdateDeviceId && (

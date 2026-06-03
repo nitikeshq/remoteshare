@@ -54,7 +54,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row.
 3. A successful reconnect should update last-seen timing and show the endpoint source as discovery, reconnect, or saved endpoint. Record that exact source text; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
 4. Confirm the diagnostics panel shows startup health with TCP and UDP ready after the app restarts, and that start-at-login health is not failed.
-5. If reconnect fails, use `Edit IP`, replace the field with the copied endpoint from the other computer, then use `Verify IP` to update the trusted endpoint without pairing again.
+5. If reconnect fails, use `Edit IP`, replace the field with the copied endpoint from the other computer, use `Copy` to capture trusted IP recovery evidence, then use `Verify IP` to update the trusted endpoint without pairing again.
 
 ## Input Smoke Test
 
