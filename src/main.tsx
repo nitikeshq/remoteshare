@@ -600,6 +600,24 @@ function receiveControlEvidence(status: RuntimeStatus, device: Device) {
   ].join("; ");
 }
 
+function reconnectEvidence(status: RuntimeStatus, device: Device) {
+  const failure = connectionFailureDiagnostic(device);
+  const hint = connectionFailureHint(device);
+  return [
+    "Trusted reconnect",
+    `This computer: ${status.thisDevice}`,
+    `Auto reconnect: ${status.trustedReconnect ? "enabled" : "disabled"}`,
+    `Device: ${device.name}`,
+    `Check: ${device.online ? "reachable" : "not currently reachable"}`,
+    `Last seen: ${lastSeenLabel(device.lastSeenAtMs)}`,
+    `Endpoint source: ${endpointSourceLabel(device)}`,
+    `Endpoint: ${device.endpoint ?? "none"}`,
+    `Input control: ${device.inputControlReady ? "ready" : "needs re-pair"}`,
+    `Last failure: ${failure ?? "none"}`,
+    `Recovery: ${hint ?? "none"}`
+  ].join("; ");
+}
+
 function setupChecklistEvidence(status: RuntimeStatus, steps: SetupStep[]) {
   return [
     "Setup",
@@ -1039,6 +1057,17 @@ function App() {
       showActionMessage("Copied receive evidence.");
     } catch {
       showActionMessage(`Copy failed. Receive evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyReconnectEvidence(device: Device) {
+    const evidence = reconnectEvidence(status, device);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied reconnect evidence.");
+    } catch (error) {
+      console.error(error);
+      showActionMessage(`Copy failed. Reconnect evidence: ${evidence}`, true);
     }
   }
 
@@ -1922,6 +1951,17 @@ function App() {
                     }
                   >
                     {checkActive ? "Checking" : "Check"}
+                  </button>
+                )}
+                {device.trusted && (
+                  <button
+                    className="reconnect-evidence-copy"
+                    onClick={() => copyReconnectEvidence(device)}
+                    title="Copy reconnect evidence"
+                    type="button"
+                  >
+                    <Copy size={12} />
+                    <span>Copy</span>
                   </button>
                 )}
                 {canEditTrustedEndpoint(device) && (

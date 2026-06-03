@@ -394,6 +394,10 @@ function smokeReportFixture(name, passValue, options = {}) {
   const version = options.version ?? `v${packageVersion}`;
   const testDate = options.testDate ?? "2026-06-02";
   const extraContextRows = options.extraContextRows ?? "";
+  const autoReconnectEvidence =
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+  const manualReconnectEvidence =
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const capturedEvidenceNote =
     options.includeCapturedEvidenceNote === false
       ? ""
@@ -440,10 +444,10 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Pairing evidence copied from pending row | Pairing: Outgoing; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
-| \`Auto reconnect\` enabled after restart/wake | enabled after restart |
+| \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
-| \`Check\` succeeded after restart/wake | succeeded after restart |
-| Endpoint source shown | discovery |
+| \`Check\` succeeded after restart/wake | ${autoReconnectEvidence} |
+| Endpoint source shown | ${autoReconnectEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
@@ -469,10 +473,10 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Pairing evidence copied from pending row | Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
-| \`Auto reconnect\` enabled after restart/wake | enabled after restart |
+| \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | ready: TCP ready, UDP ready, start-at-login ok |
-| \`Check\` succeeded after restart/wake | succeeded after restart |
-| Endpoint source shown as saved endpoint or manual IP | saved endpoint |
+| \`Check\` succeeded after restart/wake | ${manualReconnectEvidence} |
+| Endpoint source shown as saved endpoint or manual IP | ${manualReconnectEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |

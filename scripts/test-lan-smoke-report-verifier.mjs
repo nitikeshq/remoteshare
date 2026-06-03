@@ -350,7 +350,12 @@ try {
     omitLine: "",
     autoReconnect: "failed"
   });
-  runVerifier(failedReconnect, false, "failed reconnect should fail", "Auto-Discovery Run field must show success");
+  runVerifier(
+    failedReconnect,
+    false,
+    "failed reconnect should fail",
+    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output"
+  );
 
   const positivePrefixFailure = writeReport("positive-prefix-failure.md", {
     autoPass: "Pass",
@@ -414,7 +419,7 @@ try {
     vagueReconnect,
     false,
     "vague reconnect should fail",
-    "Auto-Discovery Run reconnect check evidence must show Check succeeded after restart or wake"
+    "Auto-Discovery Run reconnect check evidence must paste the reconnect Copy output"
   );
 
   const vagueStartupHealth = writeReport("vague-startup-health.md", {
@@ -453,7 +458,7 @@ try {
     vagueAutoEndpointSource,
     false,
     "vague auto endpoint source should fail",
-    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Auto-Discovery Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const embeddedAutoEndpointSource = writeReport("embedded-auto-endpoint-source.md", {
@@ -466,7 +471,7 @@ try {
     embeddedAutoEndpointSource,
     false,
     "embedded auto endpoint source should fail",
-    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Auto-Discovery Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const vagueManualEndpointSource = writeReport("vague-manual-endpoint-source.md", {
@@ -479,7 +484,7 @@ try {
     vagueManualEndpointSource,
     false,
     "vague manual endpoint source should fail",
-    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Manual Fallback Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const embeddedManualEndpointSource = writeReport("embedded-manual-endpoint-source.md", {
@@ -492,14 +497,15 @@ try {
     embeddedManualEndpointSource,
     false,
     "embedded manual endpoint source should fail",
-    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Manual Fallback Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const savedAutoEndpointSource = writeReport("saved-auto-endpoint-source.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoEndpointSource: "saved endpoint"
+    autoEndpointSource:
+      "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none"
   });
   runVerifier(
     savedAutoEndpointSource,
@@ -518,7 +524,7 @@ try {
     contradictoryAutoEndpointSource,
     false,
     "contradictory auto endpoint source should fail",
-    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Auto-Discovery Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const contradictoryManualEndpointSource = writeReport("contradictory-manual-endpoint-source.md", {
@@ -531,7 +537,7 @@ try {
     contradictoryManualEndpointSource,
     false,
     "contradictory manual endpoint source should fail",
-    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+    "Manual Fallback Run endpoint source evidence must paste the reconnect Copy output"
   );
 
   const vagueManualDiscovery = writeReport("vague-manual-discovery.md", {
@@ -1077,14 +1083,18 @@ try {
 
 function writeReport(name, options) {
   const file = path.join(root, name);
-  const autoReconnect = options.autoReconnect ?? "succeeded after restart";
-  const manualReconnect = options.manualReconnect ?? "succeeded after restart";
-  const autoReconnectEnabled = options.autoReconnectEnabled ?? "enabled after restart";
-  const manualReconnectEnabled = options.manualReconnectEnabled ?? "enabled after restart";
+  const autoReconnectEvidence =
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+  const manualReconnectEvidence =
+    "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+  const autoReconnect = options.autoReconnect ?? autoReconnectEvidence;
+  const manualReconnect = options.manualReconnect ?? manualReconnectEvidence;
+  const autoReconnectEnabled = options.autoReconnectEnabled ?? autoReconnectEvidence;
+  const manualReconnectEnabled = options.manualReconnectEnabled ?? manualReconnectEvidence;
   const autoStartupHealth = options.autoStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
   const manualStartupHealth = options.manualStartupHealth ?? "ready: TCP ready, UDP ready, start-at-login ok";
-  const autoEndpointSource = options.autoEndpointSource ?? "discovery";
-  const manualEndpointSource = options.manualEndpointSource ?? "saved endpoint";
+  const autoEndpointSource = options.autoEndpointSource ?? autoReconnectEvidence;
+  const manualEndpointSource = options.manualEndpointSource ?? manualReconnectEvidence;
   const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";
   const manualInputSmoke = options.manualInputSmoke ?? "accepted key press r delivered";
   const autoAllowIncomingControl =

@@ -131,8 +131,6 @@ const successFields = [
   "Six-digit code typed on both machines",
   "`Trusted` shown on both machines",
   "Full fingerprint copied or visually compared",
-  "`Auto reconnect` enabled after restart/wake",
-  "`Check` succeeded after restart/wake",
   "Sender `Test` delivered accepted `key press r` input event",
   "Capture started on sender and stopped cleanly",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver"
@@ -283,8 +281,12 @@ function requirePairingEvidence(table, section) {
 
 function requireReconnectEvidence(table, section) {
   const autoReconnect = requireFilled(table, "`Auto reconnect` enabled after restart/wake", section).toLowerCase();
-  if (!/^(yes|pass|passed|success|succeeded|ok|confirmed|enabled|allowed)/i.test(autoReconnect) || !/(restart|wake)/.test(autoReconnect)) {
-    throw new Error(`${section} Auto reconnect evidence must show it stayed enabled after restart or wake.`);
+  if (
+    !/trusted\s+reconnect/.test(autoReconnect) ||
+    !/auto\s+reconnect:\s*enabled/.test(autoReconnect) ||
+    !/(restart|wake)/.test(autoReconnect)
+  ) {
+    throw new Error(`${section} Auto reconnect evidence must paste the reconnect Copy output and show it was captured after restart or wake.`);
   }
 
   const startupHealth = requireFilled(
@@ -300,15 +302,30 @@ function requireReconnectEvidence(table, section) {
   }
 
   const check = requireFilled(table, "`Check` succeeded after restart/wake", section).toLowerCase();
-  if (!/^(yes|pass|passed|success|succeeded|ok|confirmed|reachable|accepted)/i.test(check) || !/(restart|wake)/.test(check)) {
-    throw new Error(`${section} reconnect check evidence must show Check succeeded after restart or wake.`);
+  if (
+    !/trusted\s+reconnect/.test(check) ||
+    !/check:\s*reachable/.test(check) ||
+    !/device:\s*[^;|]+/.test(check) ||
+    !/last\s+seen:/.test(check) ||
+    !/(restart|wake)/.test(check)
+  ) {
+    throw new Error(`${section} reconnect check evidence must paste the reconnect Copy output with Check: reachable after restart or wake.`);
   }
 }
 
 function requireEndpointSourceEvidence(table, field, section, expectedPattern) {
   const value = requireFilled(table, field, section).toLowerCase();
-  if (/(fail|failed|failure|blocked|denied|error|not\s+(shown|discovery|reconnect|saved|manual|verified|set))/.test(value) || !expectedPattern.test(value)) {
-    throw new Error(`${section} endpoint source evidence must mention the concrete source shown in the UI.`);
+  const valueWithoutExpectedNegative = value
+    .replace(/\blast\s+failure:\s*(none|no\s+failure)\b/g, "")
+    .replace(/\brecovery:\s*none\b/g, "");
+  if (
+    !/trusted\s+reconnect/.test(value) ||
+    !/endpoint\s+source:\s*/.test(value) ||
+    !/endpoint:\s*[^;|]+/.test(value) ||
+    /(fail|failed|failure|blocked|denied|error|not\s+(shown|discovery|reconnect|saved|manual|verified|set|currently\s+reachable))/.test(valueWithoutExpectedNegative) ||
+    !expectedPattern.test(value)
+  ) {
+    throw new Error(`${section} endpoint source evidence must paste the reconnect Copy output with the concrete endpoint source shown in the UI.`);
   }
 }
 

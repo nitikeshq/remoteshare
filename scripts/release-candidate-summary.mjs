@@ -70,15 +70,16 @@ ${rows}
 6. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
 7. Record a Test date that is on or after the release manifest date and not in the future.
 8. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
-9. Use the trusted row receive \`Copy\` button to paste \`Allow incoming control: enabled\`, \`Device receive: enabled\`, and \`Input control: ready\` evidence before input.
-10. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
-11. Record active capture target and elapsed start time before pressing Stop.
-12. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
-13. In the auto-discovery run, record the endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
-14. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
-15. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, use the trusted IP update \`Copy\` button to paste device, endpoint field, current endpoint/source, last failure, and recovery hint evidence.
-16. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured for pairing, reconnect, input, and capture evidence, and show \`Retest required: no\`; unresolved blocking issues, incomplete captured-evidence notes, or required retests fail release readiness.
-17. Verify the completed report:
+9. After restart/wake, use the trusted row reconnect \`Copy\` button to paste \`Auto reconnect: enabled\`, \`Check: reachable\`, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence.
+10. Use the trusted row receive \`Copy\` button to paste \`Allow incoming control: enabled\`, \`Device receive: enabled\`, and \`Input control: ready\` evidence before input.
+11. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
+12. Record active capture target and elapsed start time before pressing Stop.
+13. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
+14. In the auto-discovery run, the copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
+15. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
+16. In the manual fallback run, the copied reconnect evidence must show endpoint source as saved endpoint or manual IP, and the report must include a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, use the trusted IP update \`Copy\` button to paste device, endpoint field, current endpoint/source, last failure, and recovery hint evidence.
+17. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured for pairing, reconnect, input, and capture evidence, and show \`Retest required: no\`; unresolved blocking issues, incomplete captured-evidence notes, or required retests fail release readiness.
+18. Verify the completed report:
 
 \`\`\`bash
 npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md

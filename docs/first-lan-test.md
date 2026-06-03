@@ -52,8 +52,8 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## Reconnect
 
 1. Restart one app or wake one computer from sleep.
-2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row.
-3. A successful reconnect should update last-seen timing and show the endpoint source as discovery, reconnect, or saved endpoint. Record that exact source text; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
+2. Confirm `Auto reconnect` is on. Use `Check` on the trusted device row, then use the trusted row reconnect `Copy` button to capture auto reconnect, device, check result, last-seen timing, endpoint source, endpoint, input-control readiness, last failure, and recovery evidence.
+3. A successful reconnect should update last-seen timing and show the endpoint source as discovery, reconnect, or saved endpoint. Paste the reconnect `Copy` output for the check and endpoint-source report rows; vague values like `shown` are not enough for release evidence. Verified endpoints are kept as newest-first trusted fallback candidates for future restarts or IP changes.
 4. Confirm the diagnostics panel shows startup health with TCP and UDP ready after the app restarts, and that start-at-login health is not failed.
 5. If reconnect fails, use `Edit IP`, replace the field with the copied endpoint from the other computer, use `Copy` to capture trusted IP recovery evidence, then use `Verify IP` to update the trusted endpoint without pairing again.
 
@@ -84,7 +84,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, copied label recorded as `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
-| Reconnect result | `Check` succeeds after app restart or wake | `Check` succeeds after app restart or wake |
+| Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake |
 | Startup health | TCP ready, UDP ready, and start-at-login not failed after restart | TCP ready, UDP ready, and start-at-login not failed after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled |
@@ -95,8 +95,8 @@ Minimum pass criteria:
 
 - Both machines show the same typed pairing code before trust is stored.
 - `Trusted` appears on both machines with the expected peer fingerprint.
-- `Auto reconnect` remains enabled after restart.
-- `Check` succeeds after at least one app restart, wake, or Wi-Fi reconnect.
+- Trusted row reconnect `Copy` output shows `Auto reconnect: enabled` after restart.
+- Trusted row reconnect `Copy` output shows `Check: reachable` after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled.
 - Capture starts on the macOS sender, forwards accepted mouse move, mouse click, scroll, and key events to the Windows receiver, then stops cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.

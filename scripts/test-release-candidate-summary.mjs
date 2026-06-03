@@ -29,6 +29,10 @@ try {
   assertIncludes(summary, "Trusted Device Audit", "fingerprint audit evidence");
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
   assertIncludes(summary, "startup health TCP ready, UDP ready, and start-at-login not failed", "startup health detail evidence");
+  assertIncludes(summary, "trusted row reconnect `Copy` button", "reconnect copy evidence");
+  assertIncludes(summary, "Auto reconnect: enabled", "auto reconnect copied field");
+  assertIncludes(summary, "Check: reachable", "reconnect check copied field");
+  assertIncludes(summary, "last-seen timing, endpoint source, endpoint, last failure, and recovery evidence", "reconnect copied fields");
   assertIncludes(summary, "accepted `key press r` test input", "test input evidence");
   assertIncludes(summary, "trusted row receive `Copy` button", "receive copy evidence");
   assertIncludes(summary, "Allow incoming control: enabled", "global receive evidence");
@@ -37,9 +41,9 @@ try {
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
   assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
-  assertIncludes(summary, "endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
+  assertIncludes(summary, "copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
   assertIncludes(summary, "copied endpoint label shown in the peer `This computer` row as Best LAN IPv4, LAN IPv4, or LAN IPv6", "manual copied endpoint label evidence");
-  assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
+  assertIncludes(summary, "copied reconnect evidence must show endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "trusted IP update `Copy` button", "trusted IP copy evidence");
   assertIncludes(summary, "device, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");

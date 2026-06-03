@@ -635,7 +635,8 @@ input {
 }
 
 .event-evidence-copy,
-.receive-evidence-copy {
+.receive-evidence-copy,
+.reconnect-evidence-copy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -652,7 +653,8 @@ input {
 }
 
 .event-evidence-copy span,
-.receive-evidence-copy span {
+.receive-evidence-copy span,
+.reconnect-evidence-copy span {
   color: inherit;
   font-size: inherit;
 }
