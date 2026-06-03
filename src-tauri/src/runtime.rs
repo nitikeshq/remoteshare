@@ -1452,6 +1452,12 @@ impl RuntimeStore {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
         let mut state = self.state.lock().expect("runtime state poisoned");
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+        }
         let Some(device_index) = state
             .persisted
             .trusted_devices
@@ -3944,6 +3950,19 @@ mod tests {
                 None,
             )
             .expect("trusted endpoint should normalize and save");
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+
+        let error = store
+            .record_trusted_connection(
+                "trusted-device".to_string(),
+                "8.8.8.8:44777".to_string(),
+                None,
+            )
+            .expect_err("public trusted endpoint should be rejected while guard is on");
+        assert_eq!(error, PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE);
         assert_eq!(
             store.trusted_reconnect_targets()[0].endpoints,
             vec!["192.168.1.50:44777".to_string()]
