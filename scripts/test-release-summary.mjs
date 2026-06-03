@@ -230,6 +230,23 @@ try {
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
+  const futureGeneratedAtRoot = fixture(
+    "future-generated-at",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  const futureGeneratedAtManifest = readManifest(futureGeneratedAtRoot);
+  futureGeneratedAtManifest.generatedAt = "2999-01-01T00:00:00.000Z";
+  writeManifest(futureGeneratedAtRoot, futureGeneratedAtManifest);
+  runSummary(futureGeneratedAtRoot, [
+    "Release manifest: invalid",
+    "Release manifest issue: Release manifest generatedAt cannot be in the future.",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
   const staleManifestSizeRoot = fixture(
     "stale-manifest-size",
     [
