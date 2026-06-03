@@ -656,6 +656,7 @@ function reconnectEvidence(status: RuntimeStatus, device: Device) {
     `Auto reconnect: ${status.trustedReconnect ? "enabled" : "disabled"}`,
     `Device: ${device.name}`,
     `Check: ${device.online ? "reachable" : "not currently reachable"}`,
+    "Verification: after restart/wake",
     `Last seen: ${lastSeenLabel(device.lastSeenAtMs)}`,
     `Latency: ${latencyEvidenceLabel(device)}`,
     `Endpoint source: ${endpointSourceLabel(device)}`,
