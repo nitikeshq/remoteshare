@@ -94,6 +94,7 @@ struct ConnectionHealth {
 #[derive(Debug, Clone)]
 struct ConnectionFailure {
     endpoint: String,
+    endpoint_source: EndpointSource,
     failed_at_ms: u128,
     message: String,
 }
@@ -1493,6 +1494,21 @@ impl RuntimeStore {
             return;
         }
 
+        let endpoint_source = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .find(|device| device.id == device_id)
+            .map(|device| {
+                failure_endpoint_source(
+                    device,
+                    state.discovered_peers.get(device_id),
+                    state.connection_health.get(device_id),
+                    &endpoint,
+                )
+            })
+            .unwrap_or(EndpointSource::None);
+
         if state
             .connection_health
             .get(device_id)
@@ -1504,6 +1520,7 @@ impl RuntimeStore {
             device_id.to_string(),
             ConnectionFailure {
                 endpoint,
+                endpoint_source,
                 failed_at_ms: now_ms(),
                 message: message.to_string(),
             },
@@ -1832,7 +1849,7 @@ fn device_from_trusted_with_health(
         input_control_ready: device.shared_secret.is_some(),
         last_connection_failure: failure.map(|failure| ConnectionFailureStatus {
             endpoint: failure.endpoint.clone(),
-            endpoint_source: failure_endpoint_source(device, peer, health, failure),
+            endpoint_source: failure.endpoint_source.clone(),
             failed_at_ms: failure.failed_at_ms,
             message: failure.message.clone(),
         }),
@@ -1843,19 +1860,19 @@ fn failure_endpoint_source(
     device: &TrustedDevice,
     peer: Option<&DiscoveredPeer>,
     health: Option<&ConnectionHealth>,
-    failure: &ConnectionFailure,
+    endpoint: &str,
 ) -> EndpointSource {
-    if peer.is_some_and(|peer| peer.endpoint == failure.endpoint) {
+    if peer.is_some_and(|peer| peer.endpoint == endpoint) {
         return EndpointSource::Discovery;
     }
-    if health.is_some_and(|health| health.endpoint == failure.endpoint) {
+    if health.is_some_and(|health| health.endpoint == endpoint) {
         return EndpointSource::Health;
     }
-    if device.last_endpoint.as_deref() == Some(failure.endpoint.as_str())
+    if device.last_endpoint.as_deref() == Some(endpoint)
         || device
             .recent_endpoints
             .iter()
-            .any(|endpoint| endpoint == &failure.endpoint)
+            .any(|candidate| candidate == endpoint)
     {
         return EndpointSource::Saved;
     }
@@ -3553,6 +3570,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionFailure {
                     endpoint: "1.1.1.1:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
                     failed_at_ms: now_ms(),
                     message: "connection refused".to_string(),
                 },
@@ -3637,6 +3655,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionFailure {
                     endpoint: "1.1.1.1:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
                     failed_at_ms: now_ms(),
                     message: "connection refused".to_string(),
                 },
@@ -4585,6 +4604,7 @@ mod tests {
                 "remote-device".to_string(),
                 super::ConnectionFailure {
                     endpoint: "192.168.1.30:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
                     failed_at_ms: now_ms(),
                     message: "old stale endpoint".to_string(),
                 },
@@ -5639,6 +5659,68 @@ mod tests {
     }
 
     #[test]
+    fn trusted_connection_failure_keeps_original_endpoint_source() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-source-stable"));
+
+        let store = RuntimeStore::load_or_init();
+        let (_private_key, public_key) = crate::crypto::identity_keypair();
+        let public_key_fingerprint = crate::crypto::fingerprint_from_public_key(&public_key)
+            .expect("generated public key should fingerprint");
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: public_key_fingerprint.clone(),
+                public_key: Some(public_key.clone()),
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint,
+                role: ComputerRole::Client,
+                public_key,
+                scan_request: false,
+            },
+            "192.168.1.50".to_string(),
+        ));
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.50:44777",
+            "connection refused",
+        );
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.discovered_peers.clear();
+        }
+
+        let failure = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure)
+            .expect("failure should stay visible");
+        assert_eq!(failure.endpoint, "192.168.1.50:44777");
+        assert!(matches!(
+            failure.endpoint_source,
+            super::EndpointSource::Discovery
+        ));
+    }
+
+    #[test]
     fn trusted_connection_failure_normalizes_endpoint_for_status() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-normalized"));
 
@@ -5759,6 +5841,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionFailure {
                     endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
                     failed_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
                     message: "old stale endpoint".to_string(),
                 },
