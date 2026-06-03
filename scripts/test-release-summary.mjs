@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-summary-"));
 const summary = path.resolve("scripts/release-summary.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const validRoot = fixture("valid", [
@@ -48,7 +49,7 @@ try {
     "0 B",
     "empty artifact",
     "macOS DMG: present (1; 1 empty)",
-    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; macOS DMG empty)."
+    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; macOS DMG empty; release manifest invalid)."
   ]);
 
   const staleChecksumRoot = fixture("stale-checksum", [
@@ -119,7 +120,7 @@ try {
   ]);
   runSummary(duplicateRoot, [
     "macOS DMG: present (2)",
-    "Publish readiness: incomplete (macOS DMG has 2 artifacts)."
+    "Publish readiness: incomplete (macOS DMG has 2 artifacts; release manifest invalid)."
   ]);
 
   const wrongVersionRoot = fixture("wrong-version", [
@@ -130,7 +131,7 @@ try {
   runSummary(wrongVersionRoot, [
     `version mismatch: expected ${packageVersion}`,
     "macOS DMG: present (1; 1 version mismatch)",
-    "Publish readiness: incomplete (macOS DMG version mismatch)."
+    "Publish readiness: incomplete (macOS DMG version mismatch; release manifest invalid)."
   ]);
 
   const unexpectedInstallerRoot = path.join(root, "unexpected-installer");
@@ -175,12 +176,44 @@ try {
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
+  const missingGeneratedAtRoot = fixture(
+    "missing-generated-at",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  const missingGeneratedAtManifest = readManifest(missingGeneratedAtRoot);
+  delete missingGeneratedAtManifest.generatedAt;
+  writeManifest(missingGeneratedAtRoot, missingGeneratedAtManifest);
+  runSummary(missingGeneratedAtRoot, [
+    "Release manifest: invalid",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
+  const invalidGeneratedAtRoot = fixture(
+    "invalid-generated-at",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  const invalidGeneratedAtManifest = readManifest(invalidGeneratedAtRoot);
+  invalidGeneratedAtManifest.generatedAt = "2026-06-01";
+  writeManifest(invalidGeneratedAtRoot, invalidGeneratedAtManifest);
+  runSummary(invalidGeneratedAtRoot, [
+    "Release manifest: invalid",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
   const unmanifestedInstallerRoot = fixture("unmanifested-installer", [
     [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
   ]);
   fs.writeFileSync(
     path.join(unmanifestedInstallerRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ version: packageVersion, artifacts: [] }, null, 2)}\n`
+    `${JSON.stringify({ version: packageVersion, generatedAt, artifacts: [] }, null, 2)}\n`
   );
   runSummary(unmanifestedInstallerRoot, [
     `Unmanifested installer artifacts: dmg/RemoteShare_${packageVersion}_aarch64.dmg`,
@@ -218,7 +251,12 @@ function fixture(name, files, writeChecksums = true, writeManifest = true) {
     const extension = path.extname(relativePath).toLowerCase();
     const type = extension === ".dmg" ? "dmg" : extension === ".exe" ? "exe" : extension === ".deb" ? "deb" : null;
     if (type) {
-      artifacts.push({ type, file: path.basename(relativePath) });
+      artifacts.push({
+        type,
+        file: path.basename(relativePath),
+        sha256: sha256(body),
+        sizeBytes: Buffer.byteLength(body)
+      });
     }
   }
 
@@ -226,13 +264,25 @@ function fixture(name, files, writeChecksums = true, writeManifest = true) {
     fs.writeFileSync(path.join(directory, "SHA256SUMS.txt"), `${checksumLines.join("\n")}\n`);
   }
   if (writeManifest) {
-    fs.writeFileSync(
-      path.join(directory, "RELEASE-MANIFEST.json"),
-      `${JSON.stringify({ version: packageVersion, artifacts }, null, 2)}\n`
-    );
+    writeManifestFile(directory, { version: packageVersion, generatedAt, artifacts });
   }
 
   return directory;
+}
+
+function readManifest(directory) {
+  return JSON.parse(fs.readFileSync(path.join(directory, "RELEASE-MANIFEST.json"), "utf8"));
+}
+
+function writeManifest(directory, manifest) {
+  writeManifestFile(directory, manifest);
+}
+
+function writeManifestFile(directory, manifest) {
+  fs.writeFileSync(
+    path.join(directory, "RELEASE-MANIFEST.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`
+  );
 }
 
 function runSummary(directory, expectedOutput) {

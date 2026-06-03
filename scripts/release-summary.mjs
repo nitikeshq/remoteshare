@@ -4,7 +4,8 @@ import path from "node:path";
 import {
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
-  requiredArtifactTypes
+  validateManifestArtifactTypes,
+  validateReleaseManifestArtifact
 } from "./release-artifacts-lib.mjs";
 
 const root = process.argv[2] ?? "src-tauri/target/release/bundle";
@@ -180,19 +181,21 @@ function readManifestFiles(file) {
 
   try {
     const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (manifest.version !== packageVersion) return null;
+    if (
+      typeof manifest.generatedAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(manifest.generatedAt) ||
+      new Date(manifest.generatedAt).toISOString() !== manifest.generatedAt
+    ) {
+      return null;
+    }
     if (!Array.isArray(manifest.artifacts)) return null;
-
-    return new Set(
-      manifest.artifacts
-        .filter(
-          (artifact) =>
-            artifact &&
-            typeof artifact.file === "string" &&
-            typeof artifact.type === "string" &&
-            requiredArtifactTypes.has(artifact.type)
-        )
-        .map((artifact) => artifact.file)
+    validateManifestArtifactTypes(manifest.artifacts);
+    const artifacts = manifest.artifacts.map((artifact, index) =>
+      validateReleaseManifestArtifact(artifact, index, packageVersion)
     );
+
+    return new Set(artifacts.map((artifact) => artifact.file));
   } catch {
     return null;
   }
