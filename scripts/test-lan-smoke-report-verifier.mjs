@@ -81,6 +81,19 @@ try {
   });
   runVerifier(failedReconnect, false, "failed reconnect should fail", "Auto-Discovery Run field must show success");
 
+  const positivePrefixFailure = writeReport("positive-prefix-failure.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoPairAction: "started but failed before pairing completed"
+  });
+  runVerifier(
+    positivePrefixFailure,
+    false,
+    "positive-prefix failure evidence should fail",
+    "Auto-Discovery Run field must show success: Pair action started"
+  );
+
   const vagueReconnect = writeReport("vague-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",

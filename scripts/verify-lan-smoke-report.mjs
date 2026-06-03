@@ -191,7 +191,10 @@ function requirePass(table, section) {
 
 function requireSuccess(table, field, section) {
   const value = requireFilled(table, field, section);
-  if (!/^(yes|pass|passed|success|succeeded|ok|confirmed|enabled|allowed|delivered|reachable|accepted|compared|shown|started|ready)/i.test(value)) {
+  if (
+    !/^(yes|pass|passed|success|succeeded|ok|confirmed|enabled|allowed|delivered|reachable|accepted|compared|shown|started|ready)/i.test(value) ||
+    /(fail|failed|failure|blocked|denied|error|not\s+(ok|ready|accepted|enabled|allowed|reachable|shown|started|delivered|confirmed|compared))/i.test(value)
+  ) {
     throw new Error(`${section} field must show success: ${field}`);
   }
 }
