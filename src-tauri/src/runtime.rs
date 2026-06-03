@@ -985,7 +985,9 @@ impl RuntimeStore {
             ),
             None => None,
         };
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        let now = now_ms();
+        prune_runtime_state(&mut state, now);
 
         if let Some(endpoint) = endpoint {
             if !private_guard_allows_endpoint(
@@ -997,7 +999,7 @@ impl RuntimeStore {
             let expected_peer = request
                 .device_id
                 .as_deref()
-                .and_then(|device_id| expected_pairing_peer_for_device(&state, device_id));
+                .and_then(|device_id| expected_pairing_peer_for_device(&state, device_id, now));
             return Ok(PairingTarget {
                 device_id: request.device_id.unwrap_or_else(|| endpoint.clone()),
                 endpoint,
@@ -1011,6 +1013,7 @@ impl RuntimeStore {
         let peer = state
             .discovered_peers
             .get(&device_id)
+            .filter(|peer| peer_is_fresh(peer, now))
             .ok_or_else(|| "Device is not currently discoverable.".to_string())?;
 
         Ok(PairingTarget {
@@ -2019,10 +2022,12 @@ fn pairing_peer_from_trusted_device(device: &TrustedDevice) -> PairingPeer {
 fn expected_pairing_peer_for_device(
     state: &RuntimeState,
     device_id: &str,
+    now: u128,
 ) -> Option<PairingPeer> {
     state
         .discovered_peers
         .get(device_id)
+        .filter(|peer| peer_is_fresh(peer, now))
         .map(|peer| pairing_peer_from_announcement(&peer.announcement))
         .or_else(|| {
             state
@@ -2505,7 +2510,7 @@ mod tests {
     use super::{
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
         PairingDirection, PairingPeer, PairingTarget, PeerAnnouncement, PendingPairing,
-        RuntimeStore, ServiceHealthState,
+        DiscoveredPeer, RuntimeStore, ServiceHealthState, PEER_TIMEOUT_MS,
     };
 
     #[test]
@@ -4755,6 +4760,44 @@ mod tests {
     }
 
     #[test]
+    fn stale_discovered_pairing_target_is_rejected() {
+        crate::identity::set_test_config_dir(unique_test_dir("stale-discovered-pairing-target"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.discovered_peers.insert(
+                "remote-device".to_string(),
+                DiscoveredPeer {
+                    announcement: PeerAnnouncement {
+                        protocol_version: 1,
+                        device_id: "remote-device".to_string(),
+                        name: "Remote Windows".to_string(),
+                        platform: "windows".to_string(),
+                        control_port: 44777,
+                        public_key_fingerprint: "remote-fingerprint".to_string(),
+                        role: ComputerRole::Client,
+                        public_key: String::new(),
+                        scan_request: false,
+                    },
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    last_seen_at_ms: now_ms().saturating_sub(PEER_TIMEOUT_MS + 1),
+                },
+            );
+        }
+
+        let error = store
+            .pairing_target(super::PairRequest {
+                device_id: Some("remote-device".to_string()),
+                endpoint: None,
+                manual_endpoint: false,
+            })
+            .expect_err("stale discovery row should not be pairable");
+
+        assert_eq!(error, "Device is not currently discoverable.");
+    }
+
+    #[test]
     fn explicit_endpoint_pairing_target_keeps_known_device_identity() {
         crate::identity::set_test_config_dir(unique_test_dir("explicit-known-pairing-target"));
 
@@ -4787,6 +4830,62 @@ mod tests {
             .expect("selected trusted device should keep expected identity");
 
         assert_eq!(target.device_id, "trusted-device");
+        assert_eq!(target.endpoint, "192.168.1.50:44777");
+        assert_eq!(expected_peer.device_id, "trusted-device");
+        assert_eq!(expected_peer.public_key_fingerprint, "trusted-fingerprint");
+        assert_eq!(expected_peer.public_key, "trusted-public-key");
+    }
+
+    #[test]
+    fn explicit_endpoint_pairing_target_ignores_stale_discovery_identity() {
+        crate::identity::set_test_config_dir(unique_test_dir("explicit-stale-discovery-target"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: Some("trusted-public-key".to_string()),
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.discovered_peers.insert(
+                "trusted-device".to_string(),
+                DiscoveredPeer {
+                    announcement: PeerAnnouncement {
+                        protocol_version: 1,
+                        device_id: "trusted-device".to_string(),
+                        name: "Stale Windows".to_string(),
+                        platform: "windows".to_string(),
+                        control_port: 44777,
+                        public_key_fingerprint: "stale-fingerprint".to_string(),
+                        role: ComputerRole::Client,
+                        public_key: "stale-public-key".to_string(),
+                        scan_request: false,
+                    },
+                    endpoint: "192.168.1.66:44777".to_string(),
+                    last_seen_at_ms: now_ms().saturating_sub(PEER_TIMEOUT_MS + 1),
+                },
+            );
+        }
+
+        let target = store
+            .pairing_target(super::PairRequest {
+                device_id: Some("trusted-device".to_string()),
+                endpoint: Some("192.168.1.50".to_string()),
+                manual_endpoint: false,
+            })
+            .expect("explicit endpoint should resolve");
+        let expected_peer = target
+            .expected_peer
+            .expect("trusted identity should be used after discovery expires");
+
         assert_eq!(target.endpoint, "192.168.1.50:44777");
         assert_eq!(expected_peer.device_id, "trusted-device");
         assert_eq!(expected_peer.public_key_fingerprint, "trusted-fingerprint");
