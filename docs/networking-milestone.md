@@ -135,6 +135,7 @@ Current scaffold behavior:
 - Reconnect backoff is tied to the current ordered endpoint candidates. If discovery, authenticated health, or a saved endpoint changes, the next loop retries immediately instead of waiting for the old endpoint's backoff window.
 - The reconnect loop also clears per-device retry backoff after a wake-like scheduler delay, so a laptop sleep or suspended app does not keep waiting on the old exponential backoff before trying trusted endpoints again.
 - Failed pong replies clear the matching receiver-side health entry and surface a UI network-error diagnostic.
+- Incoming reconnect ping authentication failures and trusted identity mismatches are also recorded as trusted-device failures with the sender's current control endpoint, so receiver-side diagnostics show the rejected reconnect source instead of only a transient network-error status.
 - Failed pings clear matching live health so offline state is visible quickly.
 - Failed reconnect attempts use bounded per-device exponential backoff up to 60 seconds.
 - Trusted device rows include a manual reconnect check that sends the same authenticated ping/pong and uses the same ordered endpoint candidates as the background reconnect loop, updates endpoint health immediately, and preserves the same specific failure reasons as background reconnect.

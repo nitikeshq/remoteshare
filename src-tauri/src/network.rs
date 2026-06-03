@@ -791,6 +791,19 @@ fn record_failed_input_source(
     );
 }
 
+fn record_failed_reconnect_source(
+    store: &RuntimeStore,
+    source: &PairingPeer,
+    sender: SocketAddr,
+    message: &str,
+) {
+    store.record_trusted_connection_failure(
+        &source.device_id,
+        &endpoint(sender, source.control_port),
+        message,
+    );
+}
+
 fn start_control_listener(app: AppHandle, store: RuntimeStore) {
     tauri::async_runtime::spawn(async move {
         let replay_cache = Arc::new(Mutex::new(ReplayCache::default()));
@@ -1085,14 +1098,17 @@ async fn handle_control_stream(
             if verify_received_message_with_replay(&received, &shared_secret, &replay_cache)
                 .is_err()
             {
+                let message = "Rejected reconnect ping because authentication failed.".to_string();
+                record_failed_reconnect_source(&store, &source, sender, &message);
+                let _ = app.emit("remoteshare://network-error", message);
+                let _ = app.emit("remoteshare://devices-changed", ());
                 return;
             }
             if !store.trusted_identity_matches(&source) {
-                let _ = app.emit(
-                    "remoteshare://network-error",
-                    "Rejected reconnect ping because trusted identity does not match."
-                        .to_string(),
-                );
+                let message =
+                    "Rejected reconnect ping because trusted identity does not match.".to_string();
+                record_failed_reconnect_source(&store, &source, sender, &message);
+                let _ = app.emit("remoteshare://network-error", message);
                 let _ = app.emit("remoteshare://devices-changed", ());
                 return;
             }
@@ -2492,6 +2508,28 @@ Wireless LAN adapter Wi-Fi:
             .and_then(|device| device.last_connection_failure.as_ref())
             .expect("trusted input auth failure should be visible");
         assert_eq!(failure.endpoint, "192.168.1.70:44777");
+        assert_eq!(failure.message, message);
+    }
+
+    #[test]
+    fn authenticated_reconnect_failure_records_source_failure() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-reconnect-auth-failure"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let source = peer("trusted-device", "trusted-fingerprint");
+        let sender = "192.168.1.71:50123".parse().unwrap();
+        let message = "Rejected reconnect ping because authentication failed.";
+
+        super::record_failed_reconnect_source(&store, &source, sender, message);
+
+        let status = store.status();
+        let failure = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure.as_ref())
+            .expect("trusted reconnect auth failure should be visible");
+        assert_eq!(failure.endpoint, "192.168.1.71:44777");
         assert_eq!(failure.message, message);
     }
 
