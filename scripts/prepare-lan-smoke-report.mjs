@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { validateManifestArtifactTypes } from "./release-artifacts-lib.mjs";
 
 const releaseAssetsRoot = process.argv[2] ?? "release-assets";
 const outputPath = process.argv[3] ?? "lan-smoke-report.md";
@@ -31,7 +32,7 @@ if (!Array.isArray(manifest.artifacts)) {
   throw new Error("Release manifest must contain an artifacts array.");
 }
 
-validateManifestArtifactTypes();
+validateManifestArtifactTypes(manifest.artifacts);
 
 const dmg = artifactForType("dmg");
 const exe = artifactForType("exe");
@@ -49,23 +50,6 @@ report = fillRow(report, "Linux installer SHA256", deb.sha256);
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, report);
 console.log(`Prepared LAN smoke report: ${outputPath}`);
-
-function validateManifestArtifactTypes() {
-  const requiredTypes = new Set(["dmg", "exe", "deb"]);
-  const seenTypes = new Set();
-  for (const artifact of manifest.artifacts) {
-    if (!artifact || typeof artifact !== "object" || typeof artifact.type !== "string") {
-      throw new Error("Release manifest artifact must have a type.");
-    }
-    if (!requiredTypes.has(artifact.type)) {
-      throw new Error(`Release manifest contains unexpected artifact type: ${artifact.type}`);
-    }
-    if (seenTypes.has(artifact.type)) {
-      throw new Error(`Release manifest contains duplicate artifact type: ${artifact.type}`);
-    }
-    seenTypes.add(artifact.type);
-  }
-}
 
 function artifactForType(type) {
   const artifact = manifest.artifacts.find((candidate) => candidate.type === type);

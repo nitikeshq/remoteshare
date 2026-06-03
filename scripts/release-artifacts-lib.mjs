@@ -58,6 +58,22 @@ export function publishArtifactStatus(artifacts) {
   return { duplicateTypes, missingTypes };
 }
 
+export function validateManifestArtifactTypes(artifacts) {
+  const seenTypes = new Set();
+  for (const artifact of artifacts) {
+    if (!artifact || typeof artifact !== "object" || typeof artifact.type !== "string") {
+      throw new Error("Release manifest artifact must have a type.");
+    }
+    if (!requiredArtifactTypes.has(artifact.type)) {
+      throw new Error(`Release manifest contains unexpected artifact type: ${artifact.type}`);
+    }
+    if (seenTypes.has(artifact.type)) {
+      throw new Error(`Release manifest contains duplicate artifact type: ${artifact.type}`);
+    }
+    seenTypes.add(artifact.type);
+  }
+}
+
 function walkFiles(directory, visit) {
   function walk(currentDirectory) {
     if (!fs.existsSync(currentDirectory)) return;

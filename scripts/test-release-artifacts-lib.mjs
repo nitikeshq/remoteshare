@@ -5,7 +5,8 @@ import {
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
   publishArtifactStatus,
-  requiredArtifactTypes
+  requiredArtifactTypes,
+  validateManifestArtifactTypes
 } from "./release-artifacts-lib.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-artifacts-lib-"));
@@ -55,6 +56,23 @@ try {
     "duplicate dmg"
   );
 
+  validateManifestArtifactTypes(artifacts);
+  assertThrows(
+    () => validateManifestArtifactTypes([{ file: "RemoteShare_0.1.13.dmg" }]),
+    "Release manifest artifact must have a type.",
+    "missing manifest type"
+  );
+  assertThrows(
+    () => validateManifestArtifactTypes([...artifacts, { file: "other.dmg", type: "dmg" }]),
+    "Release manifest contains duplicate artifact type: dmg",
+    "duplicate manifest type"
+  );
+  assertThrows(
+    () => validateManifestArtifactTypes([...artifacts, { file: "other.msi", type: "msi" }]),
+    "Release manifest contains unexpected artifact type: msi",
+    "unexpected manifest type"
+  );
+
   console.log("Release artifact helper tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
@@ -83,4 +101,15 @@ function assertStatus(actual, expected, label) {
     expected.missingTypes.join(","),
     `${label} missing types`
   );
+}
+
+function assertThrows(fn, expectedMessage, label) {
+  try {
+    fn();
+  } catch (error) {
+    assertEqual(error.message, expectedMessage, label);
+    return;
+  }
+
+  throw new Error(`${label}: expected error ${expectedMessage}`);
 }
