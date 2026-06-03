@@ -41,7 +41,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 3. Use the setup checklist `Copy` button on each computer to capture the local role, platform, first-MVP input direction, and checklist step states for the report context rows.
 4. Click `Scan LAN` on either computer.
 5. If the other computer appears, click `Pair`.
-6. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer. Before pairing manually, record a successful TCP `44777` probe such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
+6. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Use that endpoint row's `Evidence` button to capture the peer computer, label, endpoint, TCP port, and private-network state for the report. Record whether discovery was skipped, blocked, unavailable, or failed. Before pairing manually, record a successful TCP `44777` probe such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 7. If multiple endpoints are shown, prefer the `Best LAN IPv4` endpoint on the same Wi-Fi/LAN subnet as the other computer. Unique-local `LAN IPv6` or routable IPv6 fallback endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
 8. Confirm that both computers show the same six-digit code.
 9. Use the pending pairing row `Copy` button to capture direction, endpoint, visible code, typed-code state, local/remote approval, and expiry evidence.
@@ -81,7 +81,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | macOS role shown | Main | Main |
 | Windows role shown | Client | Client |
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
-| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, copied label recorded as `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
+| Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, local endpoint `Evidence` output records label `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
 | Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
 | Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake |

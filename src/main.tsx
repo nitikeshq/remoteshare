@@ -588,6 +588,17 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
   ].join(" | ");
 }
 
+function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: string) {
+  return [
+    "Local endpoint",
+    `This computer: ${status.thisDevice}`,
+    `Label: ${label}`,
+    `Endpoint: ${endpoint}`,
+    `TCP port: ${status.discovery.port}`,
+    `Private network only: ${status.privateNetworkOnly ? "enabled" : "disabled"}`
+  ].join("; ");
+}
+
 function receiveControlEvidence(status: RuntimeStatus, device: Device) {
   return [
     "Receive control",
@@ -989,6 +1000,17 @@ function App() {
       window.setTimeout(() => setCopiedEndpoint(null), 1800);
     } catch {
       showActionMessage(`Copy failed. ${label} endpoint: ${endpoint}`, true);
+    }
+  }
+
+  async function copyLocalEndpointEvidence(endpoint: string, label: string) {
+    const evidence = localEndpointEvidence(status, endpoint, label);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied local endpoint evidence.");
+    } catch (error) {
+      console.error(error);
+      showActionMessage(`Copy failed. Local endpoint evidence: ${evidence}`, true);
     }
   }
 
@@ -1720,19 +1742,29 @@ function App() {
                   {localEndpoints.map((endpoint, index) => {
                     const endpointLabel = localEndpointChoiceLabel(endpoint, index);
                     return (
-                      <button
-                        className="endpoint-copy"
-                        key={endpoint}
-                        onClick={() => copyLocalEndpoint(endpoint, endpointLabel)}
-                        type="button"
-                        title={`Copy ${endpointLabel} endpoint ${endpoint}`}
-                      >
-                        <Copy size={13} />
-                        <span className="endpoint-choice-label">
-                          {copiedEndpoint === endpoint ? "Copied" : endpointLabel}
-                        </span>
-                        <code>{endpoint}</code>
-                      </button>
+                      <div className="endpoint-copy-row" key={endpoint}>
+                        <button
+                          className="endpoint-copy"
+                          onClick={() => copyLocalEndpoint(endpoint, endpointLabel)}
+                          type="button"
+                          title={`Copy ${endpointLabel} endpoint ${endpoint}`}
+                        >
+                          <Copy size={13} />
+                          <span className="endpoint-choice-label">
+                            {copiedEndpoint === endpoint ? "Copied" : endpointLabel}
+                          </span>
+                          <code>{endpoint}</code>
+                        </button>
+                        <button
+                          className="endpoint-evidence-copy"
+                          onClick={() => copyLocalEndpointEvidence(endpoint, endpointLabel)}
+                          type="button"
+                          title="Copy local endpoint evidence"
+                        >
+                          <Copy size={12} />
+                          <span>Evidence</span>
+                        </button>
+                      </div>
                     );
                   })}
                   <small className="endpoint-hint">

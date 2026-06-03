@@ -398,6 +398,8 @@ function smokeReportFixture(name, passValue, options = {}) {
     "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: discovery; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const manualReconnectEvidence =
     "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
+  const localEndpointEvidence =
+    "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled";
   const capturedEvidenceNote =
     options.includeCapturedEvidenceNote === false
       ? ""
@@ -463,8 +465,8 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Field | Result |
 | --- | --- |
 | Discovery disabled, skipped, or failed | discovery skipped for manual fallback |
-| Manual endpoint copied from peer \`This computer\` row | copied from peer This computer row |
-| Copied endpoint label shown | Best LAN IPv4 shown next to copied endpoint |
+| Manual endpoint copied from peer \`This computer\` row | ${localEndpointEvidence} |
+| Copied endpoint label shown | ${localEndpointEvidence} |
 | Endpoint used | 192.168.1.20:44777 |
 | TCP \`44777\` reachable | reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded |
 | Pair action started | started |

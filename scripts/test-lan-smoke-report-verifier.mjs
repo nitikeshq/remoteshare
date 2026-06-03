@@ -589,13 +589,14 @@ try {
     vagueManualEndpointCopy,
     false,
     "vague manual endpoint copy should fail",
-    "Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint"
+    "Manual Fallback Run endpoint copy evidence must paste the peer computer's local endpoint Evidence output"
   );
 
   const missingManualEndpointLabel = writeReport("missing-manual-endpoint-label.md", {
     autoPass: "Pass",
     manualPass: "Pass",
-    omitLine: "| Copied endpoint label shown | Best LAN IPv4 shown next to copied endpoint |"
+    omitLine:
+      "| Copied endpoint label shown | Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled |"
   });
   runVerifier(
     missingManualEndpointLabel,
@@ -614,7 +615,7 @@ try {
     vagueManualEndpointLabel,
     false,
     "vague manual endpoint label should fail",
-    "Manual Fallback Run copied endpoint label evidence must mention Best LAN IPv4, LAN IPv4, or LAN IPv6 as shown in the UI"
+    "Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output"
   );
 
   const vagueManualTcpReachability = writeReport("vague-manual-tcp-reachability.md", {
@@ -1040,7 +1041,8 @@ try {
     manualPass: "Pass",
     omitLine: "",
     manualEndpoint: "[fd00::20]:44777",
-    manualEndpointLabel: "LAN IPv6 shown next to copied endpoint"
+    localEndpointEvidence:
+      "Local endpoint; This computer: Windows receiver; Label: LAN IPv6; Endpoint: [fd00::20]:44777; TCP port: 44777; Private network only: enabled"
   });
   runVerifier(
     ipv6ManualEndpoint,
@@ -1135,12 +1137,15 @@ function writeReport(name, options) {
   const windowsSha = options.windowsSha ?? "0".concat("b".repeat(63));
   const linuxSha = options.linuxSha ?? "0".concat("c".repeat(63));
   const manualEndpoint = options.manualEndpoint ?? "192.168.1.20:44777";
+  const localEndpointEvidence =
+    options.localEndpointEvidence ??
+    "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled";
   const manualDiscoveryFallback =
     options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
   const manualEndpointCopied =
-    options.manualEndpointCopied ?? "copied from peer This computer row";
+    options.manualEndpointCopied ?? localEndpointEvidence;
   const manualEndpointLabel =
-    options.manualEndpointLabel ?? "Best LAN IPv4 shown next to copied endpoint";
+    options.manualEndpointLabel ?? localEndpointEvidence;
   const manualTcpReachable =
     options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
   const autoPairAction = options.autoPairAction ?? "started";

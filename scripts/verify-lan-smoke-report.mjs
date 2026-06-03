@@ -339,16 +339,26 @@ function requireManualFallbackEvidence(table) {
   }
 
   const copied = requireFilled(table, "Manual endpoint copied from peer `This computer` row", "Manual Fallback Run").toLowerCase();
-  if (!/(copied|copy)/.test(copied) || !/(peer|other computer|remote|this computer|receiver|windows|client)/.test(copied)) {
-    throw new Error("Manual Fallback Run endpoint copy evidence must mention copying the peer computer's `This computer` endpoint.");
+  if (!isLocalEndpointCopyEvidence(copied) || !/(receiver|windows|client)/.test(copied)) {
+    throw new Error("Manual Fallback Run endpoint copy evidence must paste the peer computer's local endpoint Evidence output from the `This computer` row.");
   }
 }
 
 function requireManualEndpointLabelEvidence(table) {
   const value = requireFilled(table, "Copied endpoint label shown", "Manual Fallback Run").toLowerCase();
-  if (!/\b(best\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
-    throw new Error("Manual Fallback Run copied endpoint label evidence must mention Best LAN IPv4, LAN IPv4, or LAN IPv6 as shown in the UI.");
+  if (!isLocalEndpointCopyEvidence(value) || !/\blabel:\s*(best\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
+    throw new Error("Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Label: Best LAN IPv4, LAN IPv4, or LAN IPv6.");
   }
+}
+
+function isLocalEndpointCopyEvidence(value) {
+  return (
+    /local\s+endpoint/.test(value) &&
+    /this\s+computer:\s*[^;|]+/.test(value) &&
+    /\blabel:\s*[^;|]+/.test(value) &&
+    /\bendpoint:\s*[^;|]+/.test(value) &&
+    /\btcp\s+port:\s*44777\b/.test(value)
+  );
 }
 
 function requireManualTcpReachabilityEvidence(table) {

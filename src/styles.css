@@ -374,6 +374,13 @@ input {
   padding-right: 2px;
 }
 
+.endpoint-copy-row {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 4px;
+  max-width: 100%;
+}
+
 .endpoint-copy {
   display: inline-flex;
   align-items: center;
@@ -390,6 +397,23 @@ input {
   font-size: 12px;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.endpoint-evidence-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  border: 1px solid #bdd5d1;
+  border-radius: 8px;
+  padding: 0 7px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .endpoint-copy svg {
