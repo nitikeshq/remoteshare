@@ -6,20 +6,21 @@ import { spawnSync } from "node:child_process";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-smoke-report-rows-"));
 const helper = path.resolve("scripts/smoke-report-release-rows.mjs");
+const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 
 try {
   const valid = fixture("valid", [
-    ["dmg", "RemoteShare_0.1.13_aarch64.dmg", "valid dmg"],
-    ["exe", "RemoteShare_0.1.13_x64-setup.exe", "valid exe"],
-    ["deb", "RemoteShare_0.1.13_amd64.deb", "valid deb"]
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
   ]);
   runHelper(valid, true, "valid release rows should pass", [
-    "| RemoteShare version/tag | v0.1.13 |",
-    "| macOS installer file | RemoteShare_0.1.13_aarch64.dmg |",
+    `| RemoteShare version/tag | v${packageVersion} |`,
+    `| macOS installer file | RemoteShare_${packageVersion}_aarch64.dmg |`,
     `| macOS installer SHA256 | ${sha256("valid dmg")} |`,
-    "| Windows installer file | RemoteShare_0.1.13_x64-setup.exe |",
+    `| Windows installer file | RemoteShare_${packageVersion}_x64-setup.exe |`,
     `| Windows installer SHA256 | ${sha256("valid exe")} |`,
-    "| Linux installer file | RemoteShare_0.1.13_amd64.deb |",
+    `| Linux installer file | RemoteShare_${packageVersion}_amd64.deb |`,
     `| Linux installer SHA256 | ${sha256("valid deb")} |`
   ]);
 
@@ -28,34 +29,70 @@ try {
   runHelper(missingManifest, false, "missing manifest should fail", ["Missing release manifest"]);
 
   const missingExe = fixture("missing-exe", [
-    ["dmg", "RemoteShare_0.1.13_aarch64.dmg", "valid dmg"],
-    ["deb", "RemoteShare_0.1.13_amd64.deb", "valid deb"]
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
   ]);
   runHelper(missingExe, false, "missing exe should fail", ["missing exe artifact"]);
 
   const missingDeb = fixture("missing-deb", [
-    ["dmg", "RemoteShare_0.1.13_aarch64.dmg", "valid dmg"],
-    ["exe", "RemoteShare_0.1.13_x64-setup.exe", "valid exe"]
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"]
   ]);
   runHelper(missingDeb, false, "missing deb should fail", ["missing deb artifact"]);
+
+  const wrongManifestVersion = fixture(
+    "wrong-manifest-version",
+    [
+      ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+    ],
+    "9.9.9"
+  );
+  runHelper(wrongManifestVersion, false, "wrong manifest version should fail", [
+    `Release manifest version must match package version ${packageVersion}`
+  ]);
+
+  const missingFile = fixture("missing-file", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe", { writeFile: false }],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runHelper(missingFile, false, "missing artifact file should fail", [
+    `Release manifest exe artifact file is missing: RemoteShare_${packageVersion}_x64-setup.exe`
+  ]);
+
+  const hashMismatch = fixture("hash-mismatch", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe", { sha256: "0".repeat(64) }],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runHelper(hashMismatch, false, "artifact hash mismatch should fail", [
+    `Release manifest exe artifact hash mismatch: RemoteShare_${packageVersion}_x64-setup.exe`
+  ]);
 
   console.log("Smoke report release row tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function fixture(name, files) {
+function fixture(name, files, version = packageVersion) {
   const directory = path.join(root, name);
   fs.mkdirSync(directory, { recursive: true });
-  const artifacts = files.map(([type, file, body]) => ({
-    file,
-    sha256: sha256(body),
-    sizeBytes: Buffer.byteLength(body),
-    type
-  }));
+  const artifacts = files.map(([type, file, body, options = {}]) => {
+    if (options.writeFile !== false) {
+      fs.writeFileSync(path.join(directory, file), body);
+    }
+    return {
+      file,
+      sha256: options.sha256 ?? sha256(body),
+      sizeBytes: options.sizeBytes ?? Buffer.byteLength(body),
+      type
+    };
+  });
   fs.writeFileSync(
     path.join(directory, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ artifacts }, null, 2)}\n`
+    `${JSON.stringify({ version, artifacts }, null, 2)}\n`
   );
   return directory;
 }
