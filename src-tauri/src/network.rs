@@ -2550,14 +2550,15 @@ Wireless LAN adapter Wi-Fi:
     async fn capture_forwarding_requires_receiver_acknowledgement() {
         crate::identity::set_test_config_dir(unique_test_dir("capture-input-ack"));
 
-        let Some(listener) = bind_localhost_listener_or_skip("capture forwarding ack").await else {
+        let Some((listener, endpoint)) =
+            bind_private_lan_listener_or_skip("capture forwarding ack").await
+        else {
             return;
         };
-        let endpoint = listener.local_addr().expect("listener should have address");
-        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let store = trusted_store_for_network_test(&endpoint);
         let target = TrustedReconnectTarget {
             device_id: "trusted-device".to_string(),
-            endpoints: vec![endpoint.to_string()],
+            endpoints: vec![endpoint.clone()],
             public_key_fingerprint: "trusted-fingerprint".to_string(),
             public_key: None,
             shared_secret: "shared-secret".to_string(),
@@ -2607,7 +2608,7 @@ Wireless LAN adapter Wi-Fi:
             .find(|device| device.id == "trusted-device")
             .and_then(|device| device.last_connection_failure.as_ref())
             .expect("receiver rejection should be visible on trusted device");
-        assert_eq!(failure.endpoint, endpoint.to_string());
+        assert_eq!(failure.endpoint, endpoint);
         assert_eq!(
             failure.message,
             "Rejected input event: receive control is disabled."
@@ -3375,6 +3376,48 @@ Wireless LAN adapter Wi-Fi:
             Ok(listener) => Some(listener),
             Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
                 eprintln!("skipping {test_name}: localhost bind denied by environment");
+                None
+            }
+            Err(error) => panic!("{test_name} listener should bind: {error}"),
+        }
+    }
+
+    async fn bind_private_lan_listener_or_skip(
+        test_name: &str,
+    ) -> Option<(TcpListener, String)> {
+        let mut addresses = super::platform_local_ipv4_addresses()
+            .into_iter()
+            .filter(|address| address.is_private())
+            .collect::<Vec<_>>();
+        addresses.sort_by_key(|address| {
+            (
+                super::local_ipv4_endpoint_priority(*address),
+                u32::from(*address),
+            )
+        });
+        let Some(address) = addresses.first().copied() else {
+            eprintln!("skipping {test_name}: no private non-loopback IPv4 address available");
+            return None;
+        };
+
+        match TcpListener::bind(std::net::SocketAddrV4::new(
+            std::net::Ipv4Addr::UNSPECIFIED,
+            0,
+        ))
+        .await
+        {
+            Ok(listener) => {
+                let port = listener
+                    .local_addr()
+                    .expect("listener should have address")
+                    .port();
+                Some((
+                    listener,
+                    std::net::SocketAddrV4::new(address, port).to_string(),
+                ))
+            }
+            Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("skipping {test_name}: private LAN bind denied by environment");
                 None
             }
             Err(error) => panic!("{test_name} listener should bind: {error}"),
