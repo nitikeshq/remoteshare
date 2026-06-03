@@ -5201,6 +5201,41 @@ mod tests {
     }
 
     #[test]
+    fn remote_pairing_approval_rejects_expired_pairing() {
+        crate::identity::set_test_config_dir(unique_test_dir("pairing-approval-expired"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.pending_pairings.insert(
+                "pair-remote-device".to_string(),
+                expired_pairing("remote-device", "123456"),
+            );
+        }
+
+        let error = store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-device-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "192.168.1.50:44777".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("expired pairing approval should be rejected");
+
+        assert_eq!(error, "Pairing request expired. Start pairing again.");
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(!state.pending_pairings.contains_key("pair-remote-device"));
+        assert!(state.persisted.trusted_devices.is_empty());
+    }
+
+    #[test]
     fn approved_pending_pairing_cannot_be_replaced() {
         crate::identity::set_test_config_dir(unique_test_dir("approved-pairing-replace"));
 
