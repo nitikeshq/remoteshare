@@ -1515,6 +1515,12 @@ impl RuntimeStore {
         let endpoint = normalized_endpoint(endpoint).unwrap_or_else(|| endpoint.to_string());
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return;
+        }
         if !state
             .persisted
             .trusted_devices
@@ -6118,6 +6124,37 @@ mod tests {
         );
         let state = store.state.lock().expect("runtime state poisoned");
         assert!(state.connection_health.get("trusted-device").is_none());
+    }
+
+    #[test]
+    fn private_network_guard_ignores_public_connection_failures() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-failure-public-guard"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_trusted_connection_failure(
+            "trusted-device",
+            "8.8.8.8:44777",
+            "connection timed out",
+        );
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_failures.get("trusted-device").is_none());
     }
 
     #[test]
