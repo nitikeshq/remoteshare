@@ -274,11 +274,35 @@ fn preserve_failed_state(error: &IdentityError) {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
-    let backup_path = path.with_extension(format!("json.failed-{timestamp}"));
+    let backup_path = failed_state_backup_path(&path, timestamp);
     if fs::copy(&path, &backup_path).is_ok() {
         let _ = secure_state_file(&backup_path);
         let _ = sync_state_parent(&path);
     }
+}
+
+fn failed_state_backup_path(path: &PathBuf, timestamp: u64) -> PathBuf {
+    let extension = format!("json.failed-{timestamp}");
+    let backup_path = path.with_extension(&extension);
+    if !backup_path.exists() {
+        return backup_path;
+    }
+
+    for index in 1..1000 {
+        let backup_path = path.with_extension(format!("{extension}-{index}"));
+        if !backup_path.exists() {
+            return backup_path;
+        }
+    }
+
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    path.with_extension(format!(
+        "{extension}-{}-{suffix}",
+        std::process::id()
+    ))
 }
 
 fn config_dir() -> PathBuf {
@@ -339,7 +363,9 @@ mod tests {
 
     use crate::crypto::fingerprint_from_public_key;
 
-    use super::{set_test_config_dir, ComputerRole, PersistedState, STATE_FILE};
+    use super::{
+        failed_state_backup_path, set_test_config_dir, ComputerRole, PersistedState, STATE_FILE,
+    };
 
     #[test]
     fn parses_older_state_with_missing_optional_fields() {
@@ -460,6 +486,37 @@ mod tests {
                     .starts_with("state.json.failed-")
             });
         assert!(backup_exists, "corrupt state should be backed up");
+    }
+
+    #[test]
+    fn corrupt_state_backup_path_avoids_existing_backup() {
+        let dir = std::env::temp_dir().join(format!(
+            "remoteshare-corrupt-state-backup-collision-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("test config dir should be created");
+        let state_path = dir.join(STATE_FILE);
+
+        let first_backup = failed_state_backup_path(&state_path, 42);
+        assert_eq!(
+            first_backup.file_name().and_then(|name| name.to_str()),
+            Some("state.json.failed-42")
+        );
+        fs::write(&first_backup, "first failed state").expect("first backup should be written");
+
+        let second_backup = failed_state_backup_path(&state_path, 42);
+        assert_eq!(
+            second_backup.file_name().and_then(|name| name.to_str()),
+            Some("state.json.failed-42-1")
+        );
+        fs::write(&second_backup, "second failed state").expect("second backup should be written");
+
+        let third_backup = failed_state_backup_path(&state_path, 42);
+        assert_eq!(
+            third_backup.file_name().and_then(|name| name.to_str()),
+            Some("state.json.failed-42-2")
+        );
     }
 
     #[cfg(unix)]

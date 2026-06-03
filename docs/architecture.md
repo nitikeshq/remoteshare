@@ -46,7 +46,7 @@ RemoteShare runs on every computer. One machine can act as the host that capture
 - Persisted identities, settings, trusted devices, and manual endpoints are stored under the per-user RemoteShare config directory.
 - On Unix-like systems, the config directory is written with `0700` permissions and `state.json` is written with `0600` permissions. State saves write and sync a temporary file, rename it into place, then sync the parent directory on Unix so identity and trusted-secret updates are less likely to be lost after a crash. OS keychain storage is still planned before broader public testing.
 - Missing fields from early scaffold builds default safely during load, so upgrades preserve the local device identity and trusted-device list instead of replacing state.
-- If the persisted state file cannot be parsed or read, the failed state is copied to a timestamped backup before a fresh identity is created, so trusted-device recovery remains possible during testing. Failed-state backups are also forced to private `0600` permissions on Unix because they can contain identity keys and trusted shared secrets.
+- If the persisted state file cannot be parsed or read, the failed state is copied to a timestamped backup before a fresh identity is created, so trusted-device recovery remains possible during testing. Backup names add a numeric suffix instead of overwriting an existing failed-state copy from the same second. Failed-state backups are also forced to private `0600` permissions on Unix because they can contain identity keys and trusted shared secrets.
 
 ## Network Engineering Notes
 
