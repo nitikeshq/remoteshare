@@ -437,6 +437,7 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Pair action started | started |
 | Same six-digit code shown on both machines | confirmed |
 | Six-digit code typed on both machines | confirmed |
+| Pairing evidence copied from pending row | Pairing: Outgoing; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
 | \`Auto reconnect\` enabled after restart/wake | enabled after restart |
@@ -465,6 +466,7 @@ ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/cli
 | Pair action started | started |
 | Same six-digit code shown on both machines | confirmed |
 | Six-digit code typed on both machines | confirmed |
+| Pairing evidence copied from pending row | Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
 | \`Trusted\` shown on both machines | shown |
 | Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
 | \`Auto reconnect\` enabled after restart/wake | enabled after restart |

@@ -548,7 +548,7 @@ function pairingEvidence(pairing: PendingPairing, enteredCode: string, nowMs: nu
     `Local: ${approvalLabel(pairing.localApproved)}`,
     `Remote: ${approvalLabel(pairing.remoteApproved)}`,
     `Expires: ${pairingExpiryLabel(pairing, nowMs)}`
-  ].join(" | ");
+  ].join("; ");
 }
 
 function statusValueLabel(value: PermissionState | EngineState | ServiceHealthState) {

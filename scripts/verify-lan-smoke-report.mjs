@@ -50,6 +50,7 @@ const requiredAutoFields = [
   "Pair action started",
   "Same six-digit code shown on both machines",
   "Six-digit code typed on both machines",
+  "Pairing evidence copied from pending row",
   "`Trusted` shown on both machines",
   "Full fingerprint copied or visually compared",
   "`Auto reconnect` enabled after restart/wake",
@@ -76,6 +77,7 @@ const requiredManualFields = [
   "Pair action started",
   "Same six-digit code shown on both machines",
   "Six-digit code typed on both machines",
+  "Pairing evidence copied from pending row",
   "`Trusted` shown on both machines",
   "Full fingerprint copied or visually compared",
   "`Auto reconnect` enabled after restart/wake",
@@ -144,6 +146,8 @@ for (const field of successFields) {
 }
 requireFingerprintEvidence(autoDiscovery, "Auto-Discovery Run");
 requireFingerprintEvidence(manualFallback, "Manual Fallback Run");
+requirePairingEvidence(autoDiscovery, "Auto-Discovery Run");
+requirePairingEvidence(manualFallback, "Manual Fallback Run");
 requireReconnectEvidence(autoDiscovery, "Auto-Discovery Run");
 requireReconnectEvidence(manualFallback, "Manual Fallback Run");
 requireEndpointSourceEvidence(
@@ -260,6 +264,20 @@ function requireFingerprintEvidence(table, section) {
     !/(peer|windows|receiver|client)/.test(value)
   ) {
     throw new Error(`${section} fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view.`);
+  }
+}
+
+function requirePairingEvidence(table, section) {
+  const value = requireFilled(table, "Pairing evidence copied from pending row", section).toLowerCase();
+  if (
+    !/pairing:\s*(incoming|outgoing)/.test(value) ||
+    !/visible\s+code:\s*\d{6}/.test(value) ||
+    !/typed\s+code\s+state:\s*(codes\s+match|expired|code\s+mismatch|\d+\s+digits?\s+left|type\s+other\s+code)/.test(value) ||
+    !/local:\s*(approved|pending)/.test(value) ||
+    !/remote:\s*(approved|pending)/.test(value) ||
+    !/expires:/.test(value)
+  ) {
+    throw new Error(`${section} pairing evidence must paste the pending-row copy output with direction, visible code, typed-code state, local/remote approval, and expiry.`);
   }
 }
 

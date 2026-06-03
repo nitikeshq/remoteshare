@@ -391,6 +391,19 @@ try {
     "Manual Fallback Run field must show success: Six-digit code typed on both machines"
   );
 
+  const vaguePairingEvidence = writeReport("vague-pairing-evidence.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoPairingEvidence: "copied"
+  });
+  runVerifier(
+    vaguePairingEvidence,
+    false,
+    "vague pairing evidence should fail",
+    "Auto-Discovery Run pairing evidence must paste the pending-row copy output"
+  );
+
   const vagueReconnect = writeReport("vague-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -1070,7 +1083,13 @@ function writeReport(name, options) {
     options.manualTcpReachable ?? "reachable on TCP 44777 via Test-NetConnection TcpTestSucceeded";
   const autoPairAction = options.autoPairAction ?? "started";
   const autoCodeTyped = options.autoCodeTyped ?? "confirmed";
+  const autoPairingEvidence =
+    options.autoPairingEvidence ??
+    "Pairing: Outgoing; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left";
   const manualCodeTyped = options.manualCodeTyped ?? "confirmed";
+  const manualPairingEvidence =
+    options.manualPairingEvidence ??
+    "Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left";
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
   const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
@@ -1131,6 +1150,7 @@ function writeReport(name, options) {
     `| Pair action started | ${autoPairAction} |`,
     "| Same six-digit code shown on both machines | confirmed |",
     `| Six-digit code typed on both machines | ${autoCodeTyped} |`,
+    `| Pairing evidence copied from pending row | ${autoPairingEvidence} |`,
     "| `Trusted` shown on both machines | shown |",
     `| Full fingerprint copied or visually compared | ${autoFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEnabled} |`,
@@ -1160,6 +1180,7 @@ function writeReport(name, options) {
     "| Pair action started | started |",
     "| Same six-digit code shown on both machines | confirmed |",
     `| Six-digit code typed on both machines | ${manualCodeTyped} |`,
+    `| Pairing evidence copied from pending row | ${manualPairingEvidence} |`,
     "| `Trusted` shown on both machines | shown |",
     `| Full fingerprint copied or visually compared | ${manualFingerprint} |`,
     `| \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEnabled} |`,
