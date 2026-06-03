@@ -33,6 +33,9 @@ try {
   assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
+  assertIncludes(summary, "Blocking issues: none", "clear blocking issue notes evidence");
+  assertIncludes(summary, "Retest required: no", "clear retest notes evidence");
+  assertIncludes(summary, "unresolved blocking issues or required retests fail release readiness", "notes readiness gate");
   assertIncludes(summary, "Do not publish the draft release until both verification commands pass", "draft publish gate");
 
   const missingManifest = path.join(root, "missing-manifest");
