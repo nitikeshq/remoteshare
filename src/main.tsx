@@ -727,6 +727,19 @@ function App() {
     }
   }
 
+  function restoreManualPairAfterTrustedUpdate(message: string) {
+    const copiedEndpoint = manualEndpoint.trim();
+    setEndpointUpdateDeviceId(null);
+    if (copiedEndpoint) {
+      setManualEndpoint(copiedEndpoint);
+      setManualEndpointDirty(true);
+    } else {
+      setManualEndpoint(status.discovery.manualEndpoint ?? "");
+      setManualEndpointDirty(false);
+    }
+    showActionMessage(message, true);
+  }
+
   async function submitManualConnect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!manualEndpoint.trim()) return;
@@ -737,10 +750,9 @@ function App() {
         (device) => device.id === endpointUpdateDeviceId && device.trusted && device.inputControlReady
       )
     ) {
-      setEndpointUpdateDeviceId(null);
-      setManualEndpoint(status.discovery.manualEndpoint ?? "");
-      setManualEndpointDirty(false);
-      showActionMessage("Trusted IP update target needs re-pairing. Manual pair field restored.", true);
+      restoreManualPairAfterTrustedUpdate(
+        "Trusted IP update target needs re-pairing. Manual pair field kept for re-pairing."
+      );
       return;
     }
 
@@ -1034,22 +1046,21 @@ function App() {
   );
   useEffect(() => {
     if (!endpointUpdateDeviceId || endpointUpdateDevice) return;
-    setEndpointUpdateDeviceId(null);
-    setManualEndpoint(status.discovery.manualEndpoint ?? "");
-    setManualEndpointDirty(false);
-    showActionMessage("Trusted IP update target is no longer available. Manual pair field restored.", true);
-  }, [endpointUpdateDevice, endpointUpdateDeviceId, status.discovery.manualEndpoint]);
+    restoreManualPairAfterTrustedUpdate(
+      "Trusted IP update target is no longer available. Manual pair field kept."
+    );
+  }, [endpointUpdateDevice, endpointUpdateDeviceId, manualEndpoint, status.discovery.manualEndpoint]);
   useEffect(() => {
     if (!endpointUpdateDeviceId || !endpointUpdateDevice) return;
     if (!endpointUpdateDevice.inputControlReady) {
-      setEndpointUpdateDeviceId(null);
-      setManualEndpoint(status.discovery.manualEndpoint ?? "");
-      setManualEndpointDirty(false);
-      showActionMessage("Trusted IP update target needs re-pairing. Manual pair field restored.", true);
+      restoreManualPairAfterTrustedUpdate(
+        "Trusted IP update target needs re-pairing. Manual pair field kept for re-pairing."
+      );
     }
   }, [
     endpointUpdateDevice,
     endpointUpdateDeviceId,
+    manualEndpoint,
     status.discovery.manualEndpoint
   ]);
   const reconnectChecksAvailable =
