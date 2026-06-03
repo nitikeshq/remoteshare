@@ -487,7 +487,7 @@ pub async fn send_test_input(store: RuntimeStore, request: SendInputRequest) -> 
         .await
         {
             Ok(Some(ControlMessage::InputAck { ok: true, message })) => {
-                if let Err(error) = store.record_trusted_connection(
+                if let Err(error) = store.record_interactive_trusted_connection(
                     request.device_id.clone(),
                     endpoint.clone(),
                     None,
@@ -586,7 +586,7 @@ pub async fn check_trusted_device(
 
         if reconnect_pong_matches(&reconnect_result, &target, &challenge) {
             let latency_ms = started.elapsed().as_millis().min(u16::MAX as u128) as u16;
-            return match store.record_trusted_connection(
+            return match store.record_interactive_trusted_connection(
                 target.device_id,
                 endpoint.clone(),
                 Some(latency_ms),
@@ -758,7 +758,11 @@ async fn send_input_to_target(
         {
             Ok(Some(ControlMessage::InputAck { ok: true, .. })) => {
                 store
-                    .record_trusted_connection(target.device_id.clone(), endpoint.clone(), None)
+                    .record_interactive_trusted_connection(
+                        target.device_id.clone(),
+                        endpoint.clone(),
+                        None,
+                    )
                     .map_err(std::io::Error::other)?;
                 store.record_outgoing_input(target.device_id.clone(), event);
                 return Ok(());

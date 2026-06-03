@@ -1583,6 +1583,21 @@ impl RuntimeStore {
         )
     }
 
+    pub fn record_interactive_trusted_connection(
+        &self,
+        device_id: String,
+        endpoint: String,
+        latency_ms: Option<u16>,
+    ) -> Result<(), String> {
+        self.record_trusted_connection_with_source(
+            device_id,
+            endpoint,
+            latency_ms,
+            EndpointSource::Health,
+            true,
+        )
+    }
+
     pub fn record_verified_manual_trusted_endpoint(
         &self,
         device_id: String,
@@ -4995,6 +5010,51 @@ mod tests {
                 Some(7),
             )
             .expect_err("manual verified endpoint should reject a forgotten device");
+
+        assert_eq!(error, "Device is no longer trusted.");
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
+        assert!(state.connection_failures.get("trusted-device").is_none());
+        assert!(state
+            .persisted
+            .trusted_devices
+            .iter()
+            .all(|device| device.id != "trusted-device"));
+    }
+
+    #[test]
+    fn interactive_trusted_connection_rejects_forgotten_device_without_ghost_health() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-interactive-forgotten"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.forget_trusted_device(super::DeviceTrustRequest {
+            device_id: "trusted-device".to_string(),
+        });
+        assert!(action.ok);
+
+        let error = store
+            .record_interactive_trusted_connection(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect_err("interactive trusted health should reject a forgotten device");
 
         assert_eq!(error, "Device is no longer trusted.");
         let state = store.state.lock().expect("runtime state poisoned");
