@@ -71,6 +71,7 @@ Requirements:
 npm run typecheck
 npm run doctor
 npm run test:rust
+npm run verify:release-scripts
 npm run verify:release
 npm run verify:github-release-assets -- github-release.json release-assets
 ```
