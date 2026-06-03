@@ -327,7 +327,7 @@ input {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 26px;
+  min-height: 30px;
   max-width: 100%;
   flex: 0 1 auto;
   border: 1px solid #bdd5d1;
@@ -343,6 +343,24 @@ input {
 
 .endpoint-copy svg {
   flex: 0 0 auto;
+}
+
+.endpoint-copy code {
+  color: #134e4a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.endpoint-choice-label {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 2px 5px;
+  color: #ffffff;
+  background: #0f766e;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .endpoint-hint {

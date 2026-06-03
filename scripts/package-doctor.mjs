@@ -214,7 +214,7 @@ check("First LAN runbook documents Windows Defender Firewall setup", firstLanTes
 check("First LAN runbook scopes Windows firewall rules to Private", firstLanTest.includes("-Profile Private"));
 check("First LAN runbook documents macOS firewall setup", firstLanTest.includes("System Settings > Network > Firewall") && firstLanTest.includes("allow incoming connections for RemoteShare"));
 check("First LAN runbook documents manual pair fallback", firstLanTest.includes("Manual pair") && firstLanTest.includes("Record whether discovery was skipped, blocked, unavailable, or failed") && firstLanTest.includes("endpoint was copied from the peer computer") && firstLanTest.includes("successful TCP `44777` probe"));
-check("First LAN runbook explains choosing among local endpoints", firstLanTest.includes("If multiple endpoints are shown") && firstLanTest.includes("routable IPv6 endpoints can be used") && firstLanTest.includes("link-local IPv6"));
+check("First LAN runbook explains choosing among local endpoints", firstLanTest.includes("If multiple endpoints are shown") && firstLanTest.includes("Best LAN IPv4") && firstLanTest.includes("LAN IPv6") && firstLanTest.includes("routable IPv6 fallback endpoints can be used") && firstLanTest.includes("link-local IPv6"));
 check("First LAN runbook documents local-only and public endpoint rejection", firstLanTest.includes("Manual pair rejects `localhost`") && firstLanTest.includes("localhost.localdomain") && firstLanTest.includes("0.0.0.0") && firstLanTest.includes("public literal IPs while `Private network only` is enabled"));
 check("First LAN runbook documents Windows TCP reachability check", firstLanTest.includes("Test-NetConnection <other-computer-ip> -Port 44777"));
 check("First LAN runbook requires manual code entry", firstLanTest.includes("Type the six-digit code shown on the other computer"));
@@ -362,7 +362,7 @@ check("UI does not keep decorative sidebar nav", !appUi.includes("className=\"na
 check("UI exposes local computer role selector", appUi.includes("This computer role") && appUi.includes("value=\"main\"") && appUi.includes("value=\"client\"") && appUi.includes("value=\"both\"") && appUi.includes("roleLabel(status.mode)"));
 check("UI shows peer roles in device, audit, and pairing rows", appUi.includes("{device.platform} · {roleLabel(device.role)} · {connectionLabel(device)}") && appUi.includes("<dt>Role</dt>") && appUi.includes("{roleLabel(pairing.role)}"));
 check("UI exposes private network guard setting", appUi.includes("Private network only") && appUi.includes("privateNetworkOnly"));
-check("UI explains local endpoint choice", appUi.includes("same Wi-Fi/LAN subnet") && appUi.includes("IPv6 is available for manual fallback"));
+check("UI explains local endpoint choice", appUi.includes("localEndpointChoiceLabel") && appUi.includes("Best LAN IPv4") && appUi.includes("LAN IPv4") && appUi.includes("LAN IPv6") && appUi.includes("IPv6 fallback") && appUi.includes("Fallback IPv4") && appUi.includes("same Wi-Fi/LAN subnet"));
 check("UI shows all copyable local endpoints", appUi.includes("localEndpoints.map") && !appUi.includes("localEndpoints.slice"));
 check("UI can copy full trusted fingerprint", appUi.includes("copyFingerprint") && appUi.includes("Full fingerprint"));
 check("Runtime exposes local public key fingerprint for audit", runtimeStore.includes("this_public_key_fingerprint") && runtimeStore.includes("status_exposes_local_public_key_fingerprint_for_audit") && appUi.includes("thisPublicKeyFingerprint"));

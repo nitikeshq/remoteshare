@@ -41,7 +41,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 3. Click `Scan LAN` on either computer.
 4. If the other computer appears, click `Pair`.
 5. If discovery does not find the other computer, copy a `This computer` endpoint from the diagnostics row on one machine and paste it into `Manual pair` on the other. Record whether discovery was skipped, blocked, unavailable, or failed, and record that the endpoint was copied from the peer computer. Before pairing manually, record a successful TCP `44777` probe such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
-6. If multiple endpoints are shown, prefer the IPv4 Wi-Fi/LAN address on the same subnet as the other computer. Unique-local or routable IPv6 endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
+6. If multiple endpoints are shown, prefer the `Best LAN IPv4` endpoint on the same Wi-Fi/LAN subnet as the other computer. Unique-local `LAN IPv6` or routable IPv6 fallback endpoints can be used for manual fallback when both computers and the network support IPv6. Avoid VPN, loopback, hotspot, link-local IPv6, or cellular addresses for the first LAN test.
 7. Confirm that both computers show the same six-digit code.
 8. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
 9. Verify that the device row shows `Trusted` and a shortened key fingerprint.

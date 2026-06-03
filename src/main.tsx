@@ -223,6 +223,35 @@ function elapsedLabel(atMs: number) {
   return `${elapsedHours}h ago`;
 }
 
+function localEndpointHost(endpoint: string) {
+  const trimmed = endpoint.trim();
+  if (trimmed.startsWith("[")) {
+    const end = trimmed.indexOf("]");
+    return end > 1 ? trimmed.slice(1, end) : trimmed;
+  }
+  const colon = trimmed.lastIndexOf(":");
+  return colon > -1 ? trimmed.slice(0, colon) : trimmed;
+}
+
+function isPrivateIpv4(host: string) {
+  const parts = host.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  return (
+    parts[0] === 10 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168)
+  );
+}
+
+function localEndpointChoiceLabel(endpoint: string, index: number) {
+  const host = localEndpointHost(endpoint).toLowerCase();
+  if (isPrivateIpv4(host)) return index === 0 ? "Best LAN IPv4" : "LAN IPv4";
+  if (host.includes(":")) return host.startsWith("fc") || host.startsWith("fd") ? "LAN IPv6" : "IPv6 fallback";
+  return "Fallback IPv4";
+}
+
 function endpointSourceLabel(device: Device) {
   if (!device.endpoint) return "no endpoint";
   if (device.endpointSource === "discovery") return "discovery";
@@ -1332,7 +1361,7 @@ function App() {
               <strong>{localEndpoints.length > 0 ? "Endpoint visible" : "Endpoint unknown"}</strong>
               {localEndpoints.length > 0 ? (
                 <div className="endpoint-list">
-                  {localEndpoints.map((endpoint) => (
+                  {localEndpoints.map((endpoint, index) => (
                     <button
                       className="endpoint-copy"
                       key={endpoint}
@@ -1341,11 +1370,14 @@ function App() {
                       title={`Copy ${endpoint}`}
                     >
                       <Copy size={13} />
-                      {copiedEndpoint === endpoint ? "Copied" : endpoint}
+                      <span className="endpoint-choice-label">
+                        {copiedEndpoint === endpoint ? "Copied" : localEndpointChoiceLabel(endpoint, index)}
+                      </span>
+                      <code>{endpoint}</code>
                     </button>
                   ))}
                   <small className="endpoint-hint">
-                    Prefer the IPv4 address on the same Wi-Fi/LAN subnet; IPv6 is available for manual fallback.
+                    Prefer Best LAN IPv4 on the same Wi-Fi/LAN subnet; use LAN IPv6 only when both computers support IPv6.
                   </small>
                 </div>
               ) : (
