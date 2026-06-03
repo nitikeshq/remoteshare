@@ -26,6 +26,10 @@ try {
   assertIncludes(summary, "role, platform, first-MVP input direction, and checklist step evidence", "setup copied fields");
   assertIncludes(summary, "Mac input permissions: done", "mac permission setup evidence");
   assertIncludes(summary, "Accessibility and Input Monitoring", "mac permission copied fields");
+  assertIncludes(summary, "model/version rows", "physical machine context evidence");
+  assertIncludes(summary, "physical Mac and Windows computers plus OS versions", "physical machine context copied fields");
+  assertIncludes(summary, "MacBook Pro M2 / macOS 15", "mac physical machine example");
+  assertIncludes(summary, "Windows laptop PC / Windows 11", "windows physical machine example");
   assertIncludes(summary, "allowed/successful rules for TCP `44777` and UDP `44778`", "firewall port evidence");
   assertIncludes(summary, "pending pairing row `Copy` button", "pairing copy evidence");
   assertIncludes(summary, "pairing direction, this computer, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
