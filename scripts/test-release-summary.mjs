@@ -110,7 +110,7 @@ try {
     "macOS DMG: present (1)",
     "Windows EXE: present (1)",
     "Linux DEB: present (1)",
-    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, and version-matched.",
+    "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, and release-manifest verified.",
     `Release manifest generatedAt: ${generatedAt}`
   ]);
 

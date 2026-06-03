@@ -131,7 +131,7 @@ const readinessIssues = [
 ];
 console.log(
   readinessIssues.length === 0
-    ? "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, and version-matched."
+    ? "Publish readiness: exactly one installer per platform is present, non-empty, checksummed, version-matched, and release-manifest verified."
     : `Publish readiness: incomplete (${readinessIssues.join("; ")}).`
 );
 
