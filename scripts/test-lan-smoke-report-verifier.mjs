@@ -137,7 +137,7 @@ try {
   const missingAutoTransportContext = writeReport("missing-auto-transport-context.md", {
     autoPass: "Pass",
     manualPass: "Pass",
-    omitLine: "| Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 2 seconds ago |"
+    omitLine: "| Input Transport source device and relative time shown | Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 2s ago; Status: Accepted |"
   });
   runVerifier(
     missingAutoTransportContext,
@@ -693,7 +693,7 @@ try {
     vagueInputTransportContext,
     false,
     "vague input transport context should fail",
-    "Auto-Discovery Run input transport evidence must mention the source device and relative time shown in the receiver UI"
+    "Auto-Discovery Run input transport evidence must paste the Input Transport Copy output"
   );
 
   const vagueFingerprint = writeReport("vague-fingerprint.md", {
@@ -1183,9 +1183,11 @@ function writeReport(name, options) {
     options.manualPerDeviceReceive ??
     "Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready";
   const autoInputTransportContext =
-    options.autoInputTransportContext ?? "Input Transport row shows Mac sender source device and 2 seconds ago";
+    options.autoInputTransportContext ??
+    "Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 2s ago; Status: Accepted";
   const manualInputTransportContext =
-    options.manualInputTransportContext ?? "Input Transport row shows Mac sender source device and 3 seconds ago";
+    options.manualInputTransportContext ??
+    "Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 3 seconds ago; Status: Accepted";
   const autoFingerprint =
     options.autoFingerprint ??
     "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";

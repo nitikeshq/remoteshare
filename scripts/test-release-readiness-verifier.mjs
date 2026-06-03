@@ -457,7 +457,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
-| Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 2 seconds ago |
+| Input Transport source device and relative time shown | Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 2s ago; Status: Accepted |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
 | Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago |
 | Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
@@ -486,7 +486,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | \`Allow incoming control\` enabled on receiver | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Per-device \`Receive\` enabled | Receive control; This computer: Windows receiver; Role: Client; Allow incoming control: enabled; Device: Mac sender; Device receive: enabled; Input control: ready |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
-| Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 3 seconds ago |
+| Input Transport source device and relative time shown | Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 3 seconds ago; Status: Accepted |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
 | Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago |
 | Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |

@@ -72,7 +72,7 @@ ${rows}
 8. Use the Startup health \`Copy\` button to paste \`Startup health\`, \`This computer\`, \`TCP:\`, \`UDP:\`, \`Start:\`, and started/reconnect timing evidence after restart.
 9. After restart/wake, use the trusted row reconnect \`Copy\` button to paste \`Auto reconnect: enabled\`, \`Check: reachable\`, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence.
 10. Use the trusted row receive \`Copy\` button to paste \`Allow incoming control: enabled\`, \`Device receive: enabled\`, and \`Input control: ready\` evidence before input.
-11. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
+11. Use the Input Transport row \`Copy\` button on the Windows receiver to paste \`Input Transport\`, \`This computer\`, source device, relative time, and \`Status: Accepted\` evidence for the accepted \`key press r\` test input.
 12. Before pressing Stop, use the capture \`Copy\` button to paste \`Capture: active\`, \`This computer\`, target, and started/elapsed-time evidence.
 13. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
 14. In the auto-discovery run, the copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.

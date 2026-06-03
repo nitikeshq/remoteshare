@@ -341,16 +341,17 @@ function inputEventDetailLabel(event: InputEventRecord) {
   return `Reason: ${event.detail}`;
 }
 
-function inputEventEvidence(event: InputEventRecord, devices: Device[]) {
+function inputEventEvidence(event: InputEventRecord, status: RuntimeStatus) {
   const detail = inputEventDetailLabel(event);
   return [
     `Input Transport: ${inputEventDirectionLabel(event)}`,
+    `This computer: ${status.thisDevice}`,
     `Summary: ${event.summary}`,
-    `Device: ${inputEventDeviceLabel(event, devices)}`,
+    `Device: ${inputEventDeviceLabel(event, status.devices)}`,
     `Time: ${elapsedLabel(event.atMs)}`,
     `Status: ${inputEventStatusLabel(event)}`,
     ...(detail ? [detail] : [])
-  ].join(" | ");
+  ].join("; ");
 }
 
 function approvalLabel(approved: boolean) {
@@ -1088,7 +1089,7 @@ function App() {
   }
 
   async function copyInputEventEvidence(event: InputEventRecord) {
-    const evidence = inputEventEvidence(event, status.devices);
+    const evidence = inputEventEvidence(event, status);
     try {
       await navigator.clipboard.writeText(evidence);
       showActionMessage("Copied input transport evidence.");

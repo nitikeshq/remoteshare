@@ -42,7 +42,9 @@ try {
   assertIncludes(summary, "Allow incoming control: enabled", "global receive evidence");
   assertIncludes(summary, "Device receive: enabled", "per-device receive evidence");
   assertIncludes(summary, "Input control: ready", "input-control-ready evidence");
-  assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
+  assertIncludes(summary, "Input Transport row `Copy` button", "input event copy evidence");
+  assertIncludes(summary, "`Input Transport`, `This computer`", "input event machine evidence");
+  assertIncludes(summary, "source device, relative time, and `Status: Accepted`", "input event copied fields");
   assertIncludes(summary, "capture `Copy` button", "capture copy evidence");
   assertIncludes(summary, "Capture: active", "active capture copied field");
   assertIncludes(summary, "`This computer`, target, and started/elapsed-time evidence", "capture machine evidence");

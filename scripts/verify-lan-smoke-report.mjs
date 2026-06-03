@@ -412,10 +412,13 @@ function requireInputSmokeEvidence(table, section) {
     section
   ).toLowerCase();
   if (
-    !/(input transport|source|device|sender|mac|macos|trusted)/.test(transportContext) ||
-    !/(time|relative|ago|ms|sec|second|min|minute)/.test(transportContext)
+    !/input\s+transport:\s*(incoming|outgoing)/.test(transportContext) ||
+    !/this\s+computer:\s*[^;|]+/.test(transportContext) ||
+    !/device:\s*[^;|]+/.test(transportContext) ||
+    !/time:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(transportContext) ||
+    !/status:\s*accepted/.test(transportContext)
   ) {
-    throw new Error(`${section} input transport evidence must mention the source device and relative time shown in the receiver UI.`);
+    throw new Error(`${section} input transport evidence must paste the Input Transport Copy output with Input Transport, This computer, Device, Time, and Status: accepted fields from the receiver UI.`);
   }
 }
 
