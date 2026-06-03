@@ -23,7 +23,8 @@ try {
     "Windows EXE: missing; build on Windows runner",
     "Linux DEB: missing; build on Ubuntu/Linux runner",
     "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing).",
-    "Checksum file:"
+    "Checksum file:",
+    "Release manifest:"
   ]);
 
   const missingChecksumRoot = fixture(
@@ -141,7 +142,37 @@ try {
   runSummary(unexpectedInstallerRoot, [
     "Installer artifacts: none found",
     `Unexpected installer artifacts: RemoteShare_${packageVersion}_x64.msi`,
-    `Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; Linux DEB missing; unexpected installer RemoteShare_${packageVersion}_x64.msi).`
+    `Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; Linux DEB missing; release manifest missing; unexpected installer RemoteShare_${packageVersion}_x64.msi).`,
+    "Release manifest: missing"
+  ]);
+
+  const missingManifestRoot = fixture(
+    "missing-manifest",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ],
+    true,
+    false
+  );
+  runSummary(missingManifestRoot, [
+    "Release manifest: missing",
+    "Publish readiness: incomplete (release manifest missing)."
+  ]);
+
+  const invalidManifestRoot = fixture(
+    "invalid-manifest",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  fs.writeFileSync(path.join(invalidManifestRoot, "RELEASE-MANIFEST.json"), "{not json");
+  runSummary(invalidManifestRoot, [
+    "Release manifest: invalid",
+    "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
   const unmanifestedInstallerRoot = fixture("unmanifested-installer", [
@@ -163,8 +194,9 @@ try {
     "macOS DMG: missing; build on macOS runner",
     "Windows EXE: missing; build on Windows runner",
     "Linux DEB: missing; build on Ubuntu/Linux runner",
-    "Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; Linux DEB missing).",
-    "Checksum file: missing"
+    "Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; Linux DEB missing; release manifest missing).",
+    "Checksum file: missing",
+    "Release manifest: missing"
   ]);
 
   console.log("Release summary tests passed.");
@@ -172,20 +204,32 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-function fixture(name, files, writeChecksums = true) {
+function fixture(name, files, writeChecksums = true, writeManifest = true) {
   const directory = path.join(root, name);
   fs.mkdirSync(directory, { recursive: true });
 
   const checksumLines = [];
+  const artifacts = [];
   for (const [relativePath, body] of files) {
     const file = path.join(directory, relativePath);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, body);
     checksumLines.push(`${sha256(body)}  ${relativePath.replaceAll(path.sep, "/")}`);
+    const extension = path.extname(relativePath).toLowerCase();
+    const type = extension === ".dmg" ? "dmg" : extension === ".exe" ? "exe" : extension === ".deb" ? "deb" : null;
+    if (type) {
+      artifacts.push({ type, file: path.basename(relativePath) });
+    }
   }
 
   if (writeChecksums) {
     fs.writeFileSync(path.join(directory, "SHA256SUMS.txt"), `${checksumLines.join("\n")}\n`);
+  }
+  if (writeManifest) {
+    fs.writeFileSync(
+      path.join(directory, "RELEASE-MANIFEST.json"),
+      `${JSON.stringify({ version: packageVersion, artifacts }, null, 2)}\n`
+    );
   }
 
   return directory;

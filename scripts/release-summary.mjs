@@ -22,7 +22,13 @@ const installerArtifacts = findInstallerArtifacts(root);
 const installers = installerArtifacts.map((artifact) => artifact.file);
 const unexpectedArtifacts = findUnexpectedInstallerArtifacts(root);
 const checksums = fs.existsSync(checksumPath) ? readChecksumFile(checksumPath) : new Map();
+const manifestExists = fs.existsSync(manifestPath);
 const manifestFiles = readManifestFiles(manifestPath);
+const manifestIssue = !manifestExists
+  ? "release manifest missing"
+  : manifestFiles instanceof Set
+    ? null
+    : "release manifest invalid";
 const installerRelativePaths = installers.map((file) =>
   path.relative(root, file).replaceAll(path.sep, "/")
 );
@@ -113,6 +119,7 @@ const readinessIssues = [
   ...checksumMissingPlatforms.map((name) => `${name} checksum missing`),
   ...checksumMismatchPlatforms.map((name) => `${name} checksum mismatch`),
   ...versionMismatchPlatforms.map((name) => `${name} version mismatch`),
+  ...(manifestIssue ? [manifestIssue] : []),
   ...unexpectedRelativePaths.map((entry) => `unexpected installer ${entry}`),
   ...unmanifestedInstallerPaths.map((entry) => `unmanifested installer ${entry}`),
   ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`),
@@ -138,6 +145,14 @@ if (fs.existsSync(checksumPath)) {
   }
 } else {
   console.log("Checksum file: missing");
+}
+
+if (!manifestExists) {
+  console.log("Release manifest: missing");
+} else if (!(manifestFiles instanceof Set)) {
+  console.log("Release manifest: invalid");
+} else {
+  console.log(`Release manifest: ${manifestPath}`);
 }
 
 function readChecksumFile(file) {
