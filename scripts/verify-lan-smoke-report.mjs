@@ -389,6 +389,18 @@ function requireManualEndpoint(table, field, section) {
   if (isLocalOnlyEndpoint(endpoint.host)) {
     throw new Error(`${section} field must use the peer computer endpoint, not localhost or an unspecified bind address: ${field}`);
   }
+
+  if (net.isIP(endpoint.host.trim().toLowerCase()) === 0) {
+    throw new Error(`${section} field must use a private IPv4 or unique-local IPv6 endpoint literal copied from the peer computer: ${field}`);
+  }
+
+  if (isPublicIpLiteral(endpoint.host)) {
+    throw new Error(`${section} field must not use a public IP literal while Private network only is enabled: ${field}`);
+  }
+
+  if (isLinkLocalIpv6Literal(endpoint.host)) {
+    throw new Error(`${section} field must not use a link-local IPv6 literal; copy a private IPv4 or unique-local IPv6 endpoint from the peer computer: ${field}`);
+  }
 }
 
 function requireAutoDiscoverySubnetEvidence(table) {
@@ -474,6 +486,55 @@ function isLocalOnlyEndpoint(host) {
   if (ipVersion === 6 && normalized.startsWith("::ffff:127.")) return true;
 
   return false;
+}
+
+function isPublicIpLiteral(host) {
+  const normalized = host.trim().toLowerCase();
+  const ipVersion = net.isIP(normalized);
+  if (ipVersion === 4) return !isPrivateOrLocalIpv4(normalized);
+  if (ipVersion === 6) {
+    const mappedIpv4 = parseIpv4MappedIpv6(normalized);
+    if (mappedIpv4) return !isPrivateOrLocalIpv4(mappedIpv4);
+    return !isPrivateOrLocalIpv6(normalized);
+  }
+  return false;
+}
+
+function isPrivateOrLocalIpv4(address) {
+  const octets = address.split(".").map((part) => Number(part));
+  return (
+    octets[0] === 10 ||
+    octets[0] === 127 ||
+    (octets[0] === 169 && octets[1] === 254) ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+    (octets[0] === 192 && octets[1] === 168)
+  );
+}
+
+function isPrivateOrLocalIpv6(address) {
+  return (
+    address === "::1" ||
+    isUniqueLocalIpv6Literal(address) ||
+    isLinkLocalIpv6Literal(address)
+  );
+}
+
+function isUniqueLocalIpv6Literal(address) {
+  const firstSegment = Number.parseInt(address.split(":")[0] || "0", 16);
+  return (firstSegment & 0xfe00) === 0xfc00;
+}
+
+function isLinkLocalIpv6Literal(address) {
+  const normalized = address.trim().toLowerCase();
+  if (net.isIP(normalized) !== 6) return false;
+  const firstSegment = Number.parseInt(normalized.split(":")[0] || "0", 16);
+  return (firstSegment & 0xffc0) === 0xfe80;
+}
+
+function parseIpv4MappedIpv6(address) {
+  const match = address.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (!match || net.isIP(match[1]) !== 4) return null;
+  return match[1];
 }
 
 function parseTables(markdown) {

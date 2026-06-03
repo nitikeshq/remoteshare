@@ -445,6 +445,45 @@ try {
     "Manual Fallback Run field must use the peer computer endpoint"
   );
 
+  const hostnameManualEndpoint = writeReport("hostname-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "windows-client.local:44777"
+  });
+  runVerifier(
+    hostnameManualEndpoint,
+    false,
+    "hostname manual endpoint should fail",
+    "Manual Fallback Run field must use a private IPv4 or unique-local IPv6 endpoint literal"
+  );
+
+  const publicManualEndpoint = writeReport("public-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "8.8.8.8:44777"
+  });
+  runVerifier(
+    publicManualEndpoint,
+    false,
+    "public manual endpoint should fail",
+    "Manual Fallback Run field must not use a public IP literal while Private network only is enabled"
+  );
+
+  const linkLocalIpv6ManualEndpoint = writeReport("link-local-ipv6-manual-endpoint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpoint: "[fe80::20]:44777"
+  });
+  runVerifier(
+    linkLocalIpv6ManualEndpoint,
+    false,
+    "link-local IPv6 manual endpoint should fail",
+    "Manual Fallback Run field must not use a link-local IPv6 literal"
+  );
+
   const ipv6ManualEndpoint = writeReport("ipv6-manual-endpoint.md", {
     autoPass: "Pass",
     manualPass: "Pass",
