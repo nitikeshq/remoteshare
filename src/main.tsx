@@ -692,6 +692,12 @@ function App() {
     }
   }
 
+  async function refreshDeviceStatus() {
+    await runExclusiveAction("refresh-status", async () => {
+      await refreshStatus();
+    });
+  }
+
   useEffect(() => {
     refreshStatus();
     const unlistenDevices = listen("remoteshare://devices-changed", () => {
@@ -1118,6 +1124,7 @@ function App() {
   const manualConnectActive = actionIsActive("manual-connect");
   const clearManualEndpointActive = actionIsActive("clear-manual-endpoint");
   const requestInputPermissionsActive = actionIsActive("request-input-permissions");
+  const refreshStatusActive = actionIsActive("refresh-status");
   const manualFormActive = loading || manualConnectActive || clearManualEndpointActive;
   const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
@@ -1355,8 +1362,15 @@ function App() {
               {status.platform} · {roleLabel(status.mode)} · {status.thisDeviceId}
             </span>
           </div>
-          <button className="icon-button" onClick={() => refreshStatus()} aria-label="Refresh devices">
-            <RefreshCw size={18} className={loading ? "spin" : ""} />
+          <button
+            className="icon-button"
+            disabled={loading || refreshStatusActive}
+            onClick={refreshDeviceStatus}
+            aria-label="Refresh devices"
+            title={refreshStatusActive ? "Refreshing devices." : "Refresh devices"}
+            type="button"
+          >
+            <RefreshCw size={18} className={loading || refreshStatusActive ? "spin" : ""} />
           </button>
         </header>
 
