@@ -950,6 +950,10 @@ function App() {
     () => trustedDevices.filter((device) => device.inputControlReady && !device.endpoint),
     [trustedDevices]
   );
+  const staleTrustedDevicesNeedingRepair = useMemo(
+    () => trustedDevices.filter((device) => !device.inputControlReady && !device.endpoint),
+    [trustedDevices]
+  );
   const failedTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.lastConnectionFailure),
     [trustedDevices]
@@ -983,6 +987,13 @@ function App() {
       };
     }
 
+    if (staleTrustedDevicesNeedingRepair.length > 0) {
+      return {
+        state: "Manual re-pair needed",
+        detail: `${plural(staleTrustedDevicesNeedingRepair.length, "trusted computer")} needs Pair manually with a copied endpoint.`
+      };
+    }
+
     return {
       state: "No active path",
       detail: "Waiting for LAN discovery or a manual endpoint."
@@ -992,6 +1003,7 @@ function App() {
     savedEndpointDevices.length,
     status.discovery.discoveryPort,
     status.discovery.manualEndpoint,
+    staleTrustedDevicesNeedingRepair.length,
     trustedDevicesNeedingEndpoint.length
   ]);
   const inputDiagnostic = useMemo(
