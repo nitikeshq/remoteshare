@@ -66,6 +66,34 @@ try {
     "missing deb artifact"
   );
 
+  const duplicateDmg = fixture("duplicate-dmg", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["dmg", `RemoteShare_${packageVersion}_duplicate.dmg`, "duplicate dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runPreparer(
+    duplicateDmg,
+    path.join(root, "duplicate-dmg.md"),
+    false,
+    "duplicate manifest type should fail",
+    "Release manifest contains duplicate artifact type: dmg"
+  );
+
+  const unexpectedMsi = fixture("unexpected-msi", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"],
+    ["msi", `RemoteShare_${packageVersion}_x64.msi`, "unexpected msi"]
+  ]);
+  runPreparer(
+    unexpectedMsi,
+    path.join(root, "unexpected-msi.md"),
+    false,
+    "unexpected manifest type should fail",
+    "Release manifest contains unexpected artifact type: msi"
+  );
+
   const wrongManifestVersion = fixture("wrong-manifest-version", [
     ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
     ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],

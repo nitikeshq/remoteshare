@@ -40,6 +40,26 @@ try {
   ]);
   runHelper(missingDeb, false, "missing deb should fail", ["missing deb artifact"]);
 
+  const duplicateDmg = fixture("duplicate-dmg", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["dmg", `RemoteShare_${packageVersion}_duplicate.dmg`, "duplicate dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runHelper(duplicateDmg, false, "duplicate manifest type should fail", [
+    "Release manifest contains duplicate artifact type: dmg"
+  ]);
+
+  const unexpectedMsi = fixture("unexpected-msi", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"],
+    ["msi", `RemoteShare_${packageVersion}_x64.msi`, "unexpected msi"]
+  ]);
+  runHelper(unexpectedMsi, false, "unexpected manifest type should fail", [
+    "Release manifest contains unexpected artifact type: msi"
+  ]);
+
   const wrongManifestVersion = fixture(
     "wrong-manifest-version",
     [
