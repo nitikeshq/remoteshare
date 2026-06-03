@@ -263,6 +263,25 @@ function connectionFailureHint(device: Device) {
   return "Confirm both apps are open on the same reachable network, then retry or pair manually.";
 }
 
+function mostRecentConnectionFailure(devices: Device[]) {
+  return devices.reduce<Device | null>((latest, device) => {
+    if (!device.lastConnectionFailure) return latest;
+    if (!latest?.lastConnectionFailure) return device;
+    return device.lastConnectionFailure.failedAtMs > latest.lastConnectionFailure.failedAtMs
+      ? device
+      : latest;
+  }, null);
+}
+
+function reconnectHealthDetail(device: Device | null, checkableCount: number) {
+  if (!device?.lastConnectionFailure) {
+    return `${plural(checkableCount, "trusted endpoint")} ready for checks`;
+  }
+
+  const hint = connectionFailureHint(device);
+  return `${device.name}: ${device.lastConnectionFailure.message}${hint ? `. ${hint}` : ""}`;
+}
+
 function canEditTrustedEndpoint(device: Device) {
   return device.trusted && device.inputControlReady;
 }
@@ -990,6 +1009,10 @@ function App() {
     () => trustedDevices.filter((device) => device.lastConnectionFailure),
     [trustedDevices]
   );
+  const mostRecentFailedTrustedDevice = useMemo(
+    () => mostRecentConnectionFailure(failedTrustedDevices),
+    [failedTrustedDevices]
+  );
   const connectionPath = useMemo(() => {
     if (discoveredDevices.length > 0) {
       return {
@@ -1005,13 +1028,12 @@ function App() {
       };
     }
 
-    if (failedTrustedDevices.length > 0) {
-      const failedDevice = failedTrustedDevices[0];
+    if (mostRecentFailedTrustedDevice) {
       return {
         state: "Reconnect recovery",
         detail:
-          connectionFailureHint(failedDevice) ??
-          failedDevice.lastConnectionFailure?.message ??
+          connectionFailureHint(mostRecentFailedTrustedDevice) ??
+          mostRecentFailedTrustedDevice.lastConnectionFailure?.message ??
           "Use the visible failure reason before retrying."
       };
     }
@@ -1043,7 +1065,7 @@ function App() {
     };
   }, [
     discoveredDevices.length,
-    failedTrustedDevices,
+    mostRecentFailedTrustedDevice,
     savedEndpointDevices.length,
     status.discovery.discoveryPort,
     status.discovery.manualEndpoint,
@@ -1327,8 +1349,7 @@ function App() {
                   : "No failures"}
               </strong>
               <small>
-                {failedTrustedDevices[0]?.lastConnectionFailure?.message ??
-                  `${plural(checkableTrustedDevices.length, "trusted endpoint")} ready for checks`}
+                {reconnectHealthDetail(mostRecentFailedTrustedDevice, checkableTrustedDevices.length)}
               </small>
             </div>
           </div>
