@@ -114,6 +114,8 @@ For prepared publish assets, verify the manifest against the flat installer dire
 npm run verify:release-manifest -- release-assets
 ```
 
+The manifest verifier also rejects extra installer files that are not listed in `RELEASE-MANIFEST.json`, so a stale `.dmg`, `.exe`, `.deb`, `.msi`, or similar file cannot sit beside the intended release assets unnoticed.
+
 For single-platform local checks, pass the expected platform:
 
 ```bash

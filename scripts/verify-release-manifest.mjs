@@ -1,7 +1,12 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { publishArtifactStatus, requiredArtifactTypes } from "./release-artifacts-lib.mjs";
+import {
+  findInstallerArtifacts,
+  findUnexpectedInstallerArtifacts,
+  publishArtifactStatus,
+  requiredArtifactTypes
+} from "./release-artifacts-lib.mjs";
 
 const root = process.argv[2] ?? "release-assets";
 const manifestPath = path.join(root, "RELEASE-MANIFEST.json");
@@ -42,6 +47,26 @@ if (duplicateTypes.length > 0) {
 
 const checksumEntries = readChecksumFile(checksumPath);
 const manifestFiles = new Set(manifestArtifacts.map((artifact) => artifact.file));
+const unexpectedArtifacts = findUnexpectedInstallerArtifacts(root);
+const extraInstallerArtifacts = findInstallerArtifacts(root).filter(
+  (artifact) => !manifestFiles.has(path.basename(artifact.file))
+);
+
+if (unexpectedArtifacts.length > 0) {
+  throw new Error(
+    `Release assets contain unexpected installer artifact(s): ${unexpectedArtifacts
+      .map((file) => path.relative(root, file).replaceAll(path.sep, "/"))
+      .join(", ")}`
+  );
+}
+
+if (extraInstallerArtifacts.length > 0) {
+  throw new Error(
+    `Release assets contain installer artifact(s) not present in manifest: ${extraInstallerArtifacts
+      .map((artifact) => path.relative(root, artifact.file).replaceAll(path.sep, "/"))
+      .join(", ")}`
+  );
+}
 
 for (const checksumFile of checksumEntries.keys()) {
   if (!manifestFiles.has(checksumFile)) {

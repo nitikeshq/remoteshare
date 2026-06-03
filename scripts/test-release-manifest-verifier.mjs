@@ -42,6 +42,35 @@ try {
   fs.appendFileSync(path.join(staleChecksum, "SHA256SUMS.txt"), `${sha256("stale")}  stale.exe\n`);
   runVerifier(staleChecksum, false, "stale checksum entry should fail", "stale entry");
 
+  const extraInstaller = fixture("extra-installer", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  fs.writeFileSync(path.join(extraInstaller, `RemoteShare_${packageVersion}_x64.dmg`), "extra dmg");
+  runVerifier(
+    extraInstaller,
+    false,
+    "extra installer should fail",
+    "not present in manifest"
+  );
+
+  const unexpectedInstaller = fixture("unexpected-installer", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  fs.writeFileSync(
+    path.join(unexpectedInstaller, `RemoteShare_${packageVersion}_x64.msi`),
+    "unexpected msi"
+  );
+  runVerifier(
+    unexpectedInstaller,
+    false,
+    "unexpected installer should fail",
+    "unexpected installer artifact"
+  );
+
   const traversal = fixture("path-traversal", [
     ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
     ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
