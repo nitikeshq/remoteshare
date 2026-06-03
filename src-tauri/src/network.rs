@@ -2173,10 +2173,11 @@ mod tests {
     };
 
     use crate::{
-        identity::ComputerRole,
+        identity::{ComputerRole, PersistedState, TrustedDevice},
         runtime::{
-            ConfirmPairingRequest, EndpointSource, PairingPeer, PairingTarget, RuntimeStore,
-            TrustedReconnectTarget, TrustedTarget,
+            ConfirmPairingRequest, DeviceEndpointUpdateRequest, EndpointSource, PairingPeer,
+            PairingTarget, RuntimeStore, TrustedReconnectTarget, TrustedTarget,
+            TRUSTED_ENDPOINT_REPAIR_MESSAGE,
         },
     };
     use tokio::net::TcpListener;
@@ -3218,6 +3219,45 @@ Wireless LAN adapter Wi-Fi:
         let sender = "8.8.8.8:44777".parse().unwrap();
 
         assert!(super::private_network_control_rejection(&store, sender).is_none());
+    }
+
+    #[tokio::test]
+    async fn update_trusted_endpoint_rejects_stale_device_before_network_probe() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-update-stale-command"));
+        let mut persisted = PersistedState::load_or_create();
+        persisted.trusted_devices.push(TrustedDevice {
+            id: "trusted-device".to_string(),
+            name: "Trusted Device".to_string(),
+            platform: "windows".to_string(),
+            role: ComputerRole::Client,
+            public_key_fingerprint: "trusted-fingerprint".to_string(),
+            public_key: None,
+            shared_secret: None,
+            last_endpoint: Some("192.168.1.10:44777".to_string()),
+            recent_endpoints: Vec::new(),
+            allow_incoming_control: false,
+        });
+        persisted
+            .save()
+            .expect("stale trusted device fixture should save");
+        let store = RuntimeStore::load_or_init();
+
+        let action = super::update_trusted_endpoint(
+            store.clone(),
+            DeviceEndpointUpdateRequest {
+                device_id: "trusted-device".to_string(),
+                endpoint: "192.168.1.50:44777".to_string(),
+            },
+        )
+        .await;
+
+        assert!(!action.ok);
+        assert_eq!(action.message, TRUSTED_ENDPOINT_REPAIR_MESSAGE);
+        assert!(store
+            .status()
+            .network_health
+            .last_reconnect_attempt_at_ms
+            .is_none());
     }
 
     fn trusted_target() -> TrustedTarget {
