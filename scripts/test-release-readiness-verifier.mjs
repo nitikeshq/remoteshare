@@ -29,6 +29,32 @@ try {
     "Release readiness release manifest check failed"
   );
 
+  const tamperedArtifactAssets = releaseFixture("tampered-artifact");
+  fs.writeFileSync(
+    path.join(tamperedArtifactAssets, `RemoteShare_${packageVersion}_x64-setup.exe`),
+    "tampered exe"
+  );
+  runVerifier(
+    tamperedArtifactAssets,
+    smokeReport,
+    false,
+    "tampered release artifact should fail",
+    "Manifest size mismatch"
+  );
+
+  const staleChecksumAssets = releaseFixture("stale-checksum");
+  fs.appendFileSync(
+    path.join(staleChecksumAssets, "SHA256SUMS.txt"),
+    `${sha256("stale")}  RemoteShare_${packageVersion}_stale.dmg\n`
+  );
+  runVerifier(
+    staleChecksumAssets,
+    smokeReport,
+    false,
+    "stale release checksum should fail",
+    "Checksum file contains stale entry not present in manifest"
+  );
+
   const missingSummaryAssets = releaseFixture("missing-summary");
   fs.rmSync(path.join(missingSummaryAssets, "release-candidate-summary.md"));
   runVerifier(
