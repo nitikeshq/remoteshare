@@ -25,7 +25,7 @@ if (fs.existsSync(outputPath)) {
 }
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
-const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const manifest = readReleaseManifest(manifestPath);
 if (manifest.version !== packageJson.version) {
   throw new Error(
     `Release manifest version must match package version ${packageJson.version}.`
@@ -58,6 +58,17 @@ report = fillRow(report, "Linux installer SHA256", deb.sha256);
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, report);
 console.log(`Prepared LAN smoke report: ${outputPath}`);
+
+function readReleaseManifest(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid release manifest JSON: ${error.message}`);
+    }
+    throw error;
+  }
+}
 
 function artifactForType(type) {
   const artifact = manifestArtifacts.find((candidate) => candidate.type === type);

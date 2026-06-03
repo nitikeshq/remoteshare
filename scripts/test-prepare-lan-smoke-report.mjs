@@ -43,6 +43,17 @@ try {
     "Missing release manifest"
   );
 
+  const invalidManifest = path.join(root, "invalid-manifest");
+  fs.mkdirSync(invalidManifest, { recursive: true });
+  fs.writeFileSync(path.join(invalidManifest, "RELEASE-MANIFEST.json"), "{not json");
+  runPreparer(
+    invalidManifest,
+    path.join(root, "invalid.md"),
+    false,
+    "invalid manifest JSON should fail",
+    "Invalid release manifest JSON"
+  );
+
   const missingExe = fixture("missing-exe", [
     ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
     ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]

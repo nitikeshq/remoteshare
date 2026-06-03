@@ -15,7 +15,7 @@ if (!fs.existsSync(manifestPath)) {
   throw new Error(`Missing release manifest: ${manifestPath}`);
 }
 
-const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const manifest = readReleaseManifest(manifestPath);
 if (manifest.version !== packageJson.version) {
   throw new Error(
     `Release manifest version must match package version ${packageJson.version}.`
@@ -43,6 +43,17 @@ console.log(`| Windows installer file | ${exe.file} |`);
 console.log(`| Windows installer SHA256 | ${exe.sha256} |`);
 console.log(`| Linux installer file | ${deb.file} |`);
 console.log(`| Linux installer SHA256 | ${deb.sha256} |`);
+
+function readReleaseManifest(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid release manifest JSON: ${error.message}`);
+    }
+    throw error;
+  }
+}
 
 function artifactForType(type) {
   const artifact = manifestArtifacts.find((candidate) => candidate.type === type);
