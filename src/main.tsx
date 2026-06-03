@@ -885,9 +885,9 @@ function App() {
 
     try {
       await navigator.clipboard.writeText(fingerprint);
-      showActionMessage(`Copied ${label} fingerprint.`);
+      showActionMessage(`Copied ${label} full fingerprint.`);
     } catch {
-      showActionMessage(`Copy failed. Fingerprint: ${fingerprint}`, true);
+      showActionMessage(`Copy failed. ${label} full fingerprint: ${fingerprint}`, true);
     }
   }
 
