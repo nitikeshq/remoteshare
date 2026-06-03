@@ -109,7 +109,7 @@ Current scaffold behavior:
 
 Security gap to close before broader public testing:
 
-- Move persisted local identity and trusted-device shared secrets from private local JSON into OS keychain or encrypted local storage before broader public testing.
+- Persisted local identity and trusted-device shared secrets currently live in private local JSON; on Unix, the config directory is forced to `0700`, `state.json`, temporary saves, and corrupt-state backups are created as `0600`, and backups are written through the private file path instead of copying a permissive legacy mode. Move these secrets into OS keychain or encrypted local storage before broader public testing.
 - Consider per-interface allowlists; the MVP listener binds all interfaces but rejects non-private remote addresses by default and still relies on private-network firewall posture.
 
 ## Reconnect

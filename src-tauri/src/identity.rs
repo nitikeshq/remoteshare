@@ -2,7 +2,7 @@
 use std::sync::{Mutex, OnceLock};
 use std::{
     fs::{self, OpenOptions},
-    io::Write,
+    io::{Read, Write},
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -275,10 +275,21 @@ fn preserve_failed_state(error: &IdentityError) {
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
     let backup_path = failed_state_backup_path(&path, timestamp);
-    if fs::copy(&path, &backup_path).is_ok() {
-        let _ = secure_state_file(&backup_path);
+    if copy_state_file_private(&path, &backup_path).is_ok() {
         let _ = sync_state_parent(&path);
     }
+}
+
+fn copy_state_file_private(
+    source_path: &PathBuf,
+    backup_path: &PathBuf,
+) -> Result<(), IdentityError> {
+    let mut source = fs::File::open(source_path).map_err(IdentityError::Read)?;
+    let mut backup = create_state_file(backup_path)?;
+    let mut buffer = Vec::new();
+    source.read_to_end(&mut buffer).map_err(IdentityError::Read)?;
+    backup.write_all(&buffer).map_err(IdentityError::Write)?;
+    backup.sync_all().map_err(IdentityError::Write)
 }
 
 fn failed_state_backup_path(path: &PathBuf, timestamp: u64) -> PathBuf {
