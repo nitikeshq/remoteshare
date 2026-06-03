@@ -71,8 +71,9 @@ ${rows}
 7. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
 8. Record active capture target and elapsed start time before pressing Stop.
 9. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
-10. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
-11. Verify the completed report:
+10. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
+11. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
+12. Verify the completed report:
 
 \`\`\`bash
 npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md
