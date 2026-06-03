@@ -128,7 +128,6 @@ const successFields = [
   "`Trusted` shown on both machines",
   "Full fingerprint copied or visually compared",
   "`Auto reconnect` enabled after restart/wake",
-  "Startup health shows TCP ready, UDP ready, and start-at-login not failed",
   "`Check` succeeded after restart/wake",
   "`Allow incoming control` enabled on receiver",
   "Per-device `Receive` enabled",
@@ -191,9 +190,12 @@ function requirePass(table, section) {
 
 function requireSuccess(table, field, section) {
   const value = requireFilled(table, field, section);
+  const valueWithoutExpectedNegative = value
+    .replace(/\bnot\s+failed\b/ig, "")
+    .replace(/\bnot\s+failing\b/ig, "");
   if (
     !/^(yes|pass|passed|success|succeeded|ok|confirmed|enabled|allowed|delivered|reachable|accepted|compared|shown|started|ready)/i.test(value) ||
-    /(fail|failed|failure|blocked|denied|error|not\s+(ok|ready|accepted|enabled|allowed|reachable|shown|started|delivered|confirmed|compared))/i.test(value)
+    /(fail|failed|failure|blocked|denied|error|not\s+(ok|ready|accepted|enabled|allowed|reachable|shown|started|delivered|confirmed|compared))/i.test(valueWithoutExpectedNegative)
   ) {
     throw new Error(`${section} field must show success: ${field}`);
   }
@@ -241,7 +243,10 @@ function requireReconnectEvidence(table, section) {
     "Startup health shows TCP ready, UDP ready, and start-at-login not failed",
     section
   ).toLowerCase();
-  if (!/tcp/.test(startupHealth) || !/udp/.test(startupHealth) || !/(start-at-login|startup|start at login)/.test(startupHealth) || /fail|failed|blocked|denied|error/.test(startupHealth)) {
+  const startupHealthWithoutExpectedNegative = startupHealth
+    .replace(/\bnot\s+failed\b/g, "")
+    .replace(/\bnot\s+failing\b/g, "");
+  if (!/tcp/.test(startupHealth) || !/udp/.test(startupHealth) || !/(start-at-login|startup|start at login)/.test(startupHealth) || /fail|failed|blocked|denied|error/.test(startupHealthWithoutExpectedNegative)) {
     throw new Error(`${section} startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed.`);
   }
 

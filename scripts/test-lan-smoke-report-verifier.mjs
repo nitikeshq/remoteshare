@@ -15,6 +15,20 @@ try {
   });
   runVerifier(valid, true, "valid smoke report should pass", "Verified LAN smoke report");
 
+  const explicitStartupNotFailed = writeReport("explicit-startup-not-failed.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoStartupHealth: "ready: TCP ready, UDP ready, start-at-login not failed",
+    manualStartupHealth: "ready: TCP ready, UDP ready, start-at-login not failed"
+  });
+  runVerifier(
+    explicitStartupNotFailed,
+    true,
+    "explicit startup not failed evidence should pass",
+    "Verified LAN smoke report"
+  );
+
   const missingField = writeReport("missing-field.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -143,6 +157,19 @@ try {
     vagueStartupHealth,
     false,
     "vague startup health should fail",
+    "Auto-Discovery Run startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed"
+  );
+
+  const failedStartupHealth = writeReport("failed-startup-health.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoStartupHealth: "ready: TCP ready, UDP ready, start-at-login failed"
+  });
+  runVerifier(
+    failedStartupHealth,
+    false,
+    "failed startup health should fail",
     "Auto-Discovery Run startup health evidence must mention TCP ready, UDP ready, and start-at-login not failed"
   );
 
