@@ -4604,6 +4604,182 @@ mod tests {
     }
 
     #[test]
+    fn status_sorts_devices_deterministically() {
+        crate::identity::set_test_config_dir(unique_test_dir("status-sorts-devices"));
+
+        let store = RuntimeStore::load_or_init();
+        let now = now_ms();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-zulu".to_string(),
+                name: "Zulu Trusted".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-zulu-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.30:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-alpha".to_string(),
+                name: "Alpha Trusted".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-alpha-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.20:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-alpha".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.20:44777".to_string(),
+                    last_seen_at_ms: now,
+                    latency_ms: Some(3),
+                },
+            );
+            state.discovered_peers.insert(
+                "discovered-beta".to_string(),
+                DiscoveredPeer {
+                    announcement: PeerAnnouncement {
+                        protocol_version: 1,
+                        device_id: "discovered-beta".to_string(),
+                        name: "Beta Discovered".to_string(),
+                        platform: "windows".to_string(),
+                        control_port: 44777,
+                        public_key_fingerprint: "discovered-beta-fingerprint".to_string(),
+                        role: ComputerRole::Client,
+                        public_key: String::new(),
+                        scan_request: false,
+                    },
+                    endpoint: "192.168.1.40:44777".to_string(),
+                    last_seen_at_ms: now,
+                },
+            );
+            state.discovery.manual_endpoint = Some("192.168.1.50:44777".to_string());
+        }
+
+        let device_ids: Vec<String> = store
+            .status()
+            .devices
+            .iter()
+            .map(|device| device.id.clone())
+            .collect();
+
+        assert_eq!(
+            device_ids,
+            vec![
+                "trusted-alpha".to_string(),
+                "trusted-zulu".to_string(),
+                "discovered-beta".to_string(),
+                "manual-192.168.1.50:44777".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn status_sorts_pending_pairings_deterministically() {
+        crate::identity::set_test_config_dir(unique_test_dir("status-sorts-pairings"));
+
+        let store = RuntimeStore::load_or_init();
+        let now = now_ms();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            for pairing in [
+                PendingPairing {
+                    id: "pair-zulu-endpoint".to_string(),
+                    device_id: "zulu-endpoint".to_string(),
+                    name: "Shared Name".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    endpoint: "192.168.1.80:44777".to_string(),
+                    control_port: 44777,
+                    public_key_fingerprint: "zulu-endpoint-fingerprint".to_string(),
+                    public_key: String::new(),
+                    local_nonce: "local-nonce".to_string(),
+                    remote_nonce: "remote-nonce".to_string(),
+                    local_dh_private_key: "local-private-key".to_string(),
+                    local_dh_public_key: "local-public-key".to_string(),
+                    remote_dh_public_key: "remote-public-key".to_string(),
+                    code: "333333".to_string(),
+                    direction: PairingDirection::Outgoing,
+                    local_approved: false,
+                    remote_approved: false,
+                    created_at_ms: now,
+                    expires_at_ms: now + 30_000,
+                },
+                PendingPairing {
+                    id: "pair-alpha-endpoint".to_string(),
+                    device_id: "alpha-endpoint".to_string(),
+                    name: "shared name".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    endpoint: "192.168.1.70:44777".to_string(),
+                    control_port: 44777,
+                    public_key_fingerprint: "alpha-endpoint-fingerprint".to_string(),
+                    public_key: String::new(),
+                    local_nonce: "local-nonce".to_string(),
+                    remote_nonce: "remote-nonce".to_string(),
+                    local_dh_private_key: "local-private-key".to_string(),
+                    local_dh_public_key: "local-public-key".to_string(),
+                    remote_dh_public_key: "remote-public-key".to_string(),
+                    code: "222222".to_string(),
+                    direction: PairingDirection::Outgoing,
+                    local_approved: false,
+                    remote_approved: false,
+                    created_at_ms: now,
+                    expires_at_ms: now + 30_000,
+                },
+                PendingPairing {
+                    id: "pair-earliest".to_string(),
+                    device_id: "earliest".to_string(),
+                    name: "Zulu Earlier".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    endpoint: "192.168.1.90:44777".to_string(),
+                    control_port: 44777,
+                    public_key_fingerprint: "earliest-fingerprint".to_string(),
+                    public_key: String::new(),
+                    local_nonce: "local-nonce".to_string(),
+                    remote_nonce: "remote-nonce".to_string(),
+                    local_dh_private_key: "local-private-key".to_string(),
+                    local_dh_public_key: "local-public-key".to_string(),
+                    remote_dh_public_key: "remote-public-key".to_string(),
+                    code: "111111".to_string(),
+                    direction: PairingDirection::Outgoing,
+                    local_approved: false,
+                    remote_approved: false,
+                    created_at_ms: now,
+                    expires_at_ms: now + 20_000,
+                },
+            ] {
+                state.pending_pairings.insert(pairing.id.clone(), pairing);
+            }
+        }
+
+        let pairing_ids: Vec<String> = store
+            .status()
+            .pending_pairings
+            .iter()
+            .map(|pairing| pairing.id.clone())
+            .collect();
+
+        assert_eq!(
+            pairing_ids,
+            vec![
+                "pair-earliest".to_string(),
+                "pair-alpha-endpoint".to_string(),
+                "pair-zulu-endpoint".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn pending_pairing_shared_secret_rejects_expired_pairing() {
         crate::identity::set_test_config_dir(unique_test_dir("secret-prunes-expired-pairing"));
 
