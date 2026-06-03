@@ -1283,7 +1283,15 @@ impl RuntimeStore {
         pairing.public_key = peer.public_key;
         pairing.remote_approved = true;
 
-        complete_pairing_if_ready(&mut state, &id)
+        match complete_pairing_if_ready(&mut state, &id) {
+            Ok(completed) => Ok(completed),
+            Err(error) => {
+                if let Some(pairing) = state.pending_pairings.get_mut(&id) {
+                    pairing.remote_approved = false;
+                }
+                Err(error)
+            }
+        }
     }
 
     pub fn complete_pairing_if_ready(&self, pairing_id: &str) -> Result<bool, String> {
@@ -4594,7 +4602,7 @@ mod tests {
             .status()
             .pending_pairings
             .iter()
-            .any(|pairing| pairing.id == pairing_id));
+            .any(|pairing| pairing.id == pairing_id && !pairing.remote_approved));
     }
 
     #[test]
