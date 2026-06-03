@@ -639,6 +639,8 @@ function App() {
   const [localEndpoints, setLocalEndpoints] = useState<string[]>([]);
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
   const [checkingTrustedDevices, setCheckingTrustedDevices] = useState(false);
+  const [activeActionKeys, setActiveActionKeys] = useState<Record<string, boolean>>({});
+  const activeActionKeysRef = useRef<Record<string, boolean>>({});
   const [pairingCodeEntries, setPairingCodeEntries] = useState<Record<string, string>>({});
   const pairingEntryKeysRef = useRef<Record<string, string>>({});
   const [pairingNowMs, setPairingNowMs] = useState(() => Date.now());
@@ -648,6 +650,28 @@ function App() {
   function showActionMessage(message: string, error = false) {
     setActionMessage(message);
     setActionError(error);
+  }
+
+  async function runExclusiveAction(key: string, action: () => Promise<void>) {
+    if (activeActionKeysRef.current[key]) return;
+    activeActionKeysRef.current = { ...activeActionKeysRef.current, [key]: true };
+    setActiveActionKeys((keys) => ({ ...keys, [key]: true }));
+    try {
+      await action();
+    } finally {
+      const nextRef = { ...activeActionKeysRef.current };
+      delete nextRef[key];
+      activeActionKeysRef.current = nextRef;
+      setActiveActionKeys((keys) => {
+        const next = { ...keys };
+        delete next[key];
+        return next;
+      });
+    }
+  }
+
+  function actionIsActive(key: string) {
+    return Boolean(activeActionKeys[key]);
   }
 
   async function refreshStatus(showLoading = true) {
@@ -867,14 +891,17 @@ function App() {
   }
 
   async function pairDevice(device: Device) {
-    const action = await invokeNetworkAction("initiate_pairing", {
-      request: pairRequestForDevice(device)
+    await runExclusiveAction(`pair:${device.id}`, async () => {
+      const action = await invokeNetworkAction("initiate_pairing", {
+        request: pairRequestForDevice(device)
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function confirmPairing(pairing: PendingPairing) {
+    if (actionIsActive(`confirm-pairing:${pairing.id}`)) return;
     const enteredCode = pairingCodeEntries[pairing.id]?.trim() ?? "";
     if (pairingNowMs >= pairing.expiresAtMs) {
       showActionMessage("Pairing request expired. Start pairing again.", true);
@@ -887,26 +914,30 @@ function App() {
       return;
     }
 
-    const action = await invokeNetworkAction("confirm_pairing", {
-      request: { pairingId: pairing.id, code: enteredCode }
-    });
-    showActionMessage(action.message, !action.ok);
-    if (action.ok) {
-      setPairingCodeEntries((entries) => {
-        const next = { ...entries };
-        delete next[pairing.id];
-        return next;
+    await runExclusiveAction(`confirm-pairing:${pairing.id}`, async () => {
+      const action = await invokeNetworkAction("confirm_pairing", {
+        request: { pairingId: pairing.id, code: enteredCode }
       });
-    }
-    await refreshStatus();
+      showActionMessage(action.message, !action.ok);
+      if (action.ok) {
+        setPairingCodeEntries((entries) => {
+          const next = { ...entries };
+          delete next[pairing.id];
+          return next;
+        });
+      }
+      await refreshStatus();
+    });
   }
 
   async function cancelPairing(pairing: PendingPairing) {
-    const action = await invokeNetworkAction("cancel_pairing", {
-      request: { pairingId: pairing.id }
+    await runExclusiveAction(`cancel-pairing:${pairing.id}`, async () => {
+      const action = await invokeNetworkAction("cancel_pairing", {
+        request: { pairingId: pairing.id }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function updateSetting(
@@ -921,28 +952,34 @@ function App() {
   }
 
   async function updateDeviceControl(device: Device, value: boolean) {
-    const action = await invokeNetworkAction("update_device_control", {
-      request: { deviceId: device.id, allowIncomingControl: value }
+    await runExclusiveAction(`receive:${device.id}`, async () => {
+      const action = await invokeNetworkAction("update_device_control", {
+        request: { deviceId: device.id, allowIncomingControl: value }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function enableReceiveForTrustedDevices() {
-    const action = await invokeNetworkAction("enable_receive_for_trusted_devices");
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
+    await runExclusiveAction("receive-shortcut", async () => {
+      const action = await invokeNetworkAction("enable_receive_for_trusted_devices");
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
+    });
   }
 
   async function forgetTrustedDevice(device: Device) {
-    const confirmed = window.confirm(`Forget trusted device "${device.name}"?`);
-    if (!confirmed) return;
+    await runExclusiveAction(`forget:${device.id}`, async () => {
+      const confirmed = window.confirm(`Forget trusted device "${device.name}"?`);
+      if (!confirmed) return;
 
-    const action = await invokeNetworkAction("forget_trusted_device", {
-      request: { deviceId: device.id }
+      const action = await invokeNetworkAction("forget_trusted_device", {
+        request: { deviceId: device.id }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function requestInputPermissions() {
@@ -958,29 +995,35 @@ function App() {
   }
 
   async function sendTestInput(device: Device) {
+    if (actionIsActive(`test:${device.id}`)) return;
     if (!canSendInput(status.mode)) {
       showActionMessage("Set this computer role to Main or Both before sending test input.", true);
       return;
     }
 
-    const action = await invokeNetworkAction("send_test_input", {
-      request: { deviceId: device.id }
+    await runExclusiveAction(`test:${device.id}`, async () => {
+      const action = await invokeNetworkAction("send_test_input", {
+        request: { deviceId: device.id }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function checkTrustedDevice(device: Device) {
+    if (actionIsActive(`check:${device.id}`)) return;
     if (!status.trustedReconnect) {
       showActionMessage("Turn on Auto reconnect before running trusted checks.", true);
       return;
     }
 
-    const action = await invokeNetworkAction("check_trusted_device", {
-      request: { deviceId: device.id }
+    await runExclusiveAction(`check:${device.id}`, async () => {
+      const action = await invokeNetworkAction("check_trusted_device", {
+        request: { deviceId: device.id }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function checkAllTrustedDevices() {
@@ -1022,22 +1065,27 @@ function App() {
   }
 
   async function startCapture(device: Device) {
+    if (actionIsActive(`capture:${device.id}`)) return;
     if (!canSendInput(status.mode)) {
       showActionMessage("Set this computer role to Main or Both before starting capture.", true);
       return;
     }
 
-    const action = await invokeNetworkAction("start_capture", {
-      request: { deviceId: device.id }
+    await runExclusiveAction(`capture:${device.id}`, async () => {
+      const action = await invokeNetworkAction("start_capture", {
+        request: { deviceId: device.id }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function stopCapture() {
-    const action = await invokeNetworkAction("stop_capture");
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
+    await runExclusiveAction("stop-capture", async () => {
+      const action = await invokeNetworkAction("stop_capture");
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
+    });
   }
 
   const trustedDevices = useMemo(
@@ -1363,6 +1411,7 @@ function App() {
             {receiveShortcutAvailable && (
               <button
                 className="secondary-button compact"
+                disabled={actionIsActive("receive-shortcut")}
                 onClick={enableReceiveForTrustedDevices}
                 title={
                   status.allowIncomingControl
@@ -1371,7 +1420,7 @@ function App() {
                 }
                 type="button"
               >
-                {receiveShortcutButtonLabel}
+                {actionIsActive("receive-shortcut") ? "Enabling" : receiveShortcutButtonLabel}
               </button>
             )}
           </div>
@@ -1536,7 +1585,17 @@ function App() {
                 </div>
               </div>
             )}
-            {status.devices.map((device) => (
+            {status.devices.map((device) => {
+              const pairActive = actionIsActive(`pair:${device.id}`);
+              const checkActive = actionIsActive(`check:${device.id}`);
+              const testActive = actionIsActive(`test:${device.id}`);
+              const captureActive = actionIsActive(`capture:${device.id}`);
+              const receiveActive = actionIsActive(`receive:${device.id}`);
+              const forgetActive = actionIsActive(`forget:${device.id}`);
+              const deviceActionActive =
+                pairActive || checkActive || testActive || captureActive || receiveActive || forgetActive;
+
+              return (
               <article className="device-row" key={device.id}>
                 <div className="device-icon">
                   <Monitor size={22} />
@@ -1584,18 +1643,27 @@ function App() {
                   <CircleDot size={16} />
                 </span>
                 {!device.trusted && (device.online || device.connection === "manual") && (
-                  <button className="secondary-button compact" onClick={() => pairDevice(device)}>
-                    Pair
+                  <button
+                    className="secondary-button compact"
+                    disabled={deviceActionActive}
+                    onClick={() => pairDevice(device)}
+                  >
+                    {pairActive ? "Pairing" : "Pair"}
                   </button>
                 )}
                 {device.trusted && device.endpoint && !device.inputControlReady && (
-                  <button className="secondary-button compact" onClick={() => pairDevice(device)}>
-                    Re-pair
+                  <button
+                    className="secondary-button compact"
+                    disabled={deviceActionActive}
+                    onClick={() => pairDevice(device)}
+                  >
+                    {pairActive ? "Pairing" : "Re-pair"}
                   </button>
                 )}
                 {device.trusted && !device.endpoint && !device.inputControlReady && (
                   <button
                     className="secondary-button compact"
+                    disabled={deviceActionActive}
                     onClick={() => prepareManualRepair(device)}
                     title="Paste this trusted device's current endpoint into Manual pair to re-pair it."
                     type="button"
@@ -1606,7 +1674,7 @@ function App() {
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   <button
                     className="secondary-button compact"
-                    disabled={!status.trustedReconnect}
+                    disabled={checkingTrustedDevices || !status.trustedReconnect || deviceActionActive}
                     onClick={() => checkTrustedDevice(device)}
                     title={
                       status.trustedReconnect
@@ -1614,12 +1682,13 @@ function App() {
                         : "Turn on Auto reconnect to run trusted checks."
                     }
                   >
-                    Check
+                    {checkActive ? "Checking" : "Check"}
                   </button>
                 )}
                 {canEditTrustedEndpoint(device) && (
                   <button
                     className="secondary-button compact"
+                    disabled={deviceActionActive}
                     onClick={() => editManualEndpoint(device)}
                     title="Verify a new endpoint for this trusted device without pairing again."
                   >
@@ -1629,7 +1698,7 @@ function App() {
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   <button
                     className="secondary-button compact"
-                    disabled={!sendRoleReady}
+                    disabled={!sendRoleReady || deviceActionActive}
                     onClick={() => sendTestInput(device)}
                     title={
                       sendRoleReady
@@ -1637,31 +1706,36 @@ function App() {
                         : "Set this computer role to Main or Both before sending input."
                     }
                   >
-                    Test
+                    {testActive ? "Testing" : "Test"}
                   </button>
                 )}
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   status.capture.active && status.capture.targetDeviceId === device.id ? (
-                    <button className="secondary-button compact" onClick={stopCapture}>
-                      Stop
+                    <button
+                      className="secondary-button compact"
+                      disabled={actionIsActive("stop-capture")}
+                      onClick={stopCapture}
+                    >
+                      {actionIsActive("stop-capture") ? "Stopping" : "Stop"}
                     </button>
                   ) : (
                     <button
                       className="secondary-button compact"
-                      disabled={status.capture.active || !captureReady || !sendRoleReady}
+                      disabled={status.capture.active || !captureReady || !sendRoleReady || deviceActionActive}
                       onClick={() => startCapture(device)}
                       title={captureButtonTitle(captureReady, status.capture.active, status.mode)}
                     >
-                      Capture
+                      {captureActive ? "Starting" : "Capture"}
                     </button>
                   )
                 )}
                 {device.trusted && (
                   <button
                     className="secondary-button compact"
+                    disabled={deviceActionActive}
                     onClick={() => forgetTrustedDevice(device)}
                   >
-                    Forget
+                    {forgetActive ? "Forgetting" : "Forget"}
                   </button>
                 )}
                 {device.trusted && (
@@ -1679,14 +1753,15 @@ function App() {
                     <input
                       type="checkbox"
                       checked={device.allowIncomingControl}
-                      disabled={!device.inputControlReady || !receiveRoleReady}
+                      disabled={!device.inputControlReady || !receiveRoleReady || deviceActionActive}
                       onChange={(event) => updateDeviceControl(device, event.target.checked)}
                     />
                     {!device.inputControlReady && <em>Re-pair</em>}
                   </label>
                 )}
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -1838,6 +1913,9 @@ function App() {
                 const enteredCode = pairingCodeEntries[pairing.id] ?? "";
                 const entryState = pairingCodeEntryState(pairing, enteredCode, pairingNowMs);
                 const pairingExpired = pairingNowMs >= pairing.expiresAtMs;
+                const confirmActive = actionIsActive(`confirm-pairing:${pairing.id}`);
+                const cancelActive = actionIsActive(`cancel-pairing:${pairing.id}`);
+                const pairingActionActive = confirmActive || cancelActive;
 
                 return (
                   <article className="pairing-row" key={pairing.id}>
@@ -1865,7 +1943,7 @@ function App() {
                         pattern="[0-9]{6}"
                         placeholder="Other code"
                         value={enteredCode}
-                        disabled={pairing.localApproved || pairingExpired}
+                        disabled={pairing.localApproved || pairingExpired || pairingActionActive}
                         onChange={(event) =>
                           setPairingCodeEntries((entries) => ({
                             ...entries,
@@ -1879,16 +1957,17 @@ function App() {
                     </label>
                     <button
                       className="primary-button"
-                      disabled={!entryState.canConfirm}
+                      disabled={!entryState.canConfirm || pairingActionActive}
                       onClick={() => confirmPairing(pairing)}
                     >
-                      {pairing.localApproved ? "Waiting" : "Confirm"}
+                      {confirmActive ? "Confirming" : pairing.localApproved ? "Waiting" : "Confirm"}
                     </button>
                     <button
                       className="secondary-button compact"
+                      disabled={pairingActionActive}
                       onClick={() => cancelPairing(pairing)}
                     >
-                      Cancel
+                      {cancelActive ? "Canceling" : "Cancel"}
                     </button>
                   </article>
                 );
