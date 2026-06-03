@@ -148,7 +148,8 @@ fn start_reconnect_loop(app: AppHandle, store: RuntimeStore) {
                             reconnected = true;
                             break;
                         } else {
-                            let failure_message = reconnect_failure_message(reconnect_result);
+                            let failure_message =
+                                reconnect_failure_message(reconnect_result, &target, &challenge);
                             store.record_trusted_connection_failure(
                                 &target.device_id,
                                 &target.endpoint,
@@ -188,18 +189,19 @@ fn reconnect_pong_matches(
     matches!(
         result,
         Ok(Some(ControlMessage::Pong { source, challenge: response_challenge }))
-            if source.device_id == target.device_id
-                && source.public_key_fingerprint == target.public_key_fingerprint
-                && peer_public_key_matches_fingerprint(
-                    &source.public_key,
-                    &source.public_key_fingerprint,
-                )
-                && target
-                    .public_key
-                    .as_ref()
-                    .is_none_or(|public_key| public_key == &source.public_key)
+            if reconnect_pong_identity_matches(source, target)
                 && response_challenge == challenge
     )
+}
+
+fn reconnect_pong_identity_matches(source: &PairingPeer, target: &TrustedTarget) -> bool {
+    source.device_id == target.device_id
+        && source.public_key_fingerprint == target.public_key_fingerprint
+        && peer_public_key_matches_fingerprint(&source.public_key, &source.public_key_fingerprint)
+        && target
+            .public_key
+            .as_ref()
+            .is_none_or(|public_key| public_key == &source.public_key)
 }
 
 fn peer_public_key_matches_fingerprint(public_key: &str, fingerprint: &str) -> bool {
@@ -210,8 +212,19 @@ fn peer_public_key_matches_fingerprint(public_key: &str, fingerprint: &str) -> b
     crypto::fingerprint_from_public_key(public_key).is_ok_and(|computed| computed == fingerprint)
 }
 
-fn reconnect_failure_message(result: std::io::Result<Option<ControlMessage>>) -> String {
+fn reconnect_failure_message(
+    result: std::io::Result<Option<ControlMessage>>,
+    target: &TrustedTarget,
+    challenge: &str,
+) -> String {
     match result {
+        Ok(Some(ControlMessage::Pong {
+            source,
+            challenge: response_challenge,
+        })) if reconnect_pong_identity_matches(&source, target) && response_challenge != challenge =>
+        {
+            "Authenticated reconnect replied with a stale challenge.".to_string()
+        }
         Ok(Some(ControlMessage::Pong { .. })) => {
             "Authenticated reconnect replied with an unexpected identity.".to_string()
         }
@@ -550,7 +563,8 @@ pub async fn check_trusted_device(
                 Err(error) => action(false, error),
             };
         } else {
-            let failure_message = reconnect_failure_message(reconnect_result);
+            let failure_message =
+                reconnect_failure_message(reconnect_result, &target, &challenge);
             store.record_trusted_connection_failure(
                 &target.device_id,
                 &endpoint,
@@ -608,7 +622,7 @@ pub async fn update_trusted_endpoint(
         };
     }
 
-    let failure_message = reconnect_failure_message(reconnect_result);
+    let failure_message = reconnect_failure_message(reconnect_result, &target, &challenge);
     store.record_trusted_connection_failure(&target.device_id, &target.endpoint, &failure_message);
     action(false, trusted_endpoint_recovery_message(failure_message))
 }
@@ -2830,22 +2844,42 @@ Wireless LAN adapter Wi-Fi:
 
     #[test]
     fn reconnect_failure_message_preserves_reason() {
+        let target = trusted_target();
         assert_eq!(
-            super::reconnect_failure_message(Ok(Some(super::ControlMessage::Pong {
-                source: peer("trusted-device", "wrong-fingerprint"),
-                challenge: "ping-challenge".to_string(),
-            }))),
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer("trusted-device", "wrong-fingerprint"),
+                    challenge: "ping-challenge".to_string(),
+                })),
+                &target,
+                "ping-challenge",
+            ),
             "Authenticated reconnect replied with an unexpected identity."
         );
         assert_eq!(
-            super::reconnect_failure_message(Ok(None)),
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer("trusted-device", "trusted-fingerprint"),
+                    challenge: "old-challenge".to_string(),
+                })),
+                &target,
+                "ping-challenge",
+            ),
+            "Authenticated reconnect replied with a stale challenge."
+        );
+        assert_eq!(
+            super::reconnect_failure_message(Ok(None), &target, "ping-challenge"),
             "Authenticated reconnect closed before replying."
         );
         assert_eq!(
-            super::reconnect_failure_message(Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "control connection timed out"
-            ))),
+            super::reconnect_failure_message(
+                Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "control connection timed out",
+                )),
+                &target,
+                "ping-challenge",
+            ),
             "Authenticated reconnect check failed: control connection timed out"
         );
     }
