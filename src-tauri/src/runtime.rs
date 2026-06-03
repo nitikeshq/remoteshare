@@ -21,6 +21,8 @@ pub(crate) const PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE: &str =
     "Private network only is enabled. Use a private LAN endpoint or turn off Private network only.";
 pub(crate) const TRUSTED_ENDPOINT_REPAIR_MESSAGE: &str =
     "Trusted device needs to be re-paired before endpoint verification.";
+pub(crate) const TARGET_RECEIVE_ROLE_MESSAGE: &str =
+    "Set the target computer role to Client or Both before input control.";
 
 #[derive(Debug, Clone)]
 struct EndpointSanitization {
@@ -913,11 +915,19 @@ impl RuntimeStore {
         let device_id = device.id.clone();
         let device_name = device.name.clone();
         let has_shared_secret = device.shared_secret.is_some();
+        let target_can_receive = trusted_device_effective_role(&state, device).can_receive_input();
 
         if !has_shared_secret {
             return NetworkAction {
                 ok: false,
                 message: "Capture target must be re-paired before input control.".to_string(),
+            };
+        }
+
+        if !target_can_receive {
+            return NetworkAction {
+                ok: false,
+                message: TARGET_RECEIVE_ROLE_MESSAGE.to_string(),
             };
         }
 
@@ -1517,6 +1527,23 @@ impl RuntimeStore {
         })
     }
 
+    pub fn trusted_target_can_receive_input(&self, device_id: &str) -> Result<(), String> {
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
+        let device = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .find(|device| device.id == device_id)
+            .ok_or_else(|| "Device is not trusted.".to_string())?;
+
+        if trusted_device_effective_role(&state, device).can_receive_input() {
+            Ok(())
+        } else {
+            Err(TARGET_RECEIVE_ROLE_MESSAGE.to_string())
+        }
+    }
+
     pub fn active_capture_target(&self) -> Option<TrustedReconnectTarget> {
         let mut state = self.state.lock().expect("runtime state poisoned");
         prune_runtime_state(&mut state, now_ms());
@@ -2068,9 +2095,7 @@ fn device_from_trusted_with_health(
         id: device.id.clone(),
         name: device.name.clone(),
         platform: device.platform.clone(),
-        role: peer
-            .map(|peer| peer.announcement.role.clone())
-            .unwrap_or_else(|| device.role.clone()),
+        role: trusted_device_effective_role_from_peer(device, peer),
         trusted: true,
         online,
         connection: match (peer.is_some(), health.is_some()) {
@@ -2097,6 +2122,22 @@ fn device_from_trusted_with_health(
             message: failure.message.clone(),
         }),
     }
+}
+
+fn trusted_device_effective_role(state: &RuntimeState, device: &TrustedDevice) -> ComputerRole {
+    let now = now_ms();
+    let peer = state.discovered_peers.get(&device.id).filter(|peer| {
+        peer_is_fresh(peer, now) && peer_matches_trusted_device(peer, device)
+    });
+    trusted_device_effective_role_from_peer(device, peer)
+}
+
+fn trusted_device_effective_role_from_peer(
+    device: &TrustedDevice,
+    peer: Option<&DiscoveredPeer>,
+) -> ComputerRole {
+    peer.map(|peer| peer.announcement.role.clone())
+        .unwrap_or_else(|| device.role.clone())
 }
 
 fn failure_endpoint_source(
@@ -2494,7 +2535,10 @@ fn clear_capture_if_target_unusable(state: &mut RuntimeState) -> bool {
         return true;
     };
 
-    if device.shared_secret.is_none() || trusted_device_endpoint(state, device).is_none() {
+    if device.shared_secret.is_none()
+        || !trusted_device_effective_role(state, device).can_receive_input()
+        || trusted_device_endpoint(state, device).is_none()
+    {
         clear_capture_state(state);
         return true;
     }
@@ -2967,7 +3011,8 @@ mod tests {
 
     use super::{
         input_summary, normalized_endpoint, now_ms, pairing_id, INVALID_ENDPOINT_MESSAGE,
-        PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE, TRUSTED_ENDPOINT_REPAIR_MESSAGE,
+        PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE, TARGET_RECEIVE_ROLE_MESSAGE,
+        TRUSTED_ENDPOINT_REPAIR_MESSAGE,
     };
     use super::{
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
@@ -7502,6 +7547,38 @@ mod tests {
     }
 
     #[test]
+    fn main_role_target_cannot_start_capture() {
+        crate::identity::set_test_config_dir(unique_test_dir("target-main-role-capture"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Main;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Main".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+
+        assert!(!action.ok);
+        assert_eq!(action.message, TARGET_RECEIVE_ROLE_MESSAGE);
+        assert!(!store.status().capture.active);
+        assert!(store.active_capture_target().is_none());
+    }
+
+    #[test]
     fn changing_to_client_clears_active_capture() {
         crate::identity::set_test_config_dir(unique_test_dir("client-role-clears-capture"));
 
@@ -7540,6 +7617,53 @@ mod tests {
         assert_eq!(store.status().mode, ComputerRole::Client);
         assert!(!store.status().capture.active);
         assert!(store.active_capture_target().is_none());
+    }
+
+    #[test]
+    fn active_capture_clears_when_target_role_cannot_receive() {
+        crate::identity::set_test_config_dir(unique_test_dir("target-role-clears-capture"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Main;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+        assert!(action.ok, "{}", action.message);
+        assert!(store.status().capture.active);
+
+        assert!(store.record_peer(
+            PeerAnnouncement {
+                protocol_version: 1,
+                device_id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                control_port: 44777,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                role: ComputerRole::Main,
+                public_key: String::new(),
+                scan_request: false,
+            },
+            "192.168.1.50:44777".to_string(),
+        ));
+
+        assert!(store.active_capture_target().is_none());
+        assert!(!store.status().capture.active);
     }
 
     #[test]

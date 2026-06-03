@@ -1306,6 +1306,10 @@ function App() {
       showActionMessage("Set this computer role to Main or Both before sending test input.", true);
       return;
     }
+    if (!canReceiveInput(device.role)) {
+      showActionMessage("Set the target computer role to Client or Both before sending input.", true);
+      return;
+    }
 
     await runExclusiveAction(`test:${device.id}`, async () => {
       const action = await invokeNetworkAction("send_test_input", {
@@ -1378,6 +1382,10 @@ function App() {
     if (actionIsActive(`capture:${device.id}`)) return;
     if (!canSendInput(status.mode)) {
       showActionMessage("Set this computer role to Main or Both before starting capture.", true);
+      return;
+    }
+    if (!canReceiveInput(device.role)) {
+      showActionMessage("Set the target computer role to Client or Both before capture.", true);
       return;
     }
 
@@ -1978,6 +1986,7 @@ function App() {
               const forgetActive = actionIsActive(`forget:${device.id}`);
               const deviceActionActive =
                 pairActive || checkActive || testActive || captureActive || receiveActive || forgetActive;
+              const targetReceiveReady = canReceiveInput(device.role);
 
               return (
               <article className="device-row" key={device.id}>
@@ -2093,12 +2102,14 @@ function App() {
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   <button
                     className="secondary-button compact"
-                    disabled={!sendRoleReady || deviceActionActive}
+                    disabled={!sendRoleReady || !targetReceiveReady || deviceActionActive}
                     onClick={() => sendTestInput(device)}
                     title={
-                      sendRoleReady
+                      !sendRoleReady
+                        ? "Set this computer role to Main or Both before sending input."
+                        : targetReceiveReady
                         ? "Send a trusted test input event to this device."
-                        : "Set this computer role to Main or Both before sending input."
+                        : "Set the target computer role to Client or Both before sending input."
                     }
                   >
                     {testActive ? "Testing" : "Test"}
@@ -2116,9 +2127,19 @@ function App() {
                   ) : (
                     <button
                       className="secondary-button compact"
-                      disabled={status.capture.active || !captureReady || !sendRoleReady || deviceActionActive}
+                      disabled={
+                        status.capture.active ||
+                        !captureReady ||
+                        !sendRoleReady ||
+                        !targetReceiveReady ||
+                        deviceActionActive
+                      }
                       onClick={() => startCapture(device)}
-                      title={captureButtonTitle(captureReady, status.capture.active, status.mode)}
+                      title={
+                        targetReceiveReady
+                          ? captureButtonTitle(captureReady, status.capture.active, status.mode)
+                          : "Set the target computer role to Client or Both before capture."
+                      }
                     >
                       {captureActive ? "Starting" : "Capture"}
                     </button>

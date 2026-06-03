@@ -454,6 +454,9 @@ pub async fn send_test_input(store: RuntimeStore, request: SendInputRequest) -> 
             "Set this computer role to Main or Both before sending test input.".to_string(),
         );
     }
+    if let Err(message) = store.trusted_target_can_receive_input(&request.device_id) {
+        return action(false, message);
+    }
 
     let reconnect_target = match store
         .trusted_reconnect_targets()
@@ -2177,7 +2180,7 @@ mod tests {
         runtime::{
             ConfirmPairingRequest, DeviceEndpointUpdateRequest, EndpointSource, PairingPeer,
             PairingTarget, RuntimeStore, TrustedReconnectTarget, TrustedTarget,
-            TRUSTED_ENDPOINT_REPAIR_MESSAGE,
+            TARGET_RECEIVE_ROLE_MESSAGE, TRUSTED_ENDPOINT_REPAIR_MESSAGE,
         },
     };
     use tokio::net::TcpListener;
@@ -3253,6 +3256,44 @@ Wireless LAN adapter Wi-Fi:
 
         assert!(!action.ok);
         assert_eq!(action.message, TRUSTED_ENDPOINT_REPAIR_MESSAGE);
+        assert!(store
+            .status()
+            .network_health
+            .last_reconnect_attempt_at_ms
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn send_test_input_rejects_non_receiving_target_before_network_probe() {
+        crate::identity::set_test_config_dir(unique_test_dir("test-input-target-main-command"));
+        let mut persisted = PersistedState::load_or_create();
+        persisted.trusted_devices.push(TrustedDevice {
+            id: "trusted-device".to_string(),
+            name: "Trusted Main".to_string(),
+            platform: "windows".to_string(),
+            role: ComputerRole::Main,
+            public_key_fingerprint: "trusted-fingerprint".to_string(),
+            public_key: None,
+            shared_secret: Some("shared-secret".to_string()),
+            last_endpoint: Some("192.168.1.50:44777".to_string()),
+            recent_endpoints: Vec::new(),
+            allow_incoming_control: false,
+        });
+        persisted
+            .save()
+            .expect("trusted main-role fixture should save");
+        let store = RuntimeStore::load_or_init();
+
+        let action = super::send_test_input(
+            store.clone(),
+            crate::runtime::SendInputRequest {
+                device_id: "trusted-device".to_string(),
+            },
+        )
+        .await;
+
+        assert!(!action.ok);
+        assert_eq!(action.message, TARGET_RECEIVE_ROLE_MESSAGE);
         assert!(store
             .status()
             .network_health
