@@ -2733,11 +2733,13 @@ fn startup_registration_success_detail(auto_start: bool) -> String {
 fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
     #[cfg(test)]
     {
-        if TEST_SKIP_AUTOSTART_REGISTRATION
-            .get_or_init(|| std::sync::atomic::AtomicBool::new(false))
-            .load(std::sync::atomic::Ordering::SeqCst)
+        if let Some(result) = TEST_AUTOSTART_REGISTRATION_RESULT
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .expect("test autostart result lock poisoned")
+            .clone()
         {
-            return Ok(());
+            return result;
         }
     }
 
@@ -2745,14 +2747,25 @@ fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
 }
 
 #[cfg(test)]
-static TEST_SKIP_AUTOSTART_REGISTRATION: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
+static TEST_AUTOSTART_REGISTRATION_RESULT: std::sync::OnceLock<Mutex<Option<Result<(), String>>>> =
     std::sync::OnceLock::new();
 
 #[cfg(test)]
 fn skip_autostart_registration_for_tests() {
-    TEST_SKIP_AUTOSTART_REGISTRATION
-        .get_or_init(|| std::sync::atomic::AtomicBool::new(false))
-        .store(true, std::sync::atomic::Ordering::SeqCst);
+    set_autostart_registration_result_for_tests(Ok(()));
+}
+
+#[cfg(test)]
+fn fail_autostart_registration_for_tests(message: &str) {
+    set_autostart_registration_result_for_tests(Err(message.to_string()));
+}
+
+#[cfg(test)]
+fn set_autostart_registration_result_for_tests(result: Result<(), String>) {
+    *TEST_AUTOSTART_REGISTRATION_RESULT
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .expect("test autostart result lock poisoned") = Some(result);
 }
 
 #[cfg(test)]
@@ -2769,7 +2782,7 @@ mod tests {
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
         PairingDirection, PairingPeer, PairingTarget, PeerAnnouncement, PendingPairing,
         DiscoveredPeer, RuntimeStore, ServiceHealthState, PEER_TIMEOUT_MS,
-        skip_autostart_registration_for_tests,
+        fail_autostart_registration_for_tests, skip_autostart_registration_for_tests,
     };
 
     #[test]
@@ -4188,6 +4201,31 @@ mod tests {
         assert_eq!(
             status.network_health.startup_registration.detail,
             "Start at login is disabled."
+        );
+    }
+
+    #[test]
+    fn startup_registration_sync_failure_reports_failed_health() {
+        fail_autostart_registration_for_tests("synthetic autostart failure");
+        crate::identity::set_test_config_dir(unique_test_dir("startup-registration-sync-failure"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.sync_startup_registration();
+
+        assert!(!action.ok);
+        assert_eq!(
+            action.message,
+            "Start-at-login registration failed: synthetic autostart failure"
+        );
+        let status = store.status();
+        assert!(status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Failed
+        );
+        assert_eq!(
+            status.network_health.startup_registration.detail,
+            "Start-at-login registration failed: synthetic autostart failure"
         );
     }
 
