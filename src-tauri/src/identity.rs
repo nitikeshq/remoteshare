@@ -145,7 +145,8 @@ impl PersistedState {
         }
 
         fs::rename(&temp_path, &path).map_err(IdentityError::Write)?;
-        secure_state_file(&path)
+        secure_state_file(&path)?;
+        sync_state_parent(&path)
     }
 
     fn load() -> Result<Self, IdentityError> {
@@ -236,6 +237,21 @@ fn secure_state_file(path: &PathBuf) -> Result<(), IdentityError> {
 
 #[cfg(not(unix))]
 fn secure_state_file(_path: &PathBuf) -> Result<(), IdentityError> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn sync_state_parent(path: &PathBuf) -> Result<(), IdentityError> {
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)
+            .and_then(|dir| dir.sync_all())
+            .map_err(IdentityError::Write)?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn sync_state_parent(_path: &PathBuf) -> Result<(), IdentityError> {
     Ok(())
 }
 
