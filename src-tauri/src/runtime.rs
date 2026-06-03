@@ -3731,6 +3731,37 @@ mod tests {
     }
 
     #[test]
+    fn clear_manual_endpoint_save_failure_keeps_runtime_status() {
+        let config_file = unique_test_dir("clear-manual-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.discovery.manual_endpoint = Some("192.168.1.50:44777".to_string());
+            state.persisted.settings.manual_endpoint = Some("192.168.1.50:44777".to_string());
+        }
+
+        let action = store.clear_manual_endpoint();
+
+        assert!(!action.ok);
+        assert!(action
+            .message
+            .starts_with("Failed to save manual connection target:"));
+        let status = store.status();
+        assert_eq!(
+            status.discovery.manual_endpoint,
+            Some("192.168.1.50:44777".to_string())
+        );
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert_eq!(
+            state.persisted.settings.manual_endpoint.as_deref(),
+            Some("192.168.1.50:44777")
+        );
+    }
+
+    #[test]
     fn private_network_guard_rejects_public_manual_endpoint_literals() {
         crate::identity::set_test_config_dir(unique_test_dir("manual-public-private-guard"));
 
