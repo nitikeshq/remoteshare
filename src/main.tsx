@@ -556,6 +556,18 @@ function startupHealthEvidence(status: RuntimeStatus) {
   ].join(" | ");
 }
 
+function captureEvidence(status: RuntimeStatus, targetName: string | null | undefined) {
+  if (!status.capture.active) {
+    return "Capture: inactive";
+  }
+
+  return [
+    "Capture: active",
+    `Target: ${targetName ?? "trusted device"}`,
+    `Started: ${elapsedLabel(status.capture.startedAtMs ?? Date.now())}`
+  ].join(" | ");
+}
+
 function commandErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -949,6 +961,16 @@ function App() {
       showActionMessage("Copied input transport evidence.");
     } catch {
       showActionMessage(`Copy failed. Input transport evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyCaptureEvidence() {
+    const evidence = captureEvidence(status, captureTarget?.name);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied capture evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Capture evidence: ${evidence}`, true);
     }
   }
 
@@ -1491,6 +1513,17 @@ function App() {
                     )}`}
               </small>
             </div>
+            {status.capture.active && (
+              <button
+                className="metric-evidence-copy"
+                onClick={copyCaptureEvidence}
+                title="Copy capture evidence"
+                type="button"
+              >
+                <Copy size={13} />
+                <span>Copy</span>
+              </button>
+            )}
             {receiveShortcutAvailable && (
               <button
                 className="secondary-button compact"

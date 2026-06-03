@@ -266,6 +266,28 @@ input {
   font-size: 12px;
 }
 
+.metric-evidence-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  margin-left: auto;
+  border: 1px solid #bdd5d1;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metric-evidence-copy span {
+  color: inherit;
+  font-size: inherit;
+}
+
 .path-panel {
   display: grid;
   grid-template-columns: minmax(220px, 1.3fr) repeat(3, minmax(180px, 1fr));
