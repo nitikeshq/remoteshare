@@ -172,6 +172,32 @@ try {
     "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
   );
 
+  const contradictoryAutoEndpointSource = writeReport("contradictory-auto-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoEndpointSource: "not discovery; reconnect failed"
+  });
+  runVerifier(
+    contradictoryAutoEndpointSource,
+    false,
+    "contradictory auto endpoint source should fail",
+    "Auto-Discovery Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
+  const contradictoryManualEndpointSource = writeReport("contradictory-manual-endpoint-source.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointSource: "manual IP failed"
+  });
+  runVerifier(
+    contradictoryManualEndpointSource,
+    false,
+    "contradictory manual endpoint source should fail",
+    "Manual Fallback Run endpoint source evidence must mention the concrete source shown in the UI"
+  );
+
   const vagueManualDiscovery = writeReport("vague-manual-discovery.md", {
     autoPass: "Pass",
     manualPass: "Pass",

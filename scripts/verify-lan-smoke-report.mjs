@@ -253,7 +253,7 @@ function requireReconnectEvidence(table, section) {
 
 function requireEndpointSourceEvidence(table, field, section, expectedPattern) {
   const value = requireFilled(table, field, section).toLowerCase();
-  if (!expectedPattern.test(value)) {
+  if (/(fail|failed|failure|blocked|denied|error|not\s+(shown|discovery|reconnect|saved|manual|verified|set))/.test(value) || !expectedPattern.test(value)) {
     throw new Error(`${section} endpoint source evidence must mention the concrete source shown in the UI.`);
   }
 }
