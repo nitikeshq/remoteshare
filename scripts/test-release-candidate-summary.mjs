@@ -35,9 +35,9 @@ try {
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
   assertIncludes(summary, "Blocking issues: none", "clear blocking issue notes evidence");
-  assertIncludes(summary, "screenshots or logs captured", "captured evidence notes");
+  assertIncludes(summary, "screenshots or logs captured for pairing, reconnect, input, and capture evidence", "captured evidence notes");
   assertIncludes(summary, "Retest required: no", "clear retest notes evidence");
-  assertIncludes(summary, "missing captured-evidence notes", "notes captured-evidence readiness gate");
+  assertIncludes(summary, "incomplete captured-evidence notes", "notes captured-evidence readiness gate");
   assertIncludes(summary, "Do not publish the draft release until both verification commands pass", "draft publish gate");
 
   const missingManifest = path.join(root, "missing-manifest");

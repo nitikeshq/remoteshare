@@ -74,7 +74,7 @@ ${rows}
 10. In the auto-discovery run, record the endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
 11. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
 12. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
-13. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured, and show \`Retest required: no\`; unresolved blocking issues, missing captured-evidence notes, or required retests fail release readiness.
+13. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured for pairing, reconnect, input, and capture evidence, and show \`Retest required: no\`; unresolved blocking issues, incomplete captured-evidence notes, or required retests fail release readiness.
 14. Verify the completed report:
 
 \`\`\`bash
