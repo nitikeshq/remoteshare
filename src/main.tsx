@@ -697,6 +697,15 @@ function App() {
     showActionMessage("Trusted IP update canceled. Manual pair field restored.");
   }
 
+  function prepareManualRepair(device: Device) {
+    setEndpointUpdateDeviceId(null);
+    setManualEndpoint("");
+    setManualEndpointDirty(true);
+    showActionMessage(
+      `Paste the current endpoint for ${device.name} into Manual pair, then connect and confirm the new code on both computers.`
+    );
+  }
+
   async function copyLocalEndpoint(endpoint: string) {
     try {
       await navigator.clipboard.writeText(endpoint);
@@ -1402,7 +1411,14 @@ function App() {
                   </button>
                 )}
                 {device.trusted && !device.endpoint && !device.inputControlReady && (
-                  <span className="warning-badge">Re-pair</span>
+                  <button
+                    className="secondary-button compact"
+                    onClick={() => prepareManualRepair(device)}
+                    title="Paste this trusted device's current endpoint into Manual pair to re-pair it."
+                    type="button"
+                  >
+                    Pair manually
+                  </button>
                 )}
                 {device.trusted && device.endpoint && device.inputControlReady && (
                   <button
