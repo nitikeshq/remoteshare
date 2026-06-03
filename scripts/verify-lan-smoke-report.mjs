@@ -105,6 +105,7 @@ for (const field of requiredManualFields) {
 }
 
 requireSuccess(context, "Same subnet confirmed", "Test Context");
+requireIsoDate(context, "Test date", "Test Context");
 requireInputDirection(context);
 requireMvpRoles(context);
 requireSuccess(context, "macOS firewall status", "Test Context");
@@ -198,6 +199,18 @@ function requireSuccess(table, field, section) {
     /(fail|failed|failure|blocked|denied|error|not\s+(ok|ready|accepted|enabled|allowed|reachable|shown|started|delivered|confirmed|compared))/i.test(valueWithoutExpectedNegative)
   ) {
     throw new Error(`${section} field must show success: ${field}`);
+  }
+}
+
+function requireIsoDate(table, field, section) {
+  const value = requireFilled(table, field, section);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`${section} ${field} must be an ISO date in YYYY-MM-DD format.`);
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error(`${section} ${field} must be a valid calendar date.`);
   }
 }
 

@@ -43,6 +43,32 @@ try {
   });
   runVerifier(missingLinuxField, false, "missing Linux installer field should fail", "Missing Test Context field: Linux installer file");
 
+  const malformedTestDate = writeReport("malformed-test-date.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    testDate: "June 2, 2026"
+  });
+  runVerifier(
+    malformedTestDate,
+    false,
+    "malformed test date should fail",
+    "Test Context Test date must be an ISO date in YYYY-MM-DD format"
+  );
+
+  const invalidTestDate = writeReport("invalid-test-date.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    testDate: "2026-02-31"
+  });
+  runVerifier(
+    invalidTestDate,
+    false,
+    "invalid test date should fail",
+    "Test Context Test date must be a valid calendar date"
+  );
+
   const duplicateContextField = writeReport("duplicate-context-field.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -687,6 +713,7 @@ function writeReport(name, options) {
   const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
   const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? "enabled";
+  const testDate = options.testDate ?? "2026-06-02";
   const extraContextRows = options.extraContextRows ?? [];
   const extraAutoRows = options.extraAutoRows ?? [];
   const extraManualRows = options.extraManualRows ?? [];
@@ -697,7 +724,7 @@ function writeReport(name, options) {
     "",
     "| Field | Value |",
     "| --- | --- |",
-    "| Test date | 2026-06-02 |",
+    `| Test date | ${testDate} |`,
     "| Tester | QA |",
     `| RemoteShare version/tag | ${version} |`,
     `| Input direction | ${inputDirection} |`,
