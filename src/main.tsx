@@ -757,14 +757,16 @@ function App() {
   }, [status.pendingPairings]);
 
   async function scanLan() {
-    setLoading(true);
-    try {
-      const action = await invokeNetworkAction("start_lan_discovery");
-      showActionMessage(action.message, !action.ok);
-      await refreshStatus();
-    } finally {
-      setLoading(false);
-    }
+    await runExclusiveAction("scan-lan", async () => {
+      setLoading(true);
+      try {
+        const action = await invokeNetworkAction("start_lan_discovery");
+        showActionMessage(action.message, !action.ok);
+        await refreshStatus();
+      } finally {
+        setLoading(false);
+      }
+    });
   }
 
   function restoreManualPairAfterTrustedUpdate(message: string) {
@@ -796,35 +798,39 @@ function App() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const action = endpointUpdateDeviceId
-        ? await invokeNetworkAction("update_trusted_endpoint", {
-            request: { deviceId: endpointUpdateDeviceId, endpoint: manualEndpoint.trim() }
-          })
-        : await invokeNetworkAction("initiate_pairing", {
-            request: { endpoint: manualEndpoint.trim(), manualEndpoint: true }
-          });
+    await runExclusiveAction("manual-connect", async () => {
+      setLoading(true);
+      try {
+        const action = endpointUpdateDeviceId
+          ? await invokeNetworkAction("update_trusted_endpoint", {
+              request: { deviceId: endpointUpdateDeviceId, endpoint: manualEndpoint.trim() }
+            })
+          : await invokeNetworkAction("initiate_pairing", {
+              request: { endpoint: manualEndpoint.trim(), manualEndpoint: true }
+            });
+        showActionMessage(action.message, !action.ok);
+        if (action.ok) {
+          setManualEndpointDirty(false);
+          setEndpointUpdateDeviceId(null);
+        }
+        await refreshStatus();
+      } finally {
+        setLoading(false);
+      }
+    });
+  }
+
+  async function clearManualEndpoint() {
+    await runExclusiveAction("clear-manual-endpoint", async () => {
+      const action = await invokeNetworkAction("clear_manual_endpoint");
       showActionMessage(action.message, !action.ok);
       if (action.ok) {
+        setManualEndpoint("");
         setManualEndpointDirty(false);
         setEndpointUpdateDeviceId(null);
       }
       await refreshStatus();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function clearManualEndpoint() {
-    const action = await invokeNetworkAction("clear_manual_endpoint");
-    showActionMessage(action.message, !action.ok);
-    if (action.ok) {
-      setManualEndpoint("");
-      setManualEndpointDirty(false);
-      setEndpointUpdateDeviceId(null);
-    }
-    await refreshStatus();
+    });
   }
 
   function editManualEndpoint(device: Device) {
@@ -944,11 +950,13 @@ function App() {
     key: "role" | "autoStart" | "trustedReconnect" | "privateNetworkOnly" | "allowIncomingControl",
     value: boolean | ComputerRole
   ) {
-    const action = await invokeNetworkAction("update_settings", {
-      request: { [key]: value }
+    await runExclusiveAction(`setting:${key}`, async () => {
+      const action = await invokeNetworkAction("update_settings", {
+        request: { [key]: value }
+      });
+      showActionMessage(action.message, !action.ok);
+      await refreshStatus();
     });
-    showActionMessage(action.message, !action.ok);
-    await refreshStatus();
   }
 
   async function updateDeviceControl(device: Device, value: boolean) {
@@ -983,15 +991,17 @@ function App() {
   }
 
   async function requestInputPermissions() {
-    try {
-      const nextPermissions = await invoke<InputPermissionStatus>("request_input_permissions");
-      setPermissions(nextPermissions);
-      showActionMessage("Input permission request sent.");
-      await refreshStatus(false);
-    } catch (error) {
-      showActionMessage(`Input permission request failed: ${commandErrorMessage(error)}`, true);
-      await refreshStatus(false);
-    }
+    await runExclusiveAction("request-input-permissions", async () => {
+      try {
+        const nextPermissions = await invoke<InputPermissionStatus>("request_input_permissions");
+        setPermissions(nextPermissions);
+        showActionMessage("Input permission request sent.");
+        await refreshStatus(false);
+      } catch (error) {
+        showActionMessage(`Input permission request failed: ${commandErrorMessage(error)}`, true);
+        await refreshStatus(false);
+      }
+    });
   }
 
   async function sendTestInput(device: Device) {
@@ -1104,6 +1114,11 @@ function App() {
     status.allowIncomingControl,
     trustedDevicesNeedingReceive.length
   );
+  const scanLanActive = actionIsActive("scan-lan");
+  const manualConnectActive = actionIsActive("manual-connect");
+  const clearManualEndpointActive = actionIsActive("clear-manual-endpoint");
+  const requestInputPermissionsActive = actionIsActive("request-input-permissions");
+  const manualFormActive = loading || manualConnectActive || clearManualEndpointActive;
   const checkableTrustedDevices = useMemo(
     () => trustedDevices.filter((device) => device.endpoint && device.inputControlReady),
     [trustedDevices]
@@ -1438,10 +1453,11 @@ function App() {
             </div>
             <button
               className="secondary-button compact"
+              disabled={requestInputPermissionsActive}
               onClick={requestInputPermissions}
               type="button"
             >
-              Request
+              {requestInputPermissionsActive ? "Requesting" : "Request"}
             </button>
           </div>
         </section>
@@ -1557,10 +1573,11 @@ function App() {
           </div>
           <button
             className="secondary-button compact"
+            disabled={requestInputPermissionsActive}
             onClick={requestInputPermissions}
             type="button"
           >
-            Request
+            {requestInputPermissionsActive ? "Requesting" : "Request"}
           </button>
         </section>
 
@@ -1570,8 +1587,8 @@ function App() {
               <h3>Nearby Computers</h3>
               <p>Pair once with approval on both computers, then reconnect after restart, wake, or Wi-Fi changes.</p>
             </div>
-            <button className="primary-button" onClick={scanLan} disabled={loading}>
-              Scan LAN
+            <button className="primary-button" onClick={scanLan} disabled={loading || scanLanActive}>
+              {scanLanActive ? "Scanning" : "Scan LAN"}
             </button>
           </div>
 
@@ -1977,9 +1994,9 @@ function App() {
         )}
 
         <section className="connect-panel">
-          <button className="secondary-button" onClick={scanLan} disabled={loading}>
+          <button className="secondary-button" onClick={scanLan} disabled={loading || scanLanActive}>
             <Wifi size={17} />
-            Scan LAN
+            {scanLanActive ? "Scanning" : "Scan LAN"}
           </button>
           <form onSubmit={submitManualConnect} className="manual-form">
             <label htmlFor="manual-endpoint">
@@ -1993,7 +2010,7 @@ function App() {
                 aria-describedby="manual-endpoint-hint"
                 placeholder="host, host:port, IPv4, IPv6, or [IPv6]"
                 value={manualEndpoint}
-                disabled={loading}
+                disabled={manualFormActive}
                 onChange={(event) => {
                   setManualEndpoint(event.target.value);
                   setManualEndpointDirty(true);
@@ -2005,15 +2022,25 @@ function App() {
                   : "Missing ports use 44777. Localhost, loopback, unspecified, and link-local IPv6 endpoints are rejected. Public IP literals are blocked while Private network only is on."}
               </small>
             </div>
-            <button className="secondary-button" type="submit" disabled={loading || !manualEndpoint.trim()}>
+            <button
+              className="secondary-button"
+              type="submit"
+              disabled={manualFormActive || !manualEndpoint.trim()}
+            >
               <Link size={17} />
-              {endpointUpdateDeviceId ? "Verify IP" : "Connect"}
+              {manualConnectActive
+                ? endpointUpdateDeviceId
+                  ? "Verifying"
+                  : "Connecting"
+                : endpointUpdateDeviceId
+                  ? "Verify IP"
+                  : "Connect"}
             </button>
             {endpointUpdateDeviceId && (
               <button
                 className="secondary-button"
                 type="button"
-                disabled={loading}
+                disabled={manualFormActive}
                 onClick={cancelTrustedEndpointUpdate}
               >
                 Cancel
@@ -2024,9 +2051,9 @@ function App() {
                 className="secondary-button compact"
                 onClick={clearManualEndpoint}
                 type="button"
-                disabled={loading}
+                disabled={manualFormActive}
               >
-                Clear
+                {clearManualEndpointActive ? "Clearing" : "Clear"}
               </button>
             )}
           </form>
@@ -2040,6 +2067,7 @@ function App() {
             <span>This computer role</span>
             <select
               value={status.mode}
+              disabled={actionIsActive("setting:role")}
               onChange={(event) => updateSetting("role", event.target.value as ComputerRole)}
             >
               <option value="main">Main</option>
@@ -2052,6 +2080,7 @@ function App() {
             <input
               type="checkbox"
               checked={status.autoStart}
+              disabled={actionIsActive("setting:autoStart")}
               onChange={(event) => updateSetting("autoStart", event.target.checked)}
             />
           </label>
@@ -2060,6 +2089,7 @@ function App() {
             <input
               type="checkbox"
               checked={status.trustedReconnect}
+              disabled={actionIsActive("setting:trustedReconnect")}
               onChange={(event) => updateSetting("trustedReconnect", event.target.checked)}
             />
           </label>
@@ -2068,6 +2098,7 @@ function App() {
             <input
               type="checkbox"
               checked={status.privateNetworkOnly}
+              disabled={actionIsActive("setting:privateNetworkOnly")}
               onChange={(event) => updateSetting("privateNetworkOnly", event.target.checked)}
             />
           </label>
@@ -2076,7 +2107,7 @@ function App() {
             <input
               type="checkbox"
               checked={status.allowIncomingControl}
-              disabled={!receiveRoleReady}
+              disabled={!receiveRoleReady || actionIsActive("setting:allowIncomingControl")}
               title={
                 receiveRoleReady
                   ? undefined
