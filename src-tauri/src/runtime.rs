@@ -5084,6 +5084,61 @@ mod tests {
     }
 
     #[test]
+    fn verified_manual_trusted_endpoint_bounds_recent_fallbacks() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-bounds-fallbacks"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: vec![
+                    "192.168.1.11:44777".to_string(),
+                    "192.168.1.12:44777".to_string(),
+                    "192.168.1.13:44777".to_string(),
+                    "192.168.1.14:44777".to_string(),
+                ],
+                allow_incoming_control: false,
+            });
+        }
+
+        store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect("verified manual endpoint should save");
+
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec![
+                "192.168.1.50:44777".to_string(),
+                "192.168.1.10:44777".to_string(),
+                "192.168.1.11:44777".to_string(),
+                "192.168.1.12:44777".to_string(),
+            ]
+        );
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert_eq!(
+            state.persisted.trusted_devices[0].recent_endpoints,
+            vec![
+                "192.168.1.50:44777".to_string(),
+                "192.168.1.10:44777".to_string(),
+                "192.168.1.11:44777".to_string(),
+                "192.168.1.12:44777".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn interactive_trusted_connection_preserves_manual_endpoint_source() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-interactive-manual-source"));
 
