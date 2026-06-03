@@ -54,7 +54,7 @@ RemoteShare runs on every computer. One machine can act as the host that capture
 - Same router and same subnet should use direct LAN.
 - Same router but different subnet may need manual IP or router rules.
 - Auto-detection is limited to reachable broadcast domains. A computer on another SSID, VLAN, guest network, VPN route, or isolated Wi-Fi segment may be on the same physical router but still invisible to UDP discovery.
-- Manual endpoints are the supported MVP fallback for blocked discovery. They accept hostnames, host:port, IPv4, raw IPv6, bracketed IPv6, and bracketed IPv6 with a port; missing ports default to TCP `44777`.
+- Manual endpoints are the supported MVP fallback for blocked discovery. They accept hostnames, host:port, IPv4, raw IPv6, bracketed IPv6, and bracketed IPv6 with a port; missing ports default to TCP `44777`. The UI preflights the manual endpoint field before pairing or trusted endpoint verification, blocking URLs, whitespace, invalid ports, loopback or unspecified addresses, link-local addresses, and public IP literals while `Private network only` is enabled; the runtime enforces the same rules before network use or persistence.
 - The app surfaces connection-path diagnostics from runtime state: discovered LAN peers, saved manual endpoint, newest-first saved trusted endpoint candidates, and recent trusted reconnect failures.
 - Manual IP fallback is saved locally and restored after restart until the user clears it.
 - Guest Wi-Fi, client isolation, VPNs, and VLANs can block discovery.
