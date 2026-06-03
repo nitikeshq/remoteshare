@@ -154,6 +154,21 @@ try {
     "generatedAt must be a valid ISO-8601 UTC timestamp"
   );
 
+  const futureGeneratedAt = fixture("future-generated-at", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  const futureGeneratedAtJson = readManifest(futureGeneratedAt);
+  futureGeneratedAtJson.generatedAt = "2999-01-01T00:00:00.000Z";
+  writeManifest(futureGeneratedAt, futureGeneratedAtJson);
+  runVerifier(
+    futureGeneratedAt,
+    false,
+    "future generatedAt should fail",
+    "generatedAt cannot be in the future"
+  );
+
   console.log("Release manifest verifier tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });

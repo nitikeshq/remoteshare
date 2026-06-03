@@ -5,7 +5,8 @@ import {
   findEmptyInstallerArtifacts,
   findInstallerArtifacts,
   findUnexpectedInstallerArtifacts,
-  publishArtifactStatus
+  publishArtifactStatus,
+  validateReleaseGeneratedAt
 } from "./release-artifacts-lib.mjs";
 
 const sourceRoot = process.argv[2] ?? "release-artifacts";
@@ -116,14 +117,12 @@ function assertArtifactVersion(basename, version) {
 
 function releaseGeneratedAt() {
   const value = process.env.REMOTESHARE_RELEASE_GENERATED_AT ?? new Date().toISOString();
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+  try {
+    validateReleaseGeneratedAt(value);
+  } catch (error) {
     throw new Error(
-      "REMOTESHARE_RELEASE_GENERATED_AT must be an ISO-8601 UTC timestamp with milliseconds."
+      `REMOTESHARE_RELEASE_GENERATED_AT must be an ISO-8601 UTC timestamp with milliseconds and cannot be in the future. ${error.message}`
     );
-  }
-
-  if (new Date(value).toISOString() !== value) {
-    throw new Error(`Release generatedAt timestamp is invalid: ${value}`);
   }
 
   return value;

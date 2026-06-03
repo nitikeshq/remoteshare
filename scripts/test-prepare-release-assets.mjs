@@ -127,6 +127,20 @@ try {
     `Release asset filename must include package version ${packageVersion}`
   );
 
+  const futureGeneratedAtSource = fixture("future-generated-at-source", [
+    [`mac/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    [`win/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    [`linux/RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  runPreparer(
+    futureGeneratedAtSource,
+    path.join(root, "future-generated-at-output"),
+    false,
+    "future generatedAt override should fail",
+    "REMOTESHARE_RELEASE_GENERATED_AT must be an ISO-8601 UTC timestamp with milliseconds and cannot be in the future",
+    { generatedAt: "2999-01-01T00:00:00.000Z" }
+  );
+
   console.log("Release asset preparation tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
@@ -145,10 +159,13 @@ function fixture(name, files) {
   return directory;
 }
 
-function runPreparer(source, output, shouldPass, label, expectedOutput = "") {
+function runPreparer(source, output, shouldPass, label, expectedOutput = "", options = {}) {
   const result = spawnSync(process.execPath, [preparer, source, output], {
     encoding: "utf8",
-    env: { ...process.env, REMOTESHARE_RELEASE_GENERATED_AT: generatedAt }
+    env: {
+      ...process.env,
+      REMOTESHARE_RELEASE_GENERATED_AT: options.generatedAt ?? generatedAt
+    }
   });
   const commandOutput = `${result.stdout}\n${result.stderr}`;
 

@@ -128,6 +128,10 @@ export function validateReleaseGeneratedAt(value) {
   if (!isValidReleaseGeneratedAt(value)) {
     throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
   }
+
+  if (new Date(value).getTime() > Date.now()) {
+    throw new Error("Release manifest generatedAt cannot be in the future.");
+  }
 }
 
 function walkFiles(directory, visit) {

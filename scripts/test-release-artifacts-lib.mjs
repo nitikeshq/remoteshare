@@ -154,6 +154,11 @@ try {
     "Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.",
     "release manifest generatedAt invalid month"
   );
+  assertThrows(
+    () => validateReleaseGeneratedAt("2999-01-01T00:00:00.000Z"),
+    "Release manifest generatedAt cannot be in the future.",
+    "release manifest generatedAt future timestamp"
+  );
 
   console.log("Release artifact helper tests passed.");
 } finally {
