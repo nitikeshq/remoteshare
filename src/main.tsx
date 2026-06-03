@@ -420,10 +420,15 @@ function mvpInputPermissionStep(platform: string, permissions: InputPermissionSt
   }
 
   if (isMacPlatform(platform)) {
+    const accessibilityGranted = permissions.accessibility === "granted";
+    const inputMonitoringGranted = permissions.inputMonitoring === "granted";
     return {
       label: "Mac input permissions",
-      done: permissions.captureEngine === "ready",
-      detail: "Grant Input Monitoring and Accessibility on the Mac sender."
+      done: accessibilityGranted && inputMonitoringGranted,
+      detail:
+        accessibilityGranted && inputMonitoringGranted
+          ? "Accessibility and Input Monitoring granted."
+          : "Grant Accessibility and Input Monitoring on the Mac sender."
     };
   }
 
