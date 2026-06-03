@@ -813,8 +813,11 @@ function requireAutoDiscoverySubnetEvidence(table) {
     throw new Error("Auto-Discovery Run IP/subnet fields must use private LAN IPv4 addresses, not public IPv4 addresses.");
   }
 
-  const prefix = Math.min(mac.prefix, windows.prefix);
-  if (networkNumber(mac.ip, prefix) !== networkNumber(windows.ip, prefix)) {
+  if (mac.prefix !== windows.prefix) {
+    throw new Error("Auto-Discovery Run macOS IP/subnet and Windows IP/subnet must use the same IPv4 CIDR prefix length.");
+  }
+
+  if (networkNumber(mac.ip, mac.prefix) !== networkNumber(windows.ip, windows.prefix)) {
     throw new Error("Auto-Discovery Run macOS IP/subnet and Windows IP/subnet must be on the same IPv4 subnet.");
   }
 }

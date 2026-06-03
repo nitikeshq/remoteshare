@@ -1320,6 +1320,20 @@ try {
     "Auto-Discovery Run IP/subnet fields must use private LAN IPv4 addresses"
   );
 
+  const mismatchedAutoPrefix = writeReport("mismatched-auto-prefix.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macIpSubnet: "192.168.1.10/16",
+    windowsIpSubnet: "192.168.2.20/24"
+  });
+  runVerifier(
+    mismatchedAutoPrefix,
+    false,
+    "mismatched auto-discovery prefix should fail",
+    "Auto-Discovery Run macOS IP/subnet and Windows IP/subnet must use the same IPv4 CIDR prefix length"
+  );
+
   const differentAutoSubnet = writeReport("different-auto-subnet.md", {
     autoPass: "Pass",
     manualPass: "Pass",
