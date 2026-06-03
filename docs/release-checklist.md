@@ -34,6 +34,8 @@ npm run verify:release-scripts
 
 This verifies the release automation, fixture tests, local artifact summary, and package doctor without running `cargo check` or rebuilding the frontend.
 
+Normal pushes to `main` and pull requests run `.github/workflows/ci.yml`. That CI gate installs the Linux Tauri dependencies, runs `npm run verify:release-scripts`, typechecks the frontend, runs annotated Rust check and Rust unit-test gates, and builds the frontend. It intentionally does not run `npm run build` or produce native installers; use the release workflow for native `.dmg`, `.exe`, and `.deb` artifacts.
+
 The disk preflight defaults to 1024 MiB free and supports macOS, Linux, and Windows runners. Override it with `REMOTESHARE_MIN_FREE_MIB` when a stricter or intentionally looser local/CI threshold is needed. A Rust debug dependency rebuild can need significantly more space than a warm local verification run.
 
 If the local verifier is blocked by Rust debug cache pressure, run:
