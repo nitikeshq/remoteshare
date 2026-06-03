@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-download-release-assets-"));
 const downloader = path.resolve("scripts/download-release-assets.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const fixture = releaseFixture("valid");
@@ -69,7 +70,7 @@ function releaseFixture(name) {
   );
   fs.writeFileSync(
     path.join(assetsRoot, "RELEASE-MANIFEST.json"),
-    `${JSON.stringify({ version: packageVersion, artifacts }, null, 2)}\n`
+    `${JSON.stringify({ version: packageVersion, generatedAt, artifacts }, null, 2)}\n`
   );
   fs.writeFileSync(path.join(assetsRoot, "lan-smoke-report.md"), "# LAN smoke report\n");
   fs.writeFileSync(path.join(assetsRoot, "release-candidate-summary.md"), "# Release candidate\n");

@@ -11,6 +11,7 @@ import {
 const sourceRoot = process.argv[2] ?? "release-artifacts";
 const outputRoot = process.argv[3] ?? "release-assets";
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = releaseGeneratedAt();
 
 const artifacts = findInstallerArtifacts(sourceRoot);
 const unexpectedArtifacts = findUnexpectedInstallerArtifacts(sourceRoot);
@@ -87,7 +88,7 @@ fs.writeFileSync(path.join(outputRoot, "SHA256SUMS.txt"), `${checksumLines.join(
 manifestArtifacts.sort((a, b) => a.type.localeCompare(b.type));
 fs.writeFileSync(
   path.join(outputRoot, "RELEASE-MANIFEST.json"),
-  `${JSON.stringify({ version: packageVersion, artifacts: manifestArtifacts }, null, 2)}\n`
+  `${JSON.stringify({ version: packageVersion, generatedAt, artifacts: manifestArtifacts }, null, 2)}\n`
 );
 
 console.log(checksumLines.join("\n"));
@@ -111,4 +112,19 @@ function assertArtifactVersion(basename, version) {
       `Release asset filename must include package version ${version}: ${basename}`
     );
   }
+}
+
+function releaseGeneratedAt() {
+  const value = process.env.REMOTESHARE_RELEASE_GENERATED_AT ?? new Date().toISOString();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+    throw new Error(
+      "REMOTESHARE_RELEASE_GENERATED_AT must be an ISO-8601 UTC timestamp with milliseconds."
+    );
+  }
+
+  if (new Date(value).toISOString() !== value) {
+    throw new Error(`Release generatedAt timestamp is invalid: ${value}`);
+  }
+
+  return value;
 }

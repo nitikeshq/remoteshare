@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-manifest-"));
 const verifier = path.resolve("scripts/verify-release-manifest.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const valid = fixture("valid", [
@@ -123,6 +124,36 @@ try {
     `must include package version ${packageVersion}`
   );
 
+  const missingGeneratedAt = fixture("missing-generated-at", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  const missingGeneratedAtJson = readManifest(missingGeneratedAt);
+  delete missingGeneratedAtJson.generatedAt;
+  writeManifest(missingGeneratedAt, missingGeneratedAtJson);
+  runVerifier(
+    missingGeneratedAt,
+    false,
+    "missing generatedAt should fail",
+    "generatedAt must be a valid ISO-8601 UTC timestamp"
+  );
+
+  const invalidGeneratedAt = fixture("invalid-generated-at", [
+    ["dmg", `RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+    ["exe", `RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+    ["deb", `RemoteShare_${packageVersion}_amd64.deb`, "valid deb"]
+  ]);
+  const invalidGeneratedAtJson = readManifest(invalidGeneratedAt);
+  invalidGeneratedAtJson.generatedAt = "2026-06-01";
+  writeManifest(invalidGeneratedAt, invalidGeneratedAtJson);
+  runVerifier(
+    invalidGeneratedAt,
+    false,
+    "invalid generatedAt should fail",
+    "generatedAt must be a valid ISO-8601 UTC timestamp"
+  );
+
   console.log("Release manifest verifier tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
@@ -151,6 +182,7 @@ function fixture(name, files) {
   );
   writeManifest(directory, {
     version: packageVersion,
+    generatedAt,
     artifacts: artifacts.sort((a, b) => a.type.localeCompare(b.type))
   });
 

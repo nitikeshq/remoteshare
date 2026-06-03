@@ -32,6 +32,7 @@ if (!Array.isArray(manifest.artifacts)) {
   throw new Error("Release manifest must contain an artifacts array.");
 }
 
+validateGeneratedAt(manifest.generatedAt);
 const manifestArtifacts = manifest.artifacts.map(validateManifestArtifact);
 const { duplicateTypes, missingTypes } = publishArtifactStatus(manifestArtifacts);
 
@@ -142,6 +143,16 @@ function validateManifestArtifact(artifact, index) {
   }
 
   return { file, sha256, sizeBytes, type };
+}
+
+function validateGeneratedAt(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
+  }
 }
 
 function readChecksumFile(file) {

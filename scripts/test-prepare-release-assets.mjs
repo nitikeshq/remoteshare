@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-prepare-assets-"));
 const preparer = path.resolve("scripts/prepare-release-assets.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-02T12:34:56.789Z";
 
 try {
   const validSource = fixture("valid-source", [
@@ -146,7 +147,8 @@ function fixture(name, files) {
 
 function runPreparer(source, output, shouldPass, label, expectedOutput = "") {
   const result = spawnSync(process.execPath, [preparer, source, output], {
-    encoding: "utf8"
+    encoding: "utf8",
+    env: { ...process.env, REMOTESHARE_RELEASE_GENERATED_AT: generatedAt }
   });
   const commandOutput = `${result.stdout}\n${result.stderr}`;
 
@@ -195,6 +197,9 @@ function assertManifest(directory, expectedFiles) {
   );
   if (manifest.version !== packageVersion) {
     throw new Error(`Unexpected release manifest version: ${String(manifest.version)}`);
+  }
+  if (manifest.generatedAt !== generatedAt) {
+    throw new Error(`Unexpected release manifest generatedAt: ${String(manifest.generatedAt)}`);
   }
   const actual = manifest.artifacts.map((artifact) => [
     artifact.type,

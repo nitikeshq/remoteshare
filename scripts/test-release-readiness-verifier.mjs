@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-readiness-"));
 const verifier = path.resolve("scripts/verify-release-readiness.mjs");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const releaseAssets = releaseFixture("release-assets");
@@ -154,6 +155,41 @@ try {
     "RemoteShare version/tag"
   );
 
+  const staleDateReport = smokeReportFixture("stale-date.md", "Pass", {
+    testDate: "2026-05-31"
+  });
+  runVerifier(
+    releaseAssets,
+    staleDateReport,
+    false,
+    "stale LAN smoke test date should fail",
+    "Test date must be on or after release manifest date 2026-06-01"
+  );
+
+  const malformedDateReport = smokeReportFixture("malformed-date.md", "Pass", {
+    testDate: "June 2, 2026"
+  });
+  runVerifier(
+    releaseAssets,
+    malformedDateReport,
+    false,
+    "malformed LAN smoke test date should fail",
+    "Test date must be an ISO date"
+  );
+
+  const missingGeneratedAtAssets = releaseFixture("missing-generated-at");
+  const missingGeneratedAtManifestPath = path.join(missingGeneratedAtAssets, "RELEASE-MANIFEST.json");
+  const missingGeneratedAtManifest = JSON.parse(fs.readFileSync(missingGeneratedAtManifestPath, "utf8"));
+  delete missingGeneratedAtManifest.generatedAt;
+  fs.writeFileSync(missingGeneratedAtManifestPath, `${JSON.stringify(missingGeneratedAtManifest, null, 2)}\n`);
+  runVerifier(
+    missingGeneratedAtAssets,
+    smokeReport,
+    false,
+    "missing release manifest generatedAt should fail",
+    "generatedAt must be a valid ISO-8601 UTC timestamp"
+  );
+
   const mismatchedHashReport = smokeReportFixture("mismatched-hash.md", "Pass", {
     macSha256: sha256("wrong dmg")
   });
@@ -173,7 +209,7 @@ try {
     duplicateContextReport,
     false,
     "duplicate LAN smoke context rows should fail",
-    "Duplicate smoke report field in Test Context: macOS installer file"
+    "Duplicate LAN smoke report field in Test Context: macOS installer file"
   );
 
   const mismatchedWindowsHashReport = smokeReportFixture("mismatched-windows-hash.md", "Pass", {
@@ -230,7 +266,11 @@ function releaseFixture(name) {
   fs.writeFileSync(
     path.join(directory, "RELEASE-MANIFEST.json"),
     `${JSON.stringify(
-      { version: packageVersion, artifacts: artifacts.sort((a, b) => a.type.localeCompare(b.type)) },
+      {
+        version: packageVersion,
+        generatedAt,
+        artifacts: artifacts.sort((a, b) => a.type.localeCompare(b.type))
+      },
       null,
       2
     )}\n`
@@ -282,6 +322,7 @@ function smokeReportFixture(name, passValue, options = {}) {
   const windowsSha256 = options.windowsSha256 ?? sha256("valid exe");
   const linuxSha256 = options.linuxSha256 ?? sha256("valid deb");
   const version = options.version ?? `v${packageVersion}`;
+  const testDate = options.testDate ?? "2026-06-02";
   const extraContextRows = options.extraContextRows ?? "";
   fs.writeFileSync(
     file,
@@ -291,7 +332,7 @@ function smokeReportFixture(name, passValue, options = {}) {
 
 | Field | Value |
 | --- | --- |
-| Test date | 2026-06-02 |
+| Test date | ${testDate} |
 | Tester | QA |
 | RemoteShare version/tag | ${version} |
 ${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/client |

@@ -92,6 +92,7 @@ function verifySmokeReportMatchesReleaseAssets(assetsRoot, smokeReportPath) {
   const context = parseTable(fs.readFileSync(smokeReportPath, "utf8"), "Test Context");
 
   assertSmokeVersionMatches(context, packageJson.version);
+  assertSmokeDateMatchesManifest(context, manifest);
   for (const artifact of manifest.artifacts) {
     if (!artifact.file.includes(packageJson.version)) {
       throw new Error(
@@ -113,6 +114,36 @@ function assertSmokeVersionMatches(context, expectedVersion) {
   if (!reportVersion.includes(expectedVersion)) {
     throw new Error(
       `LAN smoke report RemoteShare version/tag must include package version ${expectedVersion}: got ${reportVersion || "<missing>"}`
+    );
+  }
+}
+
+function assertSmokeDateMatchesManifest(context, manifest) {
+  const generatedAt = manifest.generatedAt;
+  if (
+    typeof generatedAt !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(generatedAt) ||
+    new Date(generatedAt).toISOString() !== generatedAt
+  ) {
+    throw new Error("Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.");
+  }
+
+  const testDate = context.get("Test date") ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
+    throw new Error(
+      `LAN smoke report Test date must be an ISO date in YYYY-MM-DD format: got ${testDate || "<missing>"}`
+    );
+  }
+
+  const parsedTestDate = new Date(`${testDate}T00:00:00.000Z`);
+  if (Number.isNaN(parsedTestDate.getTime()) || parsedTestDate.toISOString().slice(0, 10) !== testDate) {
+    throw new Error(`LAN smoke report Test date is invalid: ${testDate}`);
+  }
+
+  const releaseDate = generatedAt.slice(0, 10);
+  if (testDate < releaseDate) {
+    throw new Error(
+      `LAN smoke report Test date must be on or after release manifest date ${releaseDate}: got ${testDate}`
     );
   }
 }
