@@ -72,6 +72,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 ## MVP Acceptance Evidence
 
 Record one test row for auto-discovery and one test row for manual fallback. Use [lan-smoke-report-template.md](lan-smoke-report-template.md) for release-candidate runs, then verify the completed report with `npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md`. The first public MVP is not accepted until macOS-to-Windows pairing, trusted reconnect after restart, input smoke, and captured mouse/key/scroll forwarding all pass on real hardware.
+For the model/version rows, identify the physical Mac and Windows computers plus OS versions, for example `MacBook Pro M2 / macOS 15` and `Windows laptop PC / Windows 11`.
 
 | Field | Auto-discovery run | Manual fallback run |
 | --- | --- | --- |

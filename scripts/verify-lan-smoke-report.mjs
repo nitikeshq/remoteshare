@@ -111,6 +111,8 @@ requireSuccess(context, "Same subnet confirmed", "Test Context");
 requireIsoDate(context, "Test date", "Test Context");
 requireInputDirection(context);
 requireMvpRoles(context);
+requireMachineContext(context, "macOS model/version", /\bmac(os)?\b/, /\b(macbook|mac\s+mini|imac|mac\s+studio|mac\s+pro|apple\s+silicon|m[1-9]\b)/);
+requireMachineContext(context, "Windows model/version", /\bwindows\b/, /\b(pc|desktop|laptop|workstation|surface|thinkpad|latitude|inspiron|xps|elitebook|probook|pavilion|legion|ideapad|zenbook|vivobook|rog|tuf|predator|aspire|swift|envy|spectre|omen|nuc|mini\s+pc)\b/);
 requireFirewallPortEvidence(context, "macOS firewall status");
 requireFirewallPortEvidence(context, "Windows firewall status");
 requireMacInputPermissionEvidence(context, "macOS Accessibility permission");
@@ -271,6 +273,13 @@ function requireFirewallPortEvidence(table, field) {
   const normalized = value.toLowerCase();
   if (!/\btcp\b/.test(normalized) || !/(^|\D)44777(\D|$)/.test(normalized) || !/\budp\b/.test(normalized) || !/(^|\D)44778(\D|$)/.test(normalized)) {
     throw new Error(`Test Context ${field} must mention allowed firewall rules for TCP 44777 and UDP 44778.`);
+  }
+}
+
+function requireMachineContext(table, field, osPattern, hardwarePattern) {
+  const value = requireFilled(table, field, "Test Context").toLowerCase();
+  if (!osPattern.test(value) || !hardwarePattern.test(value) || value.length < 10) {
+    throw new Error(`Test Context ${field} must name the OS version and the physical computer model or hardware class.`);
   }
 }
 

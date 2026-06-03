@@ -428,8 +428,8 @@ function smokeReportFixture(name, passValue, options = {}) {
 ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | macOS role shown | ${macSetupEvidence} |
 | Windows role shown | ${windowsSetupEvidence} |
-| macOS model/version | MacBook / macOS 15 |
-| Windows model/version | PC / Windows 11 |
+| macOS model/version | MacBook Pro M2 / macOS 15 |
+| Windows model/version | Windows laptop PC / Windows 11 |
 | macOS installer file | ${macInstaller} |
 | macOS installer SHA256 | ${macSha256} |
 | Windows installer file | ${windowsInstaller} |

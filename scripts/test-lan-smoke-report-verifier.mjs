@@ -1095,6 +1095,32 @@ try {
     "Test Context Windows role shown must paste setup checklist Copy output with Platform: windows and Role: Client"
   );
 
+  const vagueMacModel = writeReport("vague-mac-model.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macosModelVersion: "mac"
+  });
+  runVerifier(
+    vagueMacModel,
+    false,
+    "vague macOS model should fail",
+    "Test Context macOS model/version must name the OS version and the physical computer model or hardware class"
+  );
+
+  const vagueWindowsModel = writeReport("vague-windows-model.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    windowsModelVersion: "windows"
+  });
+  runVerifier(
+    vagueWindowsModel,
+    false,
+    "vague Windows model should fail",
+    "Test Context Windows model/version must name the OS version and the physical computer model or hardware class"
+  );
+
   const blockedFirewall = writeReport("blocked-firewall.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -1418,6 +1444,8 @@ function writeReport(name, options) {
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? macSetupEvidence;
   const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? macSetupEvidence;
   const testDate = options.testDate ?? "2026-06-02";
+  const macosModelVersion = options.macosModelVersion ?? "MacBook Pro M2 / macOS 15";
+  const windowsModelVersion = options.windowsModelVersion ?? "Windows laptop PC / Windows 11";
   const extraContextRows = options.extraContextRows ?? [];
   const extraAutoRows = options.extraAutoRows ?? [];
   const extraManualRows = options.extraManualRows ?? [];
@@ -1442,8 +1470,8 @@ function writeReport(name, options) {
     `| Input direction | ${inputDirection} |`,
     `| macOS role shown | ${macRole} |`,
     `| Windows role shown | ${windowsRole} |`,
-    "| macOS model/version | MacBook / macOS 15 |",
-    "| Windows model/version | PC / Windows 11 |",
+    `| macOS model/version | ${macosModelVersion} |`,
+    `| Windows model/version | ${windowsModelVersion} |`,
     ...extraContextRows,
     `| macOS installer file | ${macInstaller} |`,
     `| macOS installer SHA256 | ${macSha} |`,
