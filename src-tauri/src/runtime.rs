@@ -820,6 +820,7 @@ impl RuntimeStore {
 
     pub fn start_capture(&self, request: CaptureControlRequest) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
         if !state.persisted.settings.role.can_send_input() {
             return NetworkAction {
                 ok: false,
@@ -5565,6 +5566,46 @@ mod tests {
         let status = store.status();
         assert!(!status.capture.active);
         assert!(status.capture.target_device_id.is_none());
+    }
+
+    #[test]
+    fn start_capture_prunes_stale_health_before_endpoint_check() {
+        crate::identity::set_test_config_dir(unique_test_dir("capture-prunes-stale-health"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    latency_ms: Some(3),
+                    last_seen_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
+                },
+            );
+        }
+
+        let action = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.contains("no known endpoint"));
+        assert!(!store.status().capture.active);
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
     }
 
     #[test]
