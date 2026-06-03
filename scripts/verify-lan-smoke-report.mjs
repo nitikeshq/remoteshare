@@ -341,7 +341,7 @@ function requireCaptureEvidence(table, section) {
 
 function requireFailureReasonEvidence(table, section) {
   const value = requireFilled(table, "Failure reason visible before retry", section).toLowerCase();
-  if (/^(none|n\/a|no failure|no failures|not applicable)$/.test(value)) {
+  if (/^(none|n\/a|not applicable)(\s+(before\s+retry|observed|needed|shown|visible))?$/.test(value) || /^no\s+failures?(\s+(before\s+retry|observed|needed|shown|visible|during\s+run))?$/.test(value)) {
     return;
   }
 

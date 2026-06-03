@@ -368,6 +368,33 @@ try {
     "Auto-Discovery Run failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry"
   );
 
+  const noFailureObserved = writeReport("no-failure-observed.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFailureReason: "no failure observed",
+    manualFailureReason: "none before retry"
+  });
+  runVerifier(
+    noFailureObserved,
+    true,
+    "qualified no-failure evidence should pass",
+    "Verified LAN smoke report"
+  );
+
+  const ambiguousNoFailure = writeReport("ambiguous-no-failure.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFailureReason: "no problem"
+  });
+  runVerifier(
+    ambiguousNoFailure,
+    false,
+    "ambiguous no-failure evidence should fail",
+    "Auto-Discovery Run failure reason evidence must say none/no failure, or mention the visible UI diagnostic or recovery hint shown before retry"
+  );
+
   const noneSuccess = writeReport("none-success.md", {
     autoPass: "Pass",
     manualPass: "Pass",
