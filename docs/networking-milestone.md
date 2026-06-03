@@ -94,6 +94,7 @@ Current scaffold behavior:
 - New trusted pairings derive and store a per-device shared control secret from ephemeral X25519 key agreement plus the pairing nonces.
 - Pairing approval messages are authenticated with the pending shared control secret before either side can mark the remote approval complete.
 - Invalid, expired, or mismatched remote pairing approvals are surfaced through the UI network-error status instead of failing silently.
+- Pending pairing rows can copy the peer, endpoint, visible code, typed-code state, approval state, direction, and expiry as one evidence string for first-LAN notes.
 - Trusted devices can be forgotten; forgetting clears live health, last failure, pending pairing state, input transport history, and active capture state for that device.
 - Runtime status returns devices and pending pairings in deterministic order so LAN/manual pairing rows do not jump around between refreshes.
 - Trusted input and reconnect health require the trusted device ID, stored fingerprint, stored identity public key when available, and control-message authentication to match. Reconnect pong validation also rejects any non-empty advertised public key whose bytes do not hash back to the advertised fingerprint.

@@ -537,6 +537,20 @@ function pairingEntryKey(pairing: PendingPairing) {
   return `${pairing.id}:${pairing.code}:${pairing.createdAtMs}:${pairing.expiresAtMs}`;
 }
 
+function pairingEvidence(pairing: PendingPairing, enteredCode: string, nowMs: number) {
+  const entryState = pairingCodeEntryState(pairing, enteredCode, nowMs);
+  return [
+    `Pairing: ${pairingDirectionLabel(pairing)}`,
+    `Device: ${pairing.name}`,
+    `Endpoint: ${pairing.endpoint}`,
+    `Visible code: ${pairing.code}`,
+    `Typed code state: ${entryState.message}`,
+    `Local: ${approvalLabel(pairing.localApproved)}`,
+    `Remote: ${approvalLabel(pairing.remoteApproved)}`,
+    `Expires: ${pairingExpiryLabel(pairing, nowMs)}`
+  ].join(" | ");
+}
+
 function statusValueLabel(value: PermissionState | EngineState | ServiceHealthState) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -971,6 +985,16 @@ function App() {
       showActionMessage("Copied capture evidence.");
     } catch {
       showActionMessage(`Copy failed. Capture evidence: ${evidence}`, true);
+    }
+  }
+
+  async function copyPairingEvidence(pairing: PendingPairing, enteredCode: string) {
+    const evidence = pairingEvidence(pairing, enteredCode, pairingNowMs);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied pairing evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Pairing evidence: ${evidence}`, true);
     }
   }
 
@@ -2074,6 +2098,15 @@ function App() {
                       </div>
                     </div>
                     <strong className="pairing-code">{pairing.code}</strong>
+                    <button
+                      className="pairing-evidence-copy"
+                      onClick={() => copyPairingEvidence(pairing, enteredCode)}
+                      title="Copy pairing evidence"
+                      type="button"
+                    >
+                      <Copy size={12} />
+                      <span>Copy</span>
+                    </button>
                     <label className="pairing-code-entry">
                       <input
                         className={`pairing-code-input ${entryState.error ? "input-error" : ""}`}

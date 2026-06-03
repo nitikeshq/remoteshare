@@ -649,7 +649,7 @@ input {
 
 .pairing-row {
   display: grid;
-  grid-template-columns: 1fr auto 112px auto auto;
+  grid-template-columns: 1fr auto auto 112px auto auto;
   align-items: center;
   gap: 12px;
   min-height: 68px;
@@ -722,6 +722,27 @@ input {
 
 .pairing-code-hint.error {
   color: #be123c;
+}
+
+.pairing-evidence-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  border: 1px solid #bdd5d1;
+  border-radius: 8px;
+  padding: 0 7px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pairing-evidence-copy span {
+  color: inherit;
+  font-size: inherit;
 }
 
 .approval-status {
