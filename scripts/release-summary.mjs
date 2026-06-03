@@ -194,6 +194,14 @@ function readManifestFiles(file) {
     const artifacts = manifest.artifacts.map((artifact, index) =>
       validateReleaseManifestArtifact(artifact, index, packageVersion)
     );
+    for (const artifact of artifacts) {
+      const matches = installers.filter((file) => path.basename(file) === artifact.file);
+      if (matches.length !== 1) return null;
+      const artifactPath = matches[0];
+      const bytes = fs.readFileSync(artifactPath);
+      if (bytes.length !== artifact.sizeBytes) return null;
+      if (crypto.createHash("sha256").update(bytes).digest("hex") !== artifact.sha256) return null;
+    }
 
     return new Set(artifacts.map((artifact) => artifact.file));
   } catch {

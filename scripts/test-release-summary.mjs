@@ -96,7 +96,7 @@ try {
     `dmg/RemoteShare_${packageVersion}_aarch64.dmg`,
     "checksum mismatch",
     "macOS DMG: present (1; 1 checksum mismatch)",
-    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; macOS DMG checksum mismatch)."
+    "Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; macOS DMG checksum mismatch; release manifest invalid)."
   ]);
 
   const completeRoot = fixture("complete", [
@@ -204,6 +204,38 @@ try {
   invalidGeneratedAtManifest.generatedAt = "2026-06-01";
   writeManifest(invalidGeneratedAtRoot, invalidGeneratedAtManifest);
   runSummary(invalidGeneratedAtRoot, [
+    "Release manifest: invalid",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
+  const staleManifestSizeRoot = fixture(
+    "stale-manifest-size",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  const staleManifestSize = readManifest(staleManifestSizeRoot);
+  staleManifestSize.artifacts[0].sizeBytes += 1;
+  writeManifest(staleManifestSizeRoot, staleManifestSize);
+  runSummary(staleManifestSizeRoot, [
+    "Release manifest: invalid",
+    "Publish readiness: incomplete (release manifest invalid)."
+  ]);
+
+  const staleManifestHashRoot = fixture(
+    "stale-manifest-hash",
+    [
+      [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"],
+      [`nsis/RemoteShare_${packageVersion}_x64-setup.exe`, "valid exe"],
+      [`deb/remoteshare_${packageVersion}_amd64.deb`, "valid deb"]
+    ]
+  );
+  const staleManifestHash = readManifest(staleManifestHashRoot);
+  staleManifestHash.artifacts[0].sha256 = sha256("stale dmg");
+  writeManifest(staleManifestHashRoot, staleManifestHash);
+  runSummary(staleManifestHashRoot, [
     "Release manifest: invalid",
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
