@@ -4623,6 +4623,66 @@ mod tests {
     }
 
     #[test]
+    fn verified_manual_trusted_endpoint_save_failure_keeps_old_failure() {
+        let config_file = unique_test_dir("trusted-manual-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_failures.insert(
+                "trusted-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "192.168.1.10:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
+                    failed_at_ms: now_ms(),
+                    message: "old saved endpoint failure".to_string(),
+                },
+            );
+        }
+
+        let error = store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect_err("manual verified endpoint save failure should reject runtime update");
+
+        assert!(error.starts_with("Failed to save trusted endpoint:"));
+        let state = store.state.lock().expect("runtime state poisoned");
+        let device = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should remain");
+        assert_eq!(device.last_endpoint.as_deref(), Some("192.168.1.10:44777"));
+        assert!(device.recent_endpoints.is_empty());
+        assert!(state.connection_health.get("trusted-device").is_none());
+        let failure = state
+            .connection_failures
+            .get("trusted-device")
+            .expect("old failure should remain visible");
+        assert_eq!(failure.endpoint, "192.168.1.10:44777");
+        assert!(matches!(failure.endpoint_source, super::EndpointSource::Saved));
+        assert_eq!(failure.message, "old saved endpoint failure");
+    }
+
+    #[test]
     fn trusted_endpoint_update_target_does_not_require_saved_endpoint() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-update-without-endpoint"));
 
