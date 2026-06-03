@@ -216,13 +216,13 @@ exec "${process.execPath}" "$(dirname "$0")/gh.mjs" "$@"
 }
 
 function runDownloader(fakeBin, args, shouldPass, label, expectedOutput) {
+  const env = withPrependedPath({
+    ...process.env,
+    ...fakeBin.env
+  }, fakeBin.path);
   const result = spawnSync(process.execPath, [downloader, ...args], {
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...fakeBin.env,
-      PATH: `${fakeBin.path}${path.delimiter}${process.env.PATH ?? ""}`
-    }
+    env
   });
   const output = `${result.stdout}\n${result.stderr}`;
 
@@ -239,6 +239,17 @@ function runDownloader(fakeBin, args, shouldPass, label, expectedOutput) {
       throw new Error(`${label}: expected output to include ${expected}\n${output}`);
     }
   }
+}
+
+function withPrependedPath(env, directory) {
+  const pathKey = Object.keys(env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+  for (const key of Object.keys(env)) {
+    if (key !== pathKey && key.toLowerCase() === "path") {
+      delete env[key];
+    }
+  }
+  env[pathKey] = `${directory}${path.delimiter}${env[pathKey] ?? ""}`;
+  return env;
 }
 
 function run(command, args) {
