@@ -30,6 +30,7 @@ try {
   assertIncludes(summary, "local fingerprint, peer, peer role, and peer fingerprint evidence", "fingerprint audit copied fields");
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
   assertIncludes(summary, "Startup health `Copy` button", "startup health copy evidence");
+  assertIncludes(summary, "`Startup health`, `This computer`", "startup health machine evidence");
   assertIncludes(summary, "`TCP:`, `UDP:`, `Start:`", "startup health copied fields");
   assertIncludes(summary, "started/reconnect timing evidence", "startup health timing evidence");
   assertIncludes(summary, "trusted row reconnect `Copy` button", "reconnect copy evidence");

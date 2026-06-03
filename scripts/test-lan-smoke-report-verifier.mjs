@@ -19,8 +19,8 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoStartupHealth: "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login not failed; Reconnect: 3s ago",
-    manualStartupHealth: "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago"
+    autoStartupHealth: "Startup health; This computer: Mac sender; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login not failed; Reconnect: 3s ago",
+    manualStartupHealth: "Startup health; This computer: Windows receiver; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago"
   });
   runVerifier(
     copiedStartupHealth,
@@ -452,7 +452,7 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoStartupHealth: "TCP: TCP ready; UDP: UDP ready; Start: start-at-login failed; Started: 3s ago"
+    autoStartupHealth: "Startup health; This computer: Mac sender; TCP: TCP ready; UDP: UDP ready; Start: start-at-login failed; Started: 3s ago"
   });
   runVerifier(
     failedStartupHealth,
@@ -1162,10 +1162,10 @@ function writeReport(name, options) {
   const manualReconnectEnabled = options.manualReconnectEnabled ?? manualReconnectEvidence;
   const autoStartupHealth =
     options.autoStartupHealth ??
-    "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago";
+    "Startup health; This computer: Mac sender; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago";
   const manualStartupHealth =
     options.manualStartupHealth ??
-    "TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago";
+    "Startup health; This computer: Windows receiver; TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago";
   const autoEndpointSource = options.autoEndpointSource ?? autoReconnectEvidence;
   const manualEndpointSource = options.manualEndpointSource ?? manualReconnectEvidence;
   const autoInputSmoke = options.autoInputSmoke ?? "accepted key press r delivered";

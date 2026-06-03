@@ -568,6 +568,8 @@ function serviceHealthDetail(label: string, service: ServiceHealthStatus) {
 
 function startupHealthEvidence(status: RuntimeStatus) {
   return [
+    "Startup health",
+    `This computer: ${status.thisDevice}`,
     serviceHealthDetail("TCP", status.networkHealth.controlListener),
     serviceHealthDetail("UDP", status.networkHealth.discovery),
     serviceHealthDetail("Start", status.networkHealth.startupRegistration),

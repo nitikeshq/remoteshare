@@ -309,13 +309,15 @@ function requireReconnectEvidence(table, section) {
     .replace(/\bnot\s+failed\b/g, "")
     .replace(/\bnot\s+failing\b/g, "");
   if (
+    !/startup\s+health/.test(startupHealth) ||
+    !/this\s+computer:\s*[^;|]+/.test(startupHealth) ||
     !/tcp:\s*[^;]*(ready|listening|bound)/.test(startupHealth) ||
     !/udp:\s*[^;]*(ready|listening|bound)/.test(startupHealth) ||
     !/start:\s*[^;]*(start-at-login|startup|start at login)/.test(startupHealth) ||
     !/(started|reconnect):\s*/.test(startupHealth) ||
     /fail|failed|blocked|denied|error/.test(startupHealthWithoutExpectedNegative)
   ) {
-    throw new Error(`${section} startup health evidence must paste the startup health Copy output with TCP, UDP, Start, and Started/Reconnect fields, and show start-at-login is not failed.`);
+    throw new Error(`${section} startup health evidence must paste the startup health Copy output with Startup health, This computer, TCP, UDP, Start, and Started/Reconnect fields, and show start-at-login is not failed.`);
   }
 
   const check = requireFilled(table, "`Check` succeeded after restart/wake", section).toLowerCase();
