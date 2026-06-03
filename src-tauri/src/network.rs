@@ -766,6 +766,18 @@ fn trusted_endpoint_recovery_message(message: impl AsRef<str>) -> String {
     }
 }
 
+fn record_successful_input_source(
+    store: &RuntimeStore,
+    source: &PairingPeer,
+    sender: SocketAddr,
+) -> Result<(), String> {
+    store.record_trusted_connection(
+        source.device_id.clone(),
+        endpoint(sender, source.control_port),
+        None,
+    )
+}
+
 fn start_control_listener(app: AppHandle, store: RuntimeStore) {
     tauri::async_runtime::spawn(async move {
         let replay_cache = Arc::new(Mutex::new(ReplayCache::default()));
@@ -1017,11 +1029,15 @@ async fn handle_control_stream(
             let action = store.authorize_incoming_input(&source);
             let ack = if action.ok {
                 match input::apply_event(&event) {
-                    Ok(()) => store.record_incoming_input(source, event, true, None),
+                    Ok(()) => store.record_incoming_input(source.clone(), event, true, None),
                     Err(error) => {
                         let detail = format!("injection failed: {error}");
-                        let ack =
-                            store.record_incoming_input(source, event, false, Some(detail.clone()));
+                        let ack = store.record_incoming_input(
+                            source.clone(),
+                            event,
+                            false,
+                            Some(detail.clone()),
+                        );
                         let _ = app.emit(
                             "remoteshare://network-error",
                             format!("Input event accepted but {detail}"),
@@ -1030,8 +1046,13 @@ async fn handle_control_stream(
                     }
                 }
             } else {
-                store.record_incoming_input(source, event, false, Some(action.message))
+                store.record_incoming_input(source.clone(), event, false, Some(action.message))
             };
+            if ack.ok {
+                if let Err(error) = record_successful_input_source(&store, &source, sender) {
+                    let _ = app.emit("remoteshare://network-error", error);
+                }
+            }
             if let Some(shared_secret) = shared_secret {
                 let response = ControlMessage::InputAck {
                     ok: ack.ok,
@@ -1975,7 +1996,7 @@ mod tests {
     use crate::{
         identity::ComputerRole,
         runtime::{
-            ConfirmPairingRequest, PairingPeer, PairingTarget, RuntimeStore,
+            ConfirmPairingRequest, EndpointSource, PairingPeer, PairingTarget, RuntimeStore,
             TrustedReconnectTarget, TrustedTarget,
         },
     };
@@ -2417,6 +2438,27 @@ Wireless LAN adapter Wi-Fi:
     fn endpoint_normalizes_ipv4_mapped_ipv6_sender() {
         let sender = "[::ffff:192.168.1.44]:50000".parse().unwrap();
         assert_eq!(super::endpoint(sender, 44777), "192.168.1.44:44777");
+    }
+
+    #[test]
+    fn accepted_incoming_input_refreshes_source_health() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-refreshes-health"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let source = peer("trusted-device", "trusted-fingerprint");
+        let sender = "192.168.1.70:50123".parse().unwrap();
+
+        super::record_successful_input_source(&store, &source, sender)
+            .expect("accepted incoming input should refresh source health");
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be visible");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.70:44777"));
+        assert!(matches!(&device.endpoint_source, EndpointSource::Health));
     }
 
     #[test]
