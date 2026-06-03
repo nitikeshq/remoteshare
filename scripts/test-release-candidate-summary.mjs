@@ -53,7 +53,8 @@ try {
   assertIncludes(summary, "Capture: active", "active capture copied field");
   assertIncludes(summary, "`This computer`, target, and started/elapsed-time evidence", "capture machine evidence");
   assertIncludes(summary, "started/elapsed-time evidence", "capture timing copied field");
-  assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
+  assertIncludes(summary, "receiver Input Transport row `Copy` output", "receiver capture input transport copy evidence");
+  assertIncludes(summary, "accepted incoming mouse move, mouse click, scroll, and key events", "capture evidence");
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
   assertIncludes(summary, "local endpoint `Evidence` output", "manual endpoint evidence copy");
   assertIncludes(summary, "Local endpoint", "manual endpoint copied marker");

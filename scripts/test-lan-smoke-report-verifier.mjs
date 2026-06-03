@@ -825,7 +825,21 @@ try {
     vagueCaptureEvents,
     false,
     "vague capture event coverage should fail",
-    "Auto-Discovery Run capture evidence must mention accepted mouse move, mouse click, scroll, and key events"
+    "Auto-Discovery Run capture event evidence must paste receiver Input Transport Copy output"
+  );
+
+  const incompleteCaptureCopies = writeReport("incomplete-capture-copies.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCaptureEvents:
+      "Input Transport: Incoming; This computer: Windows receiver; Summary: mouse move; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: mouse click; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: scroll; Device: Mac sender; Time: 2s ago; Status: Accepted; key event accepted"
+  });
+  runVerifier(
+    incompleteCaptureCopies,
+    false,
+    "incomplete capture copy evidence should fail",
+    "Auto-Discovery Run capture event evidence must paste receiver Input Transport Copy output"
   );
 
   const vagueFailureReason = writeReport("vague-failure-reason.md", {
@@ -1232,8 +1246,12 @@ function writeReport(name, options) {
     options.autoCaptureTiming ?? "Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago";
   const manualCaptureTiming =
     options.manualCaptureTiming ?? "Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago";
-  const autoCaptureEvents = options.autoCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
-  const manualCaptureEvents = options.manualCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
+  const autoCaptureEvents =
+    options.autoCaptureEvents ??
+    "Input Transport: Incoming; This computer: Windows receiver; Summary: mouse move; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: mouse click; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: scroll; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: key press a; Device: Mac sender; Time: 2s ago; Status: Accepted";
+  const manualCaptureEvents =
+    options.manualCaptureEvents ??
+    "Input Transport: Incoming; This computer: Windows receiver; Summary: mouse move; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: mouse click; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: scroll; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: key press a; Device: Mac sender; Time: 3 seconds ago; Status: Accepted";
   const autoFailureReason = options.autoFailureReason ?? "none";
   const manualFailureReason = options.manualFailureReason ?? "none";
   const version = options.version ?? `v${packageVersion}`;

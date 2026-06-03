@@ -460,7 +460,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Input Transport source device and relative time shown | Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 2s ago; Status: Accepted |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
 | Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago |
-| Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
+| Captured mouse move, mouse click, scroll, and key events accepted on receiver | Input Transport: Incoming; This computer: Windows receiver; Summary: mouse move; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: mouse click; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: scroll; Device: Mac sender; Time: 2s ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: key press a; Device: Mac sender; Time: 2s ago; Status: Accepted |
 | Failure reason visible before retry | none |
 | Pass/fail | ${passValue} |
 
@@ -489,7 +489,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Input Transport source device and relative time shown | Input Transport: Incoming; This computer: Windows receiver; Summary: key press r; Device: Mac sender; Time: 3 seconds ago; Status: Accepted |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
 | Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago |
-| Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
+| Captured mouse move, mouse click, scroll, and key events accepted on receiver | Input Transport: Incoming; This computer: Windows receiver; Summary: mouse move; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: mouse click; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: scroll; Device: Mac sender; Time: 3 seconds ago; Status: Accepted; Input Transport: Incoming; This computer: Windows receiver; Summary: key press a; Device: Mac sender; Time: 3 seconds ago; Status: Accepted |
 | Failure reason visible before retry | none |
 | Pass/fail | Pass |
 

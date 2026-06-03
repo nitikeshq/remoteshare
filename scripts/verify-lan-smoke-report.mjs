@@ -130,8 +130,7 @@ const successFields = [
   "Same six-digit code shown on both machines",
   "Six-digit code typed on both machines",
   "`Trusted` shown on both machines",
-  "Capture started on sender and stopped cleanly",
-  "Captured mouse move, mouse click, scroll, and key events accepted on receiver"
+  "Capture started on sender and stopped cleanly"
 ];
 
 for (const field of successFields) {
@@ -478,14 +477,20 @@ function requireCaptureEvidence(table, section) {
     "Captured mouse move, mouse click, scroll, and key events accepted on receiver",
     section
   ).toLowerCase();
+  const incomingCopies = capturedEvents.match(/input\s+transport:\s*incoming/g) ?? [];
+  const acceptedStatuses = capturedEvents.match(/status:\s*accepted/g) ?? [];
   if (
-    !/accepted/.test(capturedEvents) ||
+    incomingCopies.length < 4 ||
+    acceptedStatuses.length < 4 ||
+    !/this\s+computer:\s*[^;|]+/.test(capturedEvents) ||
+    !/device:\s*[^;|]+/.test(capturedEvents) ||
+    !/time:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(capturedEvents) ||
     !/mouse\s+move/.test(capturedEvents) ||
     !/(mouse\s+click|mouse\s+(down|up)|click)/.test(capturedEvents) ||
     !/scroll/.test(capturedEvents) ||
     !/key/.test(capturedEvents)
   ) {
-    throw new Error(`${section} capture evidence must mention accepted mouse move, mouse click, scroll, and key events.`);
+    throw new Error(`${section} capture event evidence must paste receiver Input Transport Copy output for accepted mouse move, mouse click, scroll, and key events.`);
   }
 }
 
