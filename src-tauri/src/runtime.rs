@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    autostart, crypto,
+    crypto,
     identity::{ComputerRole, DeviceIdentity, PersistedState, TrustedDevice},
 };
 
@@ -596,7 +596,7 @@ impl RuntimeStore {
 
     pub fn update_settings(&self, request: SettingsUpdateRequest) -> NetworkAction {
         if let Some(auto_start) = request.auto_start {
-            if let Err(error) = autostart::set_enabled(auto_start) {
+            if let Err(error) = set_autostart_enabled(auto_start) {
                 self.record_startup_registration(
                     false,
                     format!("Failed to update start-at-login setting: {error}"),
@@ -607,14 +607,6 @@ impl RuntimeStore {
                 };
             }
 
-            self.record_startup_registration(
-                true,
-                if auto_start {
-                    "Start at login is registered.".to_string()
-                } else {
-                    "Start at login is disabled.".to_string()
-                },
-            );
         }
 
         let mut state = self.state.lock().expect("runtime state poisoned");
@@ -674,6 +666,13 @@ impl RuntimeStore {
         match persisted.save() {
             Ok(()) => {
                 state.persisted = persisted;
+                if let Some(auto_start) = request.auto_start {
+                    state.network_health.startup_registration = ServiceHealth {
+                        state: ServiceHealthState::Ready,
+                        detail: startup_registration_success_detail(auto_start),
+                        updated_at_ms: Some(now_ms()),
+                    };
+                }
                 if state.persisted.settings.private_network_only {
                     state.discovery.manual_endpoint =
                         state.persisted.settings.manual_endpoint.clone();
@@ -694,10 +693,21 @@ impl RuntimeStore {
                     },
                 }
             }
-            Err(error) => NetworkAction {
-                ok: false,
-                message: format!("Failed to save settings: {error}"),
-            },
+            Err(error) => {
+                if request.auto_start.is_some() {
+                    state.network_health.startup_registration = ServiceHealth {
+                        state: ServiceHealthState::Failed,
+                        detail: format!(
+                            "Start-at-login setting changed, but RemoteShare settings failed to save: {error}"
+                        ),
+                        updated_at_ms: Some(now_ms()),
+                    };
+                }
+                NetworkAction {
+                    ok: false,
+                    message: format!("Failed to save settings: {error}"),
+                }
+            }
         }
     }
 
@@ -2690,6 +2700,39 @@ pub fn now_ms() -> u128 {
         .unwrap_or_default()
 }
 
+fn startup_registration_success_detail(auto_start: bool) -> String {
+    if auto_start {
+        "Start at login is registered.".to_string()
+    } else {
+        "Start at login is disabled.".to_string()
+    }
+}
+
+fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
+    #[cfg(test)]
+    {
+        if TEST_SKIP_AUTOSTART_REGISTRATION
+            .get_or_init(|| std::sync::atomic::AtomicBool::new(false))
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return Ok(());
+        }
+    }
+
+    crate::autostart::set_enabled(enabled).map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+static TEST_SKIP_AUTOSTART_REGISTRATION: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
+    std::sync::OnceLock::new();
+
+#[cfg(test)]
+fn skip_autostart_registration_for_tests() {
+    TEST_SKIP_AUTOSTART_REGISTRATION
+        .get_or_init(|| std::sync::atomic::AtomicBool::new(false))
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs, path::PathBuf};
@@ -2704,6 +2747,7 @@ mod tests {
         CancelPairingRequest, ConfirmPairingRequest, InputEvent, InputEventKind,
         PairingDirection, PairingPeer, PairingTarget, PeerAnnouncement, PendingPairing,
         DiscoveredPeer, RuntimeStore, ServiceHealthState, PEER_TIMEOUT_MS,
+        skip_autostart_registration_for_tests,
     };
 
     #[test]
@@ -2872,6 +2916,64 @@ mod tests {
         assert!(status.trusted_reconnect);
         assert!(status.private_network_only);
         assert!(!status.allow_incoming_control);
+    }
+
+    #[test]
+    fn auto_start_setting_updates_startup_health_after_save() {
+        skip_autostart_registration_for_tests();
+        crate::identity::set_test_config_dir(unique_test_dir("auto-start-save-success"));
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: Some(true),
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(action.ok, "{}", action.message);
+        let status = store.status();
+        assert!(status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Ready
+        );
+        assert_eq!(
+            status.network_health.startup_registration.detail,
+            "Start at login is registered."
+        );
+    }
+
+    #[test]
+    fn auto_start_save_failure_does_not_mutate_runtime_setting_or_ready_health() {
+        skip_autostart_registration_for_tests();
+        let config_file = unique_test_dir("auto-start-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: None,
+            auto_start: Some(false),
+            trusted_reconnect: None,
+            private_network_only: None,
+            allow_incoming_control: None,
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.starts_with("Failed to save settings:"));
+        let status = store.status();
+        assert!(status.auto_start);
+        assert_eq!(
+            status.network_health.startup_registration.state,
+            ServiceHealthState::Failed
+        );
+        assert!(status
+            .network_health
+            .startup_registration
+            .detail
+            .starts_with("Start-at-login setting changed, but RemoteShare settings failed to save:"));
     }
 
     #[test]
