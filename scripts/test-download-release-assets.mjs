@@ -165,10 +165,10 @@ function releaseFixture(name, options = {}) {
 function fakeGhBin(fixture) {
   const bin = path.join(root, "fake-bin");
   fs.mkdirSync(bin, { recursive: true });
-  const ghPath = path.join(bin, "gh");
+  const ghScriptPath = path.join(bin, "gh.mjs");
   fs.writeFileSync(
-    ghPath,
-    `#!/usr/bin/env node
+    ghScriptPath,
+    `
 import fs from "node:fs";
 import path from "node:path";
 
@@ -193,8 +193,18 @@ if (args[0] === "release" && args[1] === "download" && args[2] === "v${packageVe
 
 console.error("unexpected fake gh args: " + args.join(" "));
 process.exit(1);
+`
+  );
+  fs.writeFileSync(
+    path.join(bin, "gh"),
+    `#!/usr/bin/env sh
+exec "${process.execPath}" "$(dirname "$0")/gh.mjs" "$@"
 `,
     { mode: 0o755 }
+  );
+  fs.writeFileSync(
+    path.join(bin, "gh.cmd"),
+    `@echo off\r\n"${process.execPath}" "%~dp0gh.mjs" %*\r\n`
   );
   return {
     path: bin,
