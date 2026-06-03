@@ -75,6 +75,7 @@ try {
   assertIncludes(summary, "Label: Best LAN IPv4", "manual copied endpoint label evidence");
   assertIncludes(summary, "private-network state", "manual endpoint private-network evidence");
   assertIncludes(summary, "`Manual fallback: preferred LAN IPv4` / `LAN IPv4` / `LAN IPv6`", "manual endpoint fallback eligibility evidence");
+  assertIncludes(summary, "the label and manual-fallback value must match the copied endpoint literal", "manual endpoint label consistency evidence");
   assertIncludes(summary, "Endpoint used` must match the copied endpoint", "manual endpoint match evidence");
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "include measured latency", "manual endpoint source latency evidence");
