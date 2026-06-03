@@ -261,7 +261,8 @@ fn windows_virtual_key(key: &str) -> Option<u16> {
         "space" => Some(0x20),
         "enter" | "return" => Some(0x0d),
         "tab" => Some(0x09),
-        "backspace" | "delete" => Some(0x08),
+        "backspace" => Some(0x08),
+        "delete" => Some(0x2e),
         "escape" | "esc" => Some(0x1b),
         "shift" => Some(0x10),
         "control" | "ctrl" => Some(0x11),
@@ -752,7 +753,8 @@ mod macos {
             "space" => Some(0x31),
             "enter" | "return" => Some(0x24),
             "tab" => Some(0x30),
-            "backspace" | "delete" => Some(0x33),
+            "backspace" => Some(0x33),
+            "delete" => Some(0x75),
             "escape" | "esc" => Some(0x35),
             "shift" => Some(0x38),
             "control" | "ctrl" => Some(0x3b),
@@ -830,6 +832,7 @@ mod macos {
             0x3b | 0x3e => Some("control"),
             0x73 => Some("home"),
             0x74 => Some("pageup"),
+            0x75 => Some("delete"),
             0x77 => Some("end"),
             0x79 => Some("pagedown"),
             0x7b => Some("left"),
@@ -865,6 +868,7 @@ mod macos {
                 ("down", 0x7d),
                 ("pageup", 0x74),
                 ("pagedown", 0x79),
+                ("delete", 0x75),
             ] {
                 assert_eq!(super::key_code(key), Some(key_code));
             }
@@ -1095,6 +1099,7 @@ mod tests {
             ("pageup", 0x21),
             ("pagedown", 0x22),
             ("insert", 0x2d),
+            ("delete", 0x2e),
         ] {
             assert_eq!(super::windows_virtual_key(key), Some(expected));
         }
