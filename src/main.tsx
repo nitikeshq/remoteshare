@@ -674,7 +674,7 @@ function App() {
     return Boolean(activeActionKeys[key]);
   }
 
-  async function refreshStatus(showLoading = true) {
+  async function refreshStatus(showLoading = true, showRefreshError = false) {
     if (showLoading) setLoading(true);
     try {
       const next = await invoke<RuntimeStatus>("runtime_status");
@@ -683,10 +683,13 @@ function App() {
       setLocalEndpoints(endpoints);
       const nextPermissions = await invoke<InputPermissionStatus>("input_permission_status");
       setPermissions(nextPermissions);
-    } catch {
+    } catch (error) {
       setStatus(fallbackStatus);
       setPermissions(fallbackPermissions);
       setLocalEndpoints([]);
+      if (showRefreshError) {
+        showActionMessage(`Status refresh failed: ${commandErrorMessage(error)}`, true);
+      }
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -694,7 +697,7 @@ function App() {
 
   async function refreshDeviceStatus() {
     await runExclusiveAction("refresh-status", async () => {
-      await refreshStatus();
+      await refreshStatus(true, true);
     });
   }
 
