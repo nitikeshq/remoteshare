@@ -721,11 +721,12 @@ function App() {
 
   function prepareManualRepair(device: Device) {
     setEndpointUpdateDeviceId(null);
-    setManualEndpoint("");
+    setManualEndpoint(device.lastConnectionFailure?.endpoint ?? "");
     setManualEndpointDirty(true);
-    showActionMessage(
-      `Paste the current endpoint for ${device.name} into Manual pair, then connect and confirm the new code on both computers.`
-    );
+    const endpointMessage = device.lastConnectionFailure?.endpoint
+      ? `Manual pair field set to the last failed endpoint for ${device.name}. Replace it with the current endpoint if needed, then connect and confirm the new code on both computers.`
+      : `Paste the current endpoint for ${device.name} into Manual pair, then connect and confirm the new code on both computers.`;
+    showActionMessage(endpointMessage);
   }
 
   async function copyLocalEndpoint(endpoint: string) {
