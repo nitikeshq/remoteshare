@@ -616,7 +616,7 @@ pub async fn update_trusted_endpoint(
 
     if reconnect_pong_matches(&reconnect_result, &target, &challenge) {
         let latency_ms = started.elapsed().as_millis().min(u16::MAX as u128) as u16;
-        return match store.record_trusted_connection(
+        return match store.record_verified_manual_trusted_endpoint(
             target.device_id,
             target.endpoint.clone(),
             Some(latency_ms),
@@ -630,7 +630,11 @@ pub async fn update_trusted_endpoint(
     }
 
     let failure_message = reconnect_failure_message(reconnect_result, &target, &challenge);
-    store.record_trusted_connection_failure(&target.device_id, &target.endpoint, &failure_message);
+    store.record_manual_trusted_connection_failure(
+        &target.device_id,
+        &target.endpoint,
+        &failure_message,
+    );
     action(false, trusted_endpoint_recovery_message(failure_message))
 }
 

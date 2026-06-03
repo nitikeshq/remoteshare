@@ -87,6 +87,7 @@ struct DiscoveredPeer {
 #[derive(Debug, Clone)]
 struct ConnectionHealth {
     endpoint: String,
+    endpoint_source: EndpointSource,
     last_seen_at_ms: u128,
     latency_ms: Option<u16>,
 }
@@ -1563,6 +1564,35 @@ impl RuntimeStore {
         endpoint: String,
         latency_ms: Option<u16>,
     ) -> Result<(), String> {
+        self.record_trusted_connection_with_source(
+            device_id,
+            endpoint,
+            latency_ms,
+            EndpointSource::Health,
+        )
+    }
+
+    pub fn record_verified_manual_trusted_endpoint(
+        &self,
+        device_id: String,
+        endpoint: String,
+        latency_ms: Option<u16>,
+    ) -> Result<(), String> {
+        self.record_trusted_connection_with_source(
+            device_id,
+            endpoint,
+            latency_ms,
+            EndpointSource::Manual,
+        )
+    }
+
+    fn record_trusted_connection_with_source(
+        &self,
+        device_id: String,
+        endpoint: String,
+        latency_ms: Option<u16>,
+        endpoint_source: EndpointSource,
+    ) -> Result<(), String> {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
         let mut state = self.state.lock().expect("runtime state poisoned");
@@ -1595,6 +1625,7 @@ impl RuntimeStore {
             device_id.clone(),
             ConnectionHealth {
                 endpoint: endpoint.clone(),
+                endpoint_source,
                 latency_ms,
                 last_seen_at_ms: now_ms(),
             },
@@ -1607,6 +1638,30 @@ impl RuntimeStore {
         device_id: &str,
         endpoint: &str,
         message: &str,
+    ) {
+        self.record_trusted_connection_failure_with_source(device_id, endpoint, message, None);
+    }
+
+    pub fn record_manual_trusted_connection_failure(
+        &self,
+        device_id: &str,
+        endpoint: &str,
+        message: &str,
+    ) {
+        self.record_trusted_connection_failure_with_source(
+            device_id,
+            endpoint,
+            message,
+            Some(EndpointSource::Manual),
+        );
+    }
+
+    fn record_trusted_connection_failure_with_source(
+        &self,
+        device_id: &str,
+        endpoint: &str,
+        message: &str,
+        endpoint_source_override: Option<EndpointSource>,
     ) {
         let Some(endpoint) = normalized_endpoint(endpoint) else {
             return;
@@ -1628,7 +1683,8 @@ impl RuntimeStore {
             return;
         }
 
-        let endpoint_source = state
+        let endpoint_source = endpoint_source_override.unwrap_or_else(|| {
+            state
             .persisted
             .trusted_devices
             .iter()
@@ -1641,7 +1697,8 @@ impl RuntimeStore {
                     &endpoint,
                 )
             })
-            .unwrap_or(EndpointSource::None);
+            .unwrap_or(EndpointSource::None)
+        });
 
         if state
             .connection_health
@@ -1947,13 +2004,13 @@ fn device_from_trusted_with_health(
     let online = peer.is_some() || health.is_some();
     let endpoint_source = match (
         peer.is_some(),
-        health.is_some(),
+        health,
         device.last_endpoint.is_some(),
     ) {
         (true, _, _) => EndpointSource::Discovery,
-        (false, true, _) => EndpointSource::Health,
-        (false, false, true) => EndpointSource::Saved,
-        (false, false, false) => EndpointSource::None,
+        (false, Some(health), _) => health.endpoint_source.clone(),
+        (false, None, true) => EndpointSource::Saved,
+        (false, None, false) => EndpointSource::None,
     };
     DeviceStatus {
         id: device.id.clone(),
@@ -1999,8 +2056,8 @@ fn failure_endpoint_source(
     if peer.is_some_and(|peer| peer.endpoint == endpoint) {
         return EndpointSource::Discovery;
     }
-    if health.is_some_and(|health| health.endpoint == endpoint) {
-        return EndpointSource::Health;
+    if let Some(health) = health.filter(|health| health.endpoint == endpoint) {
+        return health.endpoint_source.clone();
     }
     if device.last_endpoint.as_deref() == Some(endpoint)
         || device
@@ -4021,6 +4078,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "8.8.4.4:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms(),
                     latency_ms: Some(4),
                 },
@@ -4106,6 +4164,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "8.8.4.4:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms(),
                     latency_ms: Some(4),
                 },
@@ -4619,6 +4678,89 @@ mod tests {
     }
 
     #[test]
+    fn verified_manual_trusted_endpoint_is_labeled_manual() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-endpoint-source"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50".to_string(),
+                Some(7),
+            )
+            .expect("manual trusted endpoint should verify and save");
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(matches!(device.endpoint_source, super::EndpointSource::Manual));
+        assert!(device.online);
+        assert_eq!(device.latency_ms, Some(7));
+    }
+
+    #[test]
+    fn manual_trusted_endpoint_failure_is_labeled_manual() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-failure-source"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store.record_manual_trusted_connection_failure(
+            "trusted-device",
+            "192.168.1.50",
+            "connection timed out",
+        );
+
+        let failure = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .and_then(|device| device.last_connection_failure)
+            .expect("manual endpoint failure should be visible");
+        assert_eq!(failure.endpoint, "192.168.1.50:44777");
+        assert!(matches!(
+            failure.endpoint_source,
+            super::EndpointSource::Manual
+        ));
+        assert_eq!(failure.message, "connection timed out");
+    }
+
+    #[test]
     fn trusted_connection_recording_ignores_unknown_device_without_ghost_health() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-record-unknown-device"));
 
@@ -5108,6 +5250,7 @@ mod tests {
                 "trusted-alpha".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.20:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now,
                     latency_ms: Some(3),
                 },
@@ -5552,6 +5695,7 @@ mod tests {
                 "remote-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.20:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms(),
                     latency_ms: Some(4),
                 },
@@ -6467,6 +6611,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     latency_ms: Some(3),
                     last_seen_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
                 },
@@ -6738,6 +6883,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms(),
                     latency_ms: Some(4),
                 },
@@ -7029,6 +7175,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms(),
                     latency_ms: Some(4),
                 },
@@ -7149,6 +7296,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.50:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
                     latency_ms: Some(4),
                 },
@@ -7284,6 +7432,7 @@ mod tests {
                 "trusted-device".to_string(),
                 super::ConnectionHealth {
                     endpoint: "192.168.1.60:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Health,
                     last_seen_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
                     latency_ms: Some(7),
                 },
