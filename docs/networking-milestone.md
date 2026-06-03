@@ -89,7 +89,7 @@ Current scaffold behavior:
 - The UI keeps `Confirm` disabled until the typed six-digit code from the other computer matches the locally visible comparison code, labels six-digit mismatches before a backend request is sent, and keeps expired pending pairing rows visibly disabled while the local countdown waits for the next runtime status prune.
 - Remote pairing approvals must match the pending pairing's device ID, comparison code, fingerprint, and advertised identity public key before they can mark the remote side approved.
 - Remote pairing approvals validate the replied endpoint before mutating the pending pairing, so invalid or private-guard-blocked approval endpoints cannot overwrite the last known pairing endpoint.
-- A trusted device is stored only after both local approval and remote approval are present.
+- A trusted device is stored only after both local approval and remote approval are present. Pairing completion writes the updated trusted-device state before swapping it into runtime memory, so a failed local save cannot leave a device trusted only until restart.
 - Trusted device records store the peer identity public key when the peer advertises one. Discovery, pairing acknowledgements, and pairing approvals reject a provided identity public key when its fingerprint does not match the advertised fingerprint.
 - New trusted pairings derive and store a per-device shared control secret from ephemeral X25519 key agreement plus the pairing nonces.
 - Pairing approval messages are authenticated with the pending shared control secret before either side can mark the remote approval complete.
@@ -127,7 +127,7 @@ Current scaffold behavior:
 
 - Trusted devices are pinged over the TCP control channel every 8 seconds.
 - The reconnect loop respects the persisted trusted-reconnect setting.
-- Successful authenticated pings update live latency and persist the trusted device's last endpoint plus a bounded newest-first list of recent verified endpoints, improving restart reconnect after DHCP/IP changes.
+- Successful authenticated pings update live latency and persist the trusted device's last endpoint plus a bounded newest-first list of recent verified endpoints, improving restart reconnect after DHCP/IP changes. Verified endpoint updates are applied to runtime health only after the trusted endpoint save succeeds, so a failed local save does not leave misleading reachable-state evidence.
 - Late successful reconnect/input acknowledgements and late reconnect/input failures for a device that has already been forgotten are ignored before live health or failure state is recorded, so async responses cannot leave ghost trusted state behind for a removed device.
 - Pong replies must match the trusted device ID, stored fingerprint, stored identity public key when available, and control-message authentication before the device is marked reachable.
 - Pong replies must echo the current ping challenge, so an old authenticated pong cannot mark a fake endpoint reachable; reconnect diagnostics distinguish a stale challenge from a wrong trusted identity.

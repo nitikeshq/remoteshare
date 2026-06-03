@@ -1521,6 +1521,15 @@ impl RuntimeStore {
             return Ok(());
         };
 
+        let mut persisted = state.persisted.clone();
+        let device = &mut persisted.trusted_devices[device_index];
+        let changed = remember_trusted_endpoint(device, endpoint.clone());
+        if changed {
+            persisted
+                .save()
+                .map_err(|error| format!("Failed to save trusted endpoint: {error}"))?;
+            state.persisted = persisted;
+        }
         state.connection_failures.remove(&device_id);
         state.connection_health.insert(
             device_id.clone(),
@@ -1530,15 +1539,6 @@ impl RuntimeStore {
                 last_seen_at_ms: now_ms(),
             },
         );
-
-        let device = &mut state.persisted.trusted_devices[device_index];
-        let changed = remember_trusted_endpoint(device, endpoint);
-        if changed {
-            state
-                .persisted
-                .save()
-                .map_err(|error| format!("Failed to save trusted endpoint: {error}"))?;
-        }
         Ok(())
     }
 
@@ -2227,13 +2227,14 @@ fn complete_pairing_if_ready(state: &mut RuntimeState, pairing_id: &str) -> Resu
         return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
     }
     let device_id = peer.device_id.clone();
-    upsert_trusted_device(&mut state.persisted, peer, endpoint, shared_secret);
-    state.connection_health.remove(&device_id);
-    state.connection_failures.remove(&device_id);
-    state
-        .persisted
+    let mut persisted = state.persisted.clone();
+    upsert_trusted_device(&mut persisted, peer, endpoint, shared_secret);
+    persisted
         .save()
         .map_err(|error| format!("Failed to save trusted device: {error}"))?;
+    state.persisted = persisted;
+    state.connection_health.remove(&device_id);
+    state.connection_failures.remove(&device_id);
     state.pending_pairings.remove(pairing_id);
     Ok(true)
 }
@@ -2663,7 +2664,7 @@ pub fn now_ms() -> u128 {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{fs, path::PathBuf};
 
     use crate::identity::{ComputerRole, TrustedDevice};
 
@@ -4095,6 +4096,60 @@ mod tests {
     }
 
     #[test]
+    fn trusted_connection_save_failure_does_not_update_runtime_endpoint() {
+        let config_file = unique_test_dir("trusted-record-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_failures.insert(
+                "trusted-device".to_string(),
+                super::ConnectionFailure {
+                    endpoint: "192.168.1.10:44777".to_string(),
+                    endpoint_source: super::EndpointSource::Saved,
+                    failed_at_ms: now_ms(),
+                    message: "old failure".to_string(),
+                },
+            );
+        }
+
+        let error = store
+            .record_trusted_connection(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect_err("save failure should reject trusted endpoint update");
+
+        assert!(error.starts_with("Failed to save trusted endpoint:"));
+        let state = store.state.lock().expect("runtime state poisoned");
+        let device = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should remain");
+        assert_eq!(device.last_endpoint.as_deref(), Some("192.168.1.10:44777"));
+        assert!(device.recent_endpoints.is_empty());
+        assert!(state.connection_health.get("trusted-device").is_none());
+        assert!(state.connection_failures.get("trusted-device").is_some());
+    }
+
+    #[test]
     fn trusted_endpoint_update_target_does_not_require_saved_endpoint() {
         crate::identity::set_test_config_dir(unique_test_dir("trusted-update-without-endpoint"));
 
@@ -4992,6 +5047,72 @@ mod tests {
             .any(|pairing| pairing.id == pairing_id
                 && !pairing.remote_approved
                 && pairing.endpoint == "192.168.1.50:44777"));
+    }
+
+    #[test]
+    fn completed_pairing_save_failure_does_not_trust_device_in_memory() {
+        let config_file = unique_test_dir("complete-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        let target = PairingTarget {
+            device_id: "remote-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            expected_peer: None,
+        };
+        let (local_private_key, local_public_key) = crate::crypto::x25519_keypair();
+        let (_remote_private_key, remote_public_key) = crate::crypto::x25519_keypair();
+        let pairing_id = store
+            .register_outgoing_pairing(
+                &target,
+                Some(PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                }),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                local_private_key,
+                local_public_key,
+                remote_public_key,
+                "123456".to_string(),
+            )
+            .expect("pairing should register");
+
+        store
+            .confirm_pairing(ConfirmPairingRequest {
+                pairing_id: pairing_id.clone(),
+                code: "123456".to_string(),
+            })
+            .expect("local approval should be recorded");
+        let error = store
+            .record_remote_pairing_approval(
+                PairingPeer {
+                    device_id: "remote-device".to_string(),
+                    name: "Remote Windows".to_string(),
+                    platform: "windows".to_string(),
+                    role: ComputerRole::Client,
+                    control_port: 44777,
+                    public_key_fingerprint: "remote-fingerprint".to_string(),
+                    public_key: String::new(),
+                },
+                "192.168.1.50:44777".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("save failure should prevent pairing completion");
+
+        assert!(error.starts_with("Failed to save trusted device:"));
+        assert!(store.trusted_reconnect_targets().is_empty());
+        assert!(store
+            .status()
+            .pending_pairings
+            .iter()
+            .any(|pairing| pairing.id == pairing_id && !pairing.remote_approved));
     }
 
     #[test]
