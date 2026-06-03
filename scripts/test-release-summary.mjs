@@ -132,6 +132,30 @@ try {
     "Publish readiness: incomplete (macOS DMG version mismatch)."
   ]);
 
+  const unexpectedInstallerRoot = path.join(root, "unexpected-installer");
+  fs.mkdirSync(unexpectedInstallerRoot, { recursive: true });
+  fs.writeFileSync(
+    path.join(unexpectedInstallerRoot, `RemoteShare_${packageVersion}_x64.msi`),
+    "unexpected msi"
+  );
+  runSummary(unexpectedInstallerRoot, [
+    "Installer artifacts: none found",
+    `Unexpected installer artifacts: RemoteShare_${packageVersion}_x64.msi`,
+    `Publish readiness: incomplete (macOS DMG missing; Windows EXE missing; Linux DEB missing; unexpected installer RemoteShare_${packageVersion}_x64.msi).`
+  ]);
+
+  const unmanifestedInstallerRoot = fixture("unmanifested-installer", [
+    [`dmg/RemoteShare_${packageVersion}_aarch64.dmg`, "valid dmg"]
+  ]);
+  fs.writeFileSync(
+    path.join(unmanifestedInstallerRoot, "RELEASE-MANIFEST.json"),
+    `${JSON.stringify({ version: packageVersion, artifacts: [] }, null, 2)}\n`
+  );
+  runSummary(unmanifestedInstallerRoot, [
+    `Unmanifested installer artifacts: dmg/RemoteShare_${packageVersion}_aarch64.dmg`,
+    `Publish readiness: incomplete (Windows EXE missing; Linux DEB missing; unmanifested installer dmg/RemoteShare_${packageVersion}_aarch64.dmg).`
+  ]);
+
   const emptyRoot = path.join(root, "empty");
   fs.mkdirSync(emptyRoot);
   runSummary(emptyRoot, [

@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
+import {
+  findInstallerArtifacts,
+  findUnexpectedInstallerArtifacts,
+  requiredArtifactTypes
+} from "./release-artifacts-lib.mjs";
 
 const root = process.argv[2] ?? "src-tauri/target/release/bundle";
 const checksumPath = path.join(root, "SHA256SUMS.txt");
-const installerExtensions = new Set([".dmg", ".exe", ".deb"]);
+const manifestPath = path.join(root, "RELEASE-MANIFEST.json");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 const invalidChecksumLines = [];
 const duplicateChecksumEntries = [];
@@ -13,11 +18,21 @@ const platformArtifacts = [
   { name: "Windows EXE", extension: ".exe", nativeRunner: "Windows" },
   { name: "Linux DEB", extension: ".deb", nativeRunner: "Ubuntu/Linux" }
 ];
-const installers = findInstallerFiles(root);
+const installerArtifacts = findInstallerArtifacts(root);
+const installers = installerArtifacts.map((artifact) => artifact.file);
+const unexpectedArtifacts = findUnexpectedInstallerArtifacts(root);
 const checksums = fs.existsSync(checksumPath) ? readChecksumFile(checksumPath) : new Map();
+const manifestFiles = readManifestFiles(manifestPath);
 const installerRelativePaths = installers.map((file) =>
   path.relative(root, file).replaceAll(path.sep, "/")
 );
+const unexpectedRelativePaths = unexpectedArtifacts.map((file) =>
+  path.relative(root, file).replaceAll(path.sep, "/")
+);
+const unmanifestedInstallerPaths =
+  manifestFiles instanceof Set
+    ? installerRelativePaths.filter((relativePath) => !manifestFiles.has(path.basename(relativePath)))
+    : [];
 const staleChecksumEntries = [...checksums.keys()].filter(
   (relativePath) => !installerRelativePaths.includes(relativePath)
 );
@@ -40,6 +55,14 @@ if (installers.length === 0) {
     ];
     console.log(`- ${relativePath} (${states.join(", ")})`);
   }
+}
+
+if (unexpectedRelativePaths.length > 0) {
+  console.log(`Unexpected installer artifacts: ${unexpectedRelativePaths.join(", ")}`);
+}
+
+if (unmanifestedInstallerPaths.length > 0) {
+  console.log(`Unmanifested installer artifacts: ${unmanifestedInstallerPaths.join(", ")}`);
 }
 
 console.log("Platform coverage:");
@@ -90,6 +113,8 @@ const readinessIssues = [
   ...checksumMissingPlatforms.map((name) => `${name} checksum missing`),
   ...checksumMismatchPlatforms.map((name) => `${name} checksum mismatch`),
   ...versionMismatchPlatforms.map((name) => `${name} version mismatch`),
+  ...unexpectedRelativePaths.map((entry) => `unexpected installer ${entry}`),
+  ...unmanifestedInstallerPaths.map((entry) => `unmanifested installer ${entry}`),
   ...staleChecksumEntries.map((entry) => `stale checksum ${entry}`),
   ...invalidChecksumLines.map((line) => `invalid checksum line ${line}`),
   ...duplicateChecksumEntries.map((entry) => `duplicate checksum ${entry}`)
@@ -115,26 +140,6 @@ if (fs.existsSync(checksumPath)) {
   console.log("Checksum file: missing");
 }
 
-function findInstallerFiles(directory) {
-  const files = [];
-
-  function walk(currentDirectory) {
-    if (!fs.existsSync(currentDirectory)) return;
-
-    for (const entry of fs.readdirSync(currentDirectory, { withFileTypes: true })) {
-      const fullPath = path.join(currentDirectory, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-      } else if (installerExtensions.has(path.extname(entry.name).toLowerCase())) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  walk(directory);
-  return files.sort();
-}
-
 function readChecksumFile(file) {
   const checksums = new Map();
   const lines = fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean);
@@ -153,6 +158,29 @@ function readChecksumFile(file) {
   }
 
   return checksums;
+}
+
+function readManifestFiles(file) {
+  if (!fs.existsSync(file)) return null;
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!Array.isArray(manifest.artifacts)) return null;
+
+    return new Set(
+      manifest.artifacts
+        .filter(
+          (artifact) =>
+            artifact &&
+            typeof artifact.file === "string" &&
+            typeof artifact.type === "string" &&
+            requiredArtifactTypes.has(artifact.type)
+        )
+        .map((artifact) => artifact.file)
+    );
+  } catch {
+    return null;
+  }
 }
 
 function formatBytes(bytes) {
