@@ -121,6 +121,17 @@ try {
     "macOS installer file must match release dmg artifact"
   );
 
+  const mismatchedWindowsInstallerReport = smokeReportFixture("mismatched-windows-installer.md", "Pass", {
+    windowsInstaller: `RemoteShare_${packageVersion}_wrong.exe`
+  });
+  runVerifier(
+    releaseAssets,
+    mismatchedWindowsInstallerReport,
+    false,
+    "mismatched LAN smoke Windows installer should fail",
+    "Windows installer file must match release exe artifact"
+  );
+
   const mismatchedLinuxInstallerReport = smokeReportFixture("mismatched-linux-installer.md", "Pass", {
     linuxInstaller: `RemoteShare_${packageVersion}_wrong.deb`
   });
@@ -152,6 +163,17 @@ try {
     false,
     "mismatched LAN smoke checksum should fail",
     "macOS installer SHA256 must match release dmg sha256"
+  );
+
+  const mismatchedWindowsHashReport = smokeReportFixture("mismatched-windows-hash.md", "Pass", {
+    windowsSha256: sha256("wrong exe")
+  });
+  runVerifier(
+    releaseAssets,
+    mismatchedWindowsHashReport,
+    false,
+    "mismatched LAN smoke Windows checksum should fail",
+    "Windows installer SHA256 must match release exe sha256"
   );
 
   const mismatchedLinuxHashReport = smokeReportFixture("mismatched-linux-hash.md", "Pass", {
