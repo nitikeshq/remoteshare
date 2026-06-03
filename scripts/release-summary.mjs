@@ -25,7 +25,8 @@ const installers = installerArtifacts.map((artifact) => artifact.file);
 const unexpectedArtifacts = findUnexpectedInstallerArtifacts(root);
 const checksums = fs.existsSync(checksumPath) ? readChecksumFile(checksumPath) : new Map();
 const manifestExists = fs.existsSync(manifestPath);
-const manifestFiles = readManifestFiles(manifestPath);
+const manifestStatus = readManifestStatus(manifestPath);
+const manifestFiles = manifestStatus.files;
 const manifestIssue = !manifestExists
   ? "release manifest missing"
   : manifestFiles instanceof Set
@@ -153,6 +154,9 @@ if (!manifestExists) {
   console.log("Release manifest: missing");
 } else if (!(manifestFiles instanceof Set)) {
   console.log("Release manifest: invalid");
+  if (manifestStatus.issue) {
+    console.log(`Release manifest issue: ${manifestStatus.issue}`);
+  }
 } else {
   console.log(`Release manifest: ${manifestPath}`);
 }
@@ -177,30 +181,68 @@ function readChecksumFile(file) {
   return checksums;
 }
 
-function readManifestFiles(file) {
-  if (!fs.existsSync(file)) return null;
+function readManifestStatus(file) {
+  if (!fs.existsSync(file)) {
+    return { files: null, issue: "missing" };
+  }
 
   try {
     const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (manifest.version !== packageVersion) return null;
-    validateReleaseGeneratedAt(manifest.generatedAt);
-    if (!Array.isArray(manifest.artifacts)) return null;
-    validateManifestArtifactTypes(manifest.artifacts);
-    const artifacts = manifest.artifacts.map((artifact, index) =>
-      validateReleaseManifestArtifact(artifact, index, packageVersion)
-    );
+    if (manifest.version !== packageVersion) {
+      return {
+        files: null,
+        issue: `version mismatch: expected ${packageVersion}, got ${String(manifest.version)}`
+      };
+    }
+    try {
+      validateReleaseGeneratedAt(manifest.generatedAt);
+    } catch (error) {
+      return { files: null, issue: error.message };
+    }
+    if (!Array.isArray(manifest.artifacts)) {
+      return { files: null, issue: "artifacts must be an array" };
+    }
+    try {
+      validateManifestArtifactTypes(manifest.artifacts);
+    } catch (error) {
+      return { files: null, issue: error.message };
+    }
+    let artifacts;
+    try {
+      artifacts = manifest.artifacts.map((artifact, index) =>
+        validateReleaseManifestArtifact(artifact, index, packageVersion)
+      );
+    } catch (error) {
+      return { files: null, issue: error.message };
+    }
     for (const artifact of artifacts) {
       const matches = installers.filter((file) => path.basename(file) === artifact.file);
-      if (matches.length !== 1) return null;
+      if (matches.length !== 1) {
+        return {
+          files: null,
+          issue: `artifact ${artifact.file} must match exactly one installer, found ${matches.length}`
+        };
+      }
       const artifactPath = matches[0];
       const bytes = fs.readFileSync(artifactPath);
-      if (bytes.length !== artifact.sizeBytes) return null;
-      if (crypto.createHash("sha256").update(bytes).digest("hex") !== artifact.sha256) return null;
+      if (bytes.length !== artifact.sizeBytes) {
+        return {
+          files: null,
+          issue: `artifact ${artifact.file} size mismatch: expected ${artifact.sizeBytes}, got ${bytes.length}`
+        };
+      }
+      const actualHash = crypto.createHash("sha256").update(bytes).digest("hex");
+      if (actualHash !== artifact.sha256) {
+        return {
+          files: null,
+          issue: `artifact ${artifact.file} hash mismatch: expected ${artifact.sha256}, got ${actualHash}`
+        };
+      }
     }
 
-    return new Set(artifacts.map((artifact) => artifact.file));
-  } catch {
-    return null;
+    return { files: new Set(artifacts.map((artifact) => artifact.file)), issue: null };
+  } catch (error) {
+    return { files: null, issue: `invalid JSON: ${error.message}` };
   }
 }
 

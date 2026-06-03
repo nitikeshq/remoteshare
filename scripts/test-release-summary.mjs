@@ -173,6 +173,7 @@ try {
   fs.writeFileSync(path.join(invalidManifestRoot, "RELEASE-MANIFEST.json"), "{not json");
   runSummary(invalidManifestRoot, [
     "Release manifest: invalid",
+    "Release manifest issue: invalid JSON:",
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
@@ -189,6 +190,7 @@ try {
   writeManifest(missingGeneratedAtRoot, missingGeneratedAtManifest);
   runSummary(missingGeneratedAtRoot, [
     "Release manifest: invalid",
+    "Release manifest issue: Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.",
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
@@ -205,6 +207,7 @@ try {
   writeManifest(invalidGeneratedAtRoot, invalidGeneratedAtManifest);
   runSummary(invalidGeneratedAtRoot, [
     "Release manifest: invalid",
+    "Release manifest issue: Release manifest generatedAt must be a valid ISO-8601 UTC timestamp.",
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
@@ -221,6 +224,7 @@ try {
   writeManifest(staleManifestSizeRoot, staleManifestSize);
   runSummary(staleManifestSizeRoot, [
     "Release manifest: invalid",
+    `Release manifest issue: artifact RemoteShare_${packageVersion}_aarch64.dmg size mismatch`,
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
@@ -237,6 +241,7 @@ try {
   writeManifest(staleManifestHashRoot, staleManifestHash);
   runSummary(staleManifestHashRoot, [
     "Release manifest: invalid",
+    `Release manifest issue: artifact RemoteShare_${packageVersion}_aarch64.dmg hash mismatch`,
     "Publish readiness: incomplete (release manifest invalid)."
   ]);
 
