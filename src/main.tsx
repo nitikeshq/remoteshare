@@ -654,9 +654,13 @@ function setupChecklistEvidence(status: RuntimeStatus, steps: SetupStep[]) {
 function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
   const failure = connectionFailureDiagnostic(device);
   const hint = connectionFailureHint(device);
+  const action = device.inputControlReady
+    ? "Verify IP without re-pairing"
+    : "Pair manually with copied endpoint";
   return [
     "Trusted IP update",
     `Device: ${device.name}`,
+    `Action: ${action}`,
     `Endpoint field: ${endpointField.trim() || "empty"}`,
     `Current endpoint: ${device.endpoint ?? "none"}`,
     `Current source: ${endpointSourceLabel(device)}`,

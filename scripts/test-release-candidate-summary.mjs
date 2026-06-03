@@ -54,7 +54,7 @@ try {
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
   assertIncludes(summary, "trusted IP update `Copy` button", "trusted IP copy evidence");
-  assertIncludes(summary, "device, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
+  assertIncludes(summary, "device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
   assertIncludes(summary, "Blocking issues: none", "clear blocking issue notes evidence");
   assertIncludes(summary, "screenshots or logs captured for pairing, reconnect, input, and capture evidence", "captured evidence notes");
   assertIncludes(summary, "Retest required: no", "clear retest notes evidence");
