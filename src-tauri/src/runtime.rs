@@ -1578,7 +1578,7 @@ impl RuntimeStore {
             device_id,
             endpoint,
             latency_ms,
-            EndpointSource::Health,
+            Some(EndpointSource::Health),
             false,
         )
     }
@@ -1593,7 +1593,7 @@ impl RuntimeStore {
             device_id,
             endpoint,
             latency_ms,
-            EndpointSource::Health,
+            None,
             true,
         )
     }
@@ -1608,7 +1608,7 @@ impl RuntimeStore {
             device_id,
             endpoint,
             latency_ms,
-            EndpointSource::Manual,
+            Some(EndpointSource::Manual),
             true,
         )
     }
@@ -1618,7 +1618,7 @@ impl RuntimeStore {
         device_id: String,
         endpoint: String,
         latency_ms: Option<u16>,
-        endpoint_source: EndpointSource,
+        endpoint_source: Option<EndpointSource>,
         require_existing_device: bool,
     ) -> Result<(), String> {
         let endpoint =
@@ -1641,6 +1641,13 @@ impl RuntimeStore {
             }
             return Ok(());
         };
+        let endpoint_source = endpoint_source.unwrap_or_else(|| {
+            successful_endpoint_source(
+                &state,
+                &state.persisted.trusted_devices[device_index],
+                &endpoint,
+            )
+        });
 
         let mut persisted = state.persisted.clone();
         let device = &mut persisted.trusted_devices[device_index];
@@ -2099,6 +2106,43 @@ fn failure_endpoint_source(
         return EndpointSource::Saved;
     }
     EndpointSource::None
+}
+
+fn successful_endpoint_source(
+    state: &RuntimeState,
+    device: &TrustedDevice,
+    endpoint: &str,
+) -> EndpointSource {
+    let now = now_ms();
+    if state
+        .discovered_peers
+        .get(&device.id)
+        .filter(|peer| {
+            peer_is_fresh(peer, now)
+                && peer_matches_trusted_device(peer, device)
+                && peer.endpoint == endpoint
+        })
+        .is_some()
+    {
+        return EndpointSource::Discovery;
+    }
+
+    if let Some(health) = state
+        .connection_health
+        .get(&device.id)
+        .filter(|health| peer_is_fresh_health(health, now) && health.endpoint == endpoint)
+    {
+        return health.endpoint_source.clone();
+    }
+
+    if saved_trusted_endpoints(device)
+        .iter()
+        .any(|candidate| candidate == endpoint)
+    {
+        return EndpointSource::Saved;
+    }
+
+    EndpointSource::Health
 }
 
 fn peer_matches_trusted_device(peer: &DiscoveredPeer, device: &TrustedDevice) -> bool {
@@ -4974,6 +5018,93 @@ mod tests {
         assert!(matches!(device.endpoint_source, super::EndpointSource::Manual));
         assert!(device.online);
         assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
+    fn interactive_trusted_connection_preserves_manual_endpoint_source() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-interactive-manual-source"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: None,
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect("manual endpoint should verify");
+        store
+            .record_interactive_trusted_connection(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(5),
+            )
+            .expect("interactive trusted check should preserve manual source");
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(matches!(device.endpoint_source, super::EndpointSource::Manual));
+        assert_eq!(device.latency_ms, Some(5));
+    }
+
+    #[test]
+    fn interactive_trusted_connection_labels_saved_endpoint_source() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-interactive-saved-source"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        store
+            .record_interactive_trusted_connection(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(5),
+            )
+            .expect("interactive trusted check should label saved endpoint source");
+
+        let device = store
+            .status()
+            .devices
+            .into_iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be listed");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(matches!(device.endpoint_source, super::EndpointSource::Saved));
+        assert_eq!(device.latency_ms, Some(5));
     }
 
     #[test]
