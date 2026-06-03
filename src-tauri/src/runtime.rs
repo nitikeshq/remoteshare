@@ -2264,12 +2264,15 @@ fn remember_trusted_endpoint(device: &mut TrustedDevice, endpoint: String) -> bo
     device.recent_endpoints.retain(|existing| existing != &endpoint);
     device.recent_endpoints.insert(0, endpoint);
     if let Some(previous_endpoint) = previous_last_endpoint {
-        if !device
+        device
             .recent_endpoints
-            .iter()
-            .any(|existing| existing == &previous_endpoint)
+            .retain(|existing| existing != &previous_endpoint);
+        if device
+            .last_endpoint
+            .as_deref()
+            .is_some_and(|current_endpoint| current_endpoint != previous_endpoint)
         {
-            device.recent_endpoints.push(previous_endpoint);
+            device.recent_endpoints.insert(1, previous_endpoint);
         }
     }
     device.recent_endpoints.truncate(MAX_RECENT_TRUSTED_ENDPOINTS);
@@ -5018,6 +5021,54 @@ mod tests {
         assert!(matches!(device.endpoint_source, super::EndpointSource::Manual));
         assert!(device.online);
         assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
+    fn verified_manual_trusted_endpoint_keeps_previous_saved_endpoint_fallback() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-manual-keeps-fallback"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Device".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.10:44777".to_string()),
+                recent_endpoints: vec!["192.168.1.11:44777".to_string()],
+                allow_incoming_control: false,
+            });
+        }
+
+        store
+            .record_verified_manual_trusted_endpoint(
+                "trusted-device".to_string(),
+                "192.168.1.50:44777".to_string(),
+                Some(7),
+            )
+            .expect("verified manual endpoint should save");
+
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec![
+                "192.168.1.50:44777".to_string(),
+                "192.168.1.10:44777".to_string(),
+                "192.168.1.11:44777".to_string(),
+            ]
+        );
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert_eq!(
+            state.persisted.trusted_devices[0].recent_endpoints,
+            vec![
+                "192.168.1.50:44777".to_string(),
+                "192.168.1.10:44777".to_string(),
+                "192.168.1.11:44777".to_string(),
+            ]
+        );
     }
 
     #[test]
