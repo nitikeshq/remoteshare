@@ -39,7 +39,9 @@ try {
   assertIncludes(summary, "Device receive: enabled", "per-device receive evidence");
   assertIncludes(summary, "Input control: ready", "input-control-ready evidence");
   assertIncludes(summary, "Input Transport source device and relative time", "input event context evidence");
-  assertIncludes(summary, "active capture target and elapsed start time", "active capture timing evidence");
+  assertIncludes(summary, "capture `Copy` button", "capture copy evidence");
+  assertIncludes(summary, "Capture: active", "active capture copied field");
+  assertIncludes(summary, "started/elapsed-time evidence", "capture timing copied field");
   assertIncludes(summary, "accepted mouse move, mouse click, scroll, and key events", "capture evidence");
   assertIncludes(summary, "copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint", "auto endpoint source evidence");
   assertIncludes(summary, "local endpoint `Evidence` output", "manual endpoint evidence copy");

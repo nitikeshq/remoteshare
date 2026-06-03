@@ -88,7 +88,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Startup health | TCP ready, UDP ready, and start-at-login not failed after restart | TCP ready, UDP ready, and start-at-login not failed after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled |
-| Capture result | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible | Capture starts/stops cleanly and accepted mouse move, click, scroll, and key events are visible |
+| Capture result | Capture `Copy` output shows `Capture: active`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible | Capture `Copy` output shows `Capture: active`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible |
 | Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or trusted IP update `Copy` output with manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |
 
 Minimum pass criteria:
@@ -98,7 +98,7 @@ Minimum pass criteria:
 - Trusted row reconnect `Copy` output shows `Auto reconnect: enabled` after restart.
 - Trusted row reconnect `Copy` output shows `Check: reachable` after at least one app restart, wake, or Wi-Fi reconnect.
 - `Test` sends an accepted `key press r` input transport event to the receiver after receive `Copy` evidence shows global and per-device receive enabled.
-- Capture starts on the macOS sender, forwards accepted mouse move, mouse click, scroll, and key events to the Windows receiver, then stops cleanly.
+- Capture starts on the macOS sender, the capture `Copy` output is pasted before Stop, accepted mouse move, mouse click, scroll, and key events are forwarded to the Windows receiver, then capture stops cleanly.
 - Manual fallback succeeds when UDP discovery is unavailable and a successful TCP `44777` probe is recorded, such as `Test-NetConnection`, `nc`/netcat, telnet, socket connect, or port probe.
 - Any failed endpoint, firewall, permission, or stale-IP reason is visible in the UI before retrying. Manual fallback retry evidence must paste the trusted IP update `Copy` output and mention the manual IP, Set IP / Verify IP, copied endpoint, TCP `44777`, or firewall recovery path.
 

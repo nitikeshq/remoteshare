@@ -149,7 +149,7 @@ try {
   const missingManualCaptureTiming = writeReport("missing-manual-capture-timing.md", {
     autoPass: "Pass",
     manualPass: "Pass",
-    omitLine: "| Active capture target and elapsed start time shown | active target Windows receiver, started 5 seconds ago |"
+    omitLine: "| Active capture target and elapsed start time shown | Capture: active; Target: Windows receiver; Started: 5s ago |"
   });
   runVerifier(
     missingManualCaptureTiming,
@@ -745,7 +745,20 @@ try {
     vagueCaptureTiming,
     false,
     "vague capture timing should fail",
-    "Auto-Discovery Run capture timing evidence must mention the active capture target and elapsed start time shown in the sender UI"
+    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop"
+  );
+
+  const staleCaptureTiming = writeReport("stale-capture-timing.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoCaptureTiming: "Capture: inactive; Target: Windows receiver; Started: 4s ago"
+  });
+  runVerifier(
+    staleCaptureTiming,
+    false,
+    "inactive capture timing copy should fail",
+    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop"
   );
 
   const vagueCaptureEvents = writeReport("vague-capture-events.md", {
@@ -1150,9 +1163,9 @@ function writeReport(name, options) {
   const autoCaptureStartStop = options.autoCaptureStartStop ?? "started and stopped cleanly";
   const manualCaptureStartStop = options.manualCaptureStartStop ?? "started and stopped cleanly";
   const autoCaptureTiming =
-    options.autoCaptureTiming ?? "active target Windows receiver, started 4 seconds ago";
+    options.autoCaptureTiming ?? "Capture: active; Target: Windows receiver; Started: 4s ago";
   const manualCaptureTiming =
-    options.manualCaptureTiming ?? "active target Windows receiver, started 5 seconds ago";
+    options.manualCaptureTiming ?? "Capture: active; Target: Windows receiver; Started: 5s ago";
   const autoCaptureEvents = options.autoCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
   const manualCaptureEvents = options.manualCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
   const autoFailureReason = options.autoFailureReason ?? "none";

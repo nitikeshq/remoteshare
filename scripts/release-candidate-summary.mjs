@@ -73,7 +73,7 @@ ${rows}
 9. After restart/wake, use the trusted row reconnect \`Copy\` button to paste \`Auto reconnect: enabled\`, \`Check: reachable\`, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence.
 10. Use the trusted row receive \`Copy\` button to paste \`Allow incoming control: enabled\`, \`Device receive: enabled\`, and \`Input control: ready\` evidence before input.
 11. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
-12. Record active capture target and elapsed start time before pressing Stop.
+12. Before pressing Stop, use the capture \`Copy\` button to paste \`Capture: active\`, target, and started/elapsed-time evidence.
 13. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
 14. In the auto-discovery run, the copied reconnect evidence must show endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
 15. In the manual fallback run, paste the peer \`This computer\` row's local endpoint \`Evidence\` output so the report records \`Local endpoint\`, \`This computer\`, \`Label: Best LAN IPv4\` / \`LAN IPv4\` / \`LAN IPv6\`, endpoint, TCP 44777, and private-network state.

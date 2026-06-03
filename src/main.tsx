@@ -585,7 +585,7 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
     "Capture: active",
     `Target: ${targetName ?? "trusted device"}`,
     `Started: ${elapsedLabel(status.capture.startedAtMs ?? Date.now())}`
-  ].join(" | ");
+  ].join("; ");
 }
 
 function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: string) {

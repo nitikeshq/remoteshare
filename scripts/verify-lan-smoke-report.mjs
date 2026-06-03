@@ -446,10 +446,11 @@ function requireCaptureEvidence(table, section) {
     section
   ).toLowerCase();
   if (
-    !/(target|windows|receiver|client|trusted)/.test(captureTiming) ||
-    !/(start|started|elapsed|ago|ms|sec|second|min|minute)/.test(captureTiming)
+    !/capture:\s*active/.test(captureTiming) ||
+    !/target:\s*(windows|receiver|client|trusted|[^\s|;]+)/.test(captureTiming) ||
+    !/started:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(captureTiming)
   ) {
-    throw new Error(`${section} capture timing evidence must mention the active capture target and elapsed start time shown in the sender UI.`);
+    throw new Error(`${section} capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop.`);
   }
 
   const capturedEvents = requireFilled(
