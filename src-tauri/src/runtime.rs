@@ -1131,6 +1131,14 @@ impl RuntimeStore {
         if peer.device_id == state.persisted.identity.id {
             return Err("Cannot pair this computer with itself.".to_string());
         }
+        let endpoint =
+            normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
+        if !private_guard_allows_endpoint(
+            &endpoint,
+            state.persisted.settings.private_network_only,
+        ) {
+            return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
+        }
         if !peer_public_key_matches_fingerprint(&peer.public_key, &peer.public_key_fingerprint) {
             return Err("Pairing public key does not match fingerprint.".to_string());
         }
@@ -4861,6 +4869,51 @@ mod tests {
 
         store.remove_pending_pairing(&pairing_id);
 
+        assert!(store.status().pending_pairings.is_empty());
+    }
+
+    #[test]
+    fn incoming_pairing_rejects_invalid_or_public_endpoint_before_ack() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-rejects-bad-endpoints"));
+
+        let store = RuntimeStore::load_or_init();
+        let peer = PairingPeer {
+            device_id: "remote-device".to_string(),
+            name: "Remote Windows".to_string(),
+            platform: "windows".to_string(),
+            role: ComputerRole::Client,
+            control_port: 44777,
+            public_key_fingerprint: "remote-fingerprint".to_string(),
+            public_key: String::new(),
+        };
+
+        let error = store
+            .register_incoming_pairing(
+                peer.clone(),
+                "localhost".to_string(),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                "local-private-key".to_string(),
+                "local-public-key".to_string(),
+                "remote-public-key".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("invalid incoming endpoint should be rejected before ack");
+        assert_eq!(error, INVALID_ENDPOINT_MESSAGE);
+
+        let error = store
+            .register_incoming_pairing(
+                peer,
+                "8.8.8.8:44777".to_string(),
+                "local-nonce".to_string(),
+                "remote-nonce".to_string(),
+                "local-private-key".to_string(),
+                "local-public-key".to_string(),
+                "remote-public-key".to_string(),
+                "123456".to_string(),
+            )
+            .expect_err("public incoming endpoint should be rejected before ack");
+        assert_eq!(error, PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE);
         assert!(store.status().pending_pairings.is_empty());
     }
 
