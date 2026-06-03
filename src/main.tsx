@@ -1817,6 +1817,7 @@ function App() {
               {status.pendingPairings.map((pairing) => {
                 const enteredCode = pairingCodeEntries[pairing.id] ?? "";
                 const entryState = pairingCodeEntryState(pairing, enteredCode, pairingNowMs);
+                const pairingExpired = pairingNowMs >= pairing.expiresAtMs;
 
                 return (
                   <article className="pairing-row" key={pairing.id}>
@@ -1844,7 +1845,7 @@ function App() {
                         pattern="[0-9]{6}"
                         placeholder="Other code"
                         value={enteredCode}
-                        disabled={pairing.localApproved}
+                        disabled={pairing.localApproved || pairingExpired}
                         onChange={(event) =>
                           setPairingCodeEntries((entries) => ({
                             ...entries,
