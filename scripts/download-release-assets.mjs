@@ -6,6 +6,7 @@ const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).versi
 const expectedTag = `v${packageVersion}`;
 const args = process.argv.slice(2);
 const ghCommand = process.env.REMOTESHARE_GH_COMMAND || "gh";
+const ghCommandArgs = parseCommandArgs(process.env.REMOTESHARE_GH_COMMAND_ARGS);
 
 if (args.includes("--help") || args.includes("-h")) {
   console.log("Usage: node scripts/download-release-assets.mjs [tag] [output-dir]");
@@ -34,7 +35,7 @@ const stagingDir = fs.mkdtempSync(path.join(outputParent, ".remoteshare-release-
 
 try {
   const releaseJsonPath = path.join(stagingDir, "github-release.json");
-  const release = run(ghCommand, [
+  const release = runGh([
     "release",
     "view",
     tag,
@@ -43,7 +44,7 @@ try {
   ], { echoOutput: false });
   fs.writeFileSync(releaseJsonPath, release.stdout);
 
-  run(ghCommand, ["release", "download", tag, "--dir", stagingDir]);
+  runGh(["release", "download", tag, "--dir", stagingDir]);
   run(process.execPath, ["scripts/verify-github-release-assets.mjs", releaseJsonPath, stagingDir]);
   run(process.execPath, ["scripts/verify-release-manifest.mjs", stagingDir]);
   verifyGeneratedAsset(
@@ -89,6 +90,21 @@ function run(command, commandArgs, options = {}) {
   }
 
   return result;
+}
+
+function runGh(commandArgs, options = {}) {
+  return run(ghCommand, [...ghCommandArgs, ...commandArgs], options);
+}
+
+function parseCommandArgs(value) {
+  if (!value) {
+    return [];
+  }
+  const parsed = JSON.parse(value);
+  if (!Array.isArray(parsed) || parsed.some((arg) => typeof arg !== "string")) {
+    throw new Error("REMOTESHARE_GH_COMMAND_ARGS must be a JSON string array.");
+  }
+  return parsed;
 }
 
 function verifyGeneratedAsset(stagingDir, fileName, script, mismatchMessage) {
