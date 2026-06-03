@@ -88,7 +88,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Startup health | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart | Startup health `Copy` output shows `Startup health`, `This computer`, `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |
 | Input test result | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled | Receiver logs accepted input transport event and receive `Copy` output shows Allow incoming control plus Receive enabled |
-| Capture result | Capture `Copy` output shows `Capture: active`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible | Capture `Copy` output shows `Capture: active`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible |
+| Capture result | Capture `Copy` output shows `Capture: active`, `This computer`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible | Capture `Copy` output shows `Capture: active`, `This computer`, target, and started timing before Stop; accepted mouse move, click, scroll, and key events are visible |
 | Failure reason before retry | `none` or visible UI diagnostic/recovery hint | `none` or trusted IP update `Copy` output with this computer, recovery action, manual IP / Set IP / Verify IP / copied endpoint / TCP `44777` / firewall recovery hint |
 
 Minimum pass criteria:

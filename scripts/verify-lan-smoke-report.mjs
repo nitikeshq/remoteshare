@@ -456,10 +456,11 @@ function requireCaptureEvidence(table, section) {
   ).toLowerCase();
   if (
     !/capture:\s*active/.test(captureTiming) ||
+    !/this\s+computer:\s*[^;|]+/.test(captureTiming) ||
     !/target:\s*(windows|receiver|client|trusted|[^\s|;]+)/.test(captureTiming) ||
     !/started:\s*(now|less than|[0-9]+(\.[0-9]+)?\s*(ms|s|sec|second|min|minute|hour|ago))/.test(captureTiming)
   ) {
-    throw new Error(`${section} capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop.`);
+    throw new Error(`${section} capture timing evidence must paste the capture Copy output with Capture: active, This computer, Target, and Started fields from the sender UI before pressing Stop.`);
   }
 
   const capturedEvents = requireFilled(

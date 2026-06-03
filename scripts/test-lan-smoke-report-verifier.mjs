@@ -149,7 +149,7 @@ try {
   const missingManualCaptureTiming = writeReport("missing-manual-capture-timing.md", {
     autoPass: "Pass",
     manualPass: "Pass",
-    omitLine: "| Active capture target and elapsed start time shown | Capture: active; Target: Windows receiver; Started: 5s ago |"
+    omitLine: "| Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago |"
   });
   runVerifier(
     missingManualCaptureTiming,
@@ -771,20 +771,20 @@ try {
     vagueCaptureTiming,
     false,
     "vague capture timing should fail",
-    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop"
+    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, This computer, Target, and Started fields from the sender UI before pressing Stop"
   );
 
   const staleCaptureTiming = writeReport("stale-capture-timing.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoCaptureTiming: "Capture: inactive; Target: Windows receiver; Started: 4s ago"
+    autoCaptureTiming: "Capture: inactive; This computer: Mac sender; Target: Windows receiver; Started: 4s ago"
   });
   runVerifier(
     staleCaptureTiming,
     false,
     "inactive capture timing copy should fail",
-    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, Target, and Started fields from the sender UI before pressing Stop"
+    "Auto-Discovery Run capture timing evidence must paste the capture Copy output with Capture: active, This computer, Target, and Started fields from the sender UI before pressing Stop"
   );
 
   const vagueCaptureEvents = writeReport("vague-capture-events.md", {
@@ -1195,9 +1195,9 @@ function writeReport(name, options) {
   const autoCaptureStartStop = options.autoCaptureStartStop ?? "started and stopped cleanly";
   const manualCaptureStartStop = options.manualCaptureStartStop ?? "started and stopped cleanly";
   const autoCaptureTiming =
-    options.autoCaptureTiming ?? "Capture: active; Target: Windows receiver; Started: 4s ago";
+    options.autoCaptureTiming ?? "Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago";
   const manualCaptureTiming =
-    options.manualCaptureTiming ?? "Capture: active; Target: Windows receiver; Started: 5s ago";
+    options.manualCaptureTiming ?? "Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago";
   const autoCaptureEvents = options.autoCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
   const manualCaptureEvents = options.manualCaptureEvents ?? "accepted mouse move, mouse click, scroll, and key events";
   const autoFailureReason = options.autoFailureReason ?? "none";

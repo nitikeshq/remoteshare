@@ -459,7 +459,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
 | Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 2 seconds ago |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
-| Active capture target and elapsed start time shown | Capture: active; Target: Windows receiver; Started: 4s ago |
+| Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 4s ago |
 | Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
 | Failure reason visible before retry | none |
 | Pass/fail | ${passValue} |
@@ -488,7 +488,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Sender \`Test\` delivered accepted \`key press r\` input event | accepted key press r delivered |
 | Input Transport source device and relative time shown | Input Transport row shows Mac sender source device and 3 seconds ago |
 | Capture started on sender and stopped cleanly | started and stopped cleanly |
-| Active capture target and elapsed start time shown | Capture: active; Target: Windows receiver; Started: 5s ago |
+| Active capture target and elapsed start time shown | Capture: active; This computer: Mac sender; Target: Windows receiver; Started: 5s ago |
 | Captured mouse move, mouse click, scroll, and key events accepted on receiver | accepted mouse move, mouse click, scroll, and key events |
 | Failure reason visible before retry | none |
 | Pass/fail | Pass |

@@ -586,6 +586,7 @@ function captureEvidence(status: RuntimeStatus, targetName: string | null | unde
 
   return [
     "Capture: active",
+    `This computer: ${status.thisDevice}`,
     `Target: ${targetName ?? "trusted device"}`,
     `Started: ${elapsedLabel(status.capture.startedAtMs ?? Date.now())}`
   ].join("; ");
