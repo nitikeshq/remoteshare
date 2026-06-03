@@ -382,6 +382,7 @@ check("UI can copy audit fingerprints", appUi.includes("copyAuditFingerprint") &
 check("UI keeps input readiness diagnostics", appUi.includes("Input readiness") && appUi.includes("Next action"));
 check("UI keeps startup health diagnostics", appUi.includes("Startup health") && appUi.includes("networkHealth") && appUi.includes("startupRegistration"));
 check("UI shows startup health detail strings", appUi.includes("serviceHealthDetail") && appUi.includes("startup-health-detail") && appUi.includes("status.networkHealth.controlListener") && appUi.includes("status.networkHealth.discovery"));
+check("UI can copy startup health evidence", appUi.includes("startupHealthEvidence") && appUi.includes("copyStartupHealthEvidence") && appUi.includes("Copied startup health evidence.") && appUi.includes("Copy failed. Startup health evidence:") && appUi.includes("Copy startup health evidence") && appUi.includes("startup-health-copy"));
 check("UI labels reconnect candidates without implying reachability", appUi.includes("checkableTrustedDevices") && appUi.includes("ready for checks") && appUi.includes("known endpoint") && !appUi.includes('"trusted endpoint")} reachable'));
 check("UI uses full permission labels", appUi.includes("Accessibility") && appUi.includes("Input Monitoring"));
 check("UI keeps input transport empty state", appUi.includes("No input events yet") && appUi.includes("Input Transport"));

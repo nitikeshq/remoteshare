@@ -385,6 +385,29 @@ input {
   font-size: 11px;
 }
 
+.startup-health-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  margin-left: auto;
+  border: 1px solid #bdd5d1;
+  border-radius: 8px;
+  padding: 0 7px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.startup-health-copy span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-transform: none;
+}
+
 .input-readiness-panel {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) auto;

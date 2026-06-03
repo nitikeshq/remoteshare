@@ -533,6 +533,17 @@ function serviceHealthDetail(label: string, service: ServiceHealthStatus) {
   return `${label}: ${service.detail}`;
 }
 
+function startupHealthEvidence(status: RuntimeStatus) {
+  return [
+    serviceHealthDetail("TCP", status.networkHealth.controlListener),
+    serviceHealthDetail("UDP", status.networkHealth.discovery),
+    serviceHealthDetail("Start", status.networkHealth.startupRegistration),
+    status.networkHealth.lastReconnectAttemptAtMs
+      ? `Reconnect: ${lastSeenLabel(status.networkHealth.lastReconnectAttemptAtMs)}`
+      : `Started: ${lastSeenLabel(status.networkHealth.startedAtMs)}`
+  ].join(" | ");
+}
+
 function commandErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -906,6 +917,16 @@ function App() {
       showActionMessage(`Copied full fingerprint for ${device.name}.`);
     } catch {
       showActionMessage(`Copy failed. Full fingerprint for ${device.name}: ${device.publicKeyFingerprint}`, true);
+    }
+  }
+
+  async function copyStartupHealthEvidence() {
+    const evidence = startupHealthEvidence(status);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage("Copied startup health evidence.");
+    } catch {
+      showActionMessage(`Copy failed. Startup health evidence: ${evidence}`, true);
     }
   }
 
@@ -1582,6 +1603,15 @@ function App() {
                 {serviceHealthDetail("Start", status.networkHealth.startupRegistration)}
               </small>
             </div>
+            <button
+              className="startup-health-copy"
+              onClick={copyStartupHealthEvidence}
+              title="Copy startup health evidence"
+              type="button"
+            >
+              <Copy size={13} />
+              <span>Copy</span>
+            </button>
           </div>
         </section>
 
