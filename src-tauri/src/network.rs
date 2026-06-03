@@ -798,6 +798,25 @@ fn record_failed_input_source(
     );
 }
 
+fn record_auth_failed_input_source(
+    store: &RuntimeStore,
+    source: &PairingPeer,
+    sender: SocketAddr,
+    event: &InputEvent,
+    had_shared_secret: bool,
+    message: &str,
+) {
+    if had_shared_secret {
+        store.record_incoming_input(
+            source.clone(),
+            event.clone(),
+            false,
+            Some("authentication failed".to_string()),
+        );
+    }
+    record_failed_input_source(store, source, sender, message);
+}
+
 fn record_failed_reconnect_source(
     store: &RuntimeStore,
     source: &PairingPeer,
@@ -1035,32 +1054,32 @@ async fn handle_control_stream(
             let _ = app.emit("remoteshare://devices-changed", ());
         }
         ControlMessage::InputEvent { source, event } => {
-            let auth_ok = store
+            let shared_secret = store
                 .trusted_shared_secret(&source.device_id)
                 .ok()
-                .flatten()
+                .flatten();
+            let auth_ok = shared_secret
+                .as_ref()
                 .map(|secret| {
-                    verify_received_message_with_replay(&received, &secret, &replay_cache).is_ok()
+                    verify_received_message_with_replay(&received, secret.as_str(), &replay_cache)
+                        .is_ok()
                 })
                 .unwrap_or(false);
             if !auth_ok {
                 let message = "Rejected input event because authentication failed.".to_string();
-                store.record_incoming_input(
-                    source.clone(),
-                    event,
-                    false,
-                    Some("authentication failed".to_string()),
+                record_auth_failed_input_source(
+                    &store,
+                    &source,
+                    sender,
+                    &event,
+                    shared_secret.is_some(),
+                    &message,
                 );
-                record_failed_input_source(&store, &source, sender, &message);
                 let _ = app.emit("remoteshare://network-error", message);
                 let _ = app.emit("remoteshare://devices-changed", ());
                 return;
             }
 
-            let shared_secret = store
-                .trusted_shared_secret(&source.device_id)
-                .ok()
-                .flatten();
             if !store.trusted_identity_matches(&source) {
                 let message =
                     "Rejected input event because trusted identity does not match.".to_string();
@@ -2556,7 +2575,14 @@ Wireless LAN adapter Wi-Fi:
         let sender = "192.168.1.70:50123".parse().unwrap();
         let message = "Rejected input event because authentication failed.";
 
-        super::record_failed_input_source(&store, &source, sender, message);
+        super::record_auth_failed_input_source(
+            &store,
+            &source,
+            sender,
+            &RuntimeStore::test_input_event(),
+            true,
+            message,
+        );
 
         let status = store.status();
         let failure = status
@@ -2567,6 +2593,12 @@ Wireless LAN adapter Wi-Fi:
             .expect("trusted input auth failure should be visible");
         assert_eq!(failure.endpoint, "192.168.1.70:44777");
         assert_eq!(failure.message, message);
+        let event = status
+            .recent_input_events
+            .first()
+            .expect("trusted auth failure should remain visible in input history");
+        assert!(!event.accepted);
+        assert_eq!(event.detail.as_deref(), Some("authentication failed"));
     }
 
     #[test]
@@ -2592,6 +2624,33 @@ Wireless LAN adapter Wi-Fi:
             .find(|device| device.id == "trusted-device")
             .expect("trusted device should be visible");
         assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
+    fn unauthenticated_unknown_input_does_not_create_input_audit() {
+        crate::identity::set_test_config_dir(unique_test_dir("unknown-input-auth-failure"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let source = peer("unknown-device", "unknown-fingerprint");
+        let sender = "192.168.1.72:50123".parse().unwrap();
+
+        super::record_auth_failed_input_source(
+            &store,
+            &source,
+            sender,
+            &RuntimeStore::test_input_event(),
+            false,
+            "Rejected input event because authentication failed.",
+        );
+
+        let status = store.status();
+        assert!(status.recent_input_events.is_empty());
+        let trusted = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("known trusted device should still be visible");
+        assert!(trusted.last_connection_failure.is_none());
     }
 
     #[test]
