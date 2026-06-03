@@ -236,21 +236,31 @@ function todayIsoDate() {
 
 function requireInputDirection(table) {
   const value = requireFilled(table, "Input direction", "Test Context").toLowerCase();
-  if (!/macos.*sender.*main.*windows.*receiver.*client/.test(value)) {
-    throw new Error("Test Context Input direction must be macOS sender/main -> Windows receiver/client.");
+  if (!isSetupEvidence(value) || !/input\s+direction:\s*macos\s+sender\/main\s+->\s+windows\s+receiver\/client/.test(value)) {
+    throw new Error("Test Context Input direction must paste setup checklist Copy output with macOS sender/main -> Windows receiver/client.");
   }
 }
 
 function requireMvpRoles(table) {
   const macRole = requireFilled(table, "macOS role shown", "Test Context").toLowerCase();
-  if (!/(^|\W)main(\W|$)/.test(macRole)) {
-    throw new Error("Test Context macOS role shown must be Main for the first MVP smoke test.");
+  if (!isSetupEvidence(macRole) || !/platform:\s*macos/.test(macRole) || !/role:\s*main/.test(macRole)) {
+    throw new Error("Test Context macOS role shown must paste setup checklist Copy output with Platform: macos and Role: Main.");
   }
 
   const windowsRole = requireFilled(table, "Windows role shown", "Test Context").toLowerCase();
-  if (!/(^|\W)client(\W|$)/.test(windowsRole)) {
-    throw new Error("Test Context Windows role shown must be Client for the first MVP smoke test.");
+  if (!isSetupEvidence(windowsRole) || !/platform:\s*windows/.test(windowsRole) || !/role:\s*client/.test(windowsRole)) {
+    throw new Error("Test Context Windows role shown must paste setup checklist Copy output with Platform: windows and Role: Client.");
   }
+}
+
+function isSetupEvidence(value) {
+  return (
+    /(^|[;|]\s*)setup\b/.test(value) &&
+    /this\s+computer:\s*[^;|]+/.test(value) &&
+    /platform:\s*[^;|]+/.test(value) &&
+    /role:\s*[^;|]+/.test(value) &&
+    /choose\s+roles:\s*(done|pending)/.test(value)
+  );
 }
 
 function requireFingerprintEvidence(table, section) {

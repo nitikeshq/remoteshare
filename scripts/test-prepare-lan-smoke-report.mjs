@@ -19,7 +19,7 @@ try {
   runPreparer(assets, output, true, "valid report should be prepared", "Prepared LAN smoke report");
   assertReport(output, [
     `| RemoteShare version/tag | v${packageVersion} |`,
-    "| Input direction | macOS sender/main -> Windows receiver/client |",
+    "| Input direction | Paste setup checklist `Copy` output from the Mac sender. |",
     `| macOS installer file | RemoteShare_${packageVersion}_aarch64.dmg |`,
     `| macOS installer SHA256 | ${sha256("valid dmg")} |`,
     `| Windows installer file | RemoteShare_${packageVersion}_x64-setup.exe |`,

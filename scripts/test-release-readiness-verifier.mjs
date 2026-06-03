@@ -400,6 +400,10 @@ function smokeReportFixture(name, passValue, options = {}) {
     "after restart; Trusted reconnect; This computer: Mac sender; Auto reconnect: enabled; Device: Windows receiver; Check: reachable; Last seen: now; Endpoint source: saved endpoint; Endpoint: 192.168.1.20:44777; Input control: ready; Last failure: none; Recovery: none";
   const localEndpointEvidence =
     "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled";
+  const macSetupEvidence =
+    "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Mac sender; Platform: macos; Role: Main; Choose roles: done - Set this Mac to Main; Mac input permissions: done - Accessibility and Input Monitoring granted; Find Windows client: done - Windows client trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Windows receive setup: done - Windows client receive ready; Verify input: done - key press r accepted";
+  const windowsSetupEvidence =
+    "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Windows receiver; Platform: windows; Role: Client; Choose roles: done - Set this Windows computer to Client; Windows receive ready: done - Native input injection ready; Find Mac sender: done - Mac sender trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Local receive permission: done - Allow incoming control and Receive enabled; Verify input: done - key press r accepted";
   const capturedEvidenceNote =
     options.includeCapturedEvidenceNote === false
       ? ""
@@ -415,9 +419,9 @@ function smokeReportFixture(name, passValue, options = {}) {
 | Test date | ${testDate} |
 | Tester | QA |
 | RemoteShare version/tag | ${version} |
-${extraContextRows}| Input direction | macOS sender/main -> Windows receiver/client |
-| macOS role shown | Main |
-| Windows role shown | Client |
+${extraContextRows}| Input direction | ${macSetupEvidence} |
+| macOS role shown | ${macSetupEvidence} |
+| Windows role shown | ${windowsSetupEvidence} |
 | macOS model/version | MacBook / macOS 15 |
 | Windows model/version | PC / Windows 11 |
 | macOS installer file | ${macInstaller} |

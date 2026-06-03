@@ -877,7 +877,7 @@ try {
     wrongInputDirection,
     false,
     "wrong input direction should fail",
-    "Test Context Input direction must be macOS sender/main -> Windows receiver/client"
+    "Test Context Input direction must paste setup checklist Copy output"
   );
 
   const wrongMacRole = writeReport("wrong-mac-role.md", {
@@ -890,7 +890,7 @@ try {
     wrongMacRole,
     false,
     "wrong macOS role should fail",
-    "Test Context macOS role shown must be Main"
+    "Test Context macOS role shown must paste setup checklist Copy output"
   );
 
   const wrongWindowsRole = writeReport("wrong-windows-role.md", {
@@ -903,7 +903,35 @@ try {
     wrongWindowsRole,
     false,
     "wrong Windows role should fail",
-    "Test Context Windows role shown must be Client"
+    "Test Context Windows role shown must paste setup checklist Copy output"
+  );
+
+  const staleMacSetupPlatform = writeReport("stale-mac-setup-platform.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macSetupEvidence:
+      "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Windows receiver; Platform: windows; Role: Main; Choose roles: done - wrong platform"
+  });
+  runVerifier(
+    staleMacSetupPlatform,
+    false,
+    "stale mac setup platform should fail",
+    "Test Context macOS role shown must paste setup checklist Copy output with Platform: macos and Role: Main"
+  );
+
+  const staleWindowsSetupRole = writeReport("stale-windows-setup-role.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    windowsSetupEvidence:
+      "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Windows receiver; Platform: windows; Role: Main; Choose roles: done - wrong role"
+  });
+  runVerifier(
+    staleWindowsSetupRole,
+    false,
+    "stale windows setup role should fail",
+    "Test Context Windows role shown must paste setup checklist Copy output with Platform: windows and Role: Client"
   );
 
   const blockedFirewall = writeReport("blocked-firewall.md", {
@@ -1159,9 +1187,15 @@ function writeReport(name, options) {
     "Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left";
   const macIpSubnet = options.macIpSubnet ?? "192.168.1.10/24";
   const windowsIpSubnet = options.windowsIpSubnet ?? "192.168.1.20/24";
-  const inputDirection = options.inputDirection ?? "macOS sender/main -> Windows receiver/client";
-  const macRole = options.macRole ?? "Main shown in this computer role";
-  const windowsRole = options.windowsRole ?? "Client shown in peer role";
+  const macSetupEvidence =
+    options.macSetupEvidence ??
+    "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Mac sender; Platform: macos; Role: Main; Choose roles: done - Set this Mac to Main; Mac input permissions: done - Accessibility and Input Monitoring granted; Find Windows client: done - Windows client trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Windows receive setup: done - Windows client receive ready; Verify input: done - key press r accepted";
+  const windowsSetupEvidence =
+    options.windowsSetupEvidence ??
+    "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Windows receiver; Platform: windows; Role: Client; Choose roles: done - Set this Windows computer to Client; Windows receive ready: done - Native input injection ready; Find Mac sender: done - Mac sender trusted; Trust the pair: done - Type the same six-digit code and confirm on both computers.; Local receive permission: done - Allow incoming control and Receive enabled; Verify input: done - key press r accepted";
+  const inputDirection = options.inputDirection ?? macSetupEvidence;
+  const macRole = options.macRole ?? macSetupEvidence;
+  const windowsRole = options.windowsRole ?? windowsSetupEvidence;
   const macosFirewallStatus = options.macosFirewallStatus ?? "allowed";
   const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
