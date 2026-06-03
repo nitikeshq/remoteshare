@@ -275,7 +275,10 @@ fn preserve_failed_state(error: &IdentityError) {
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
     let backup_path = path.with_extension(format!("json.failed-{timestamp}"));
-    let _ = fs::copy(path, backup_path);
+    if fs::copy(&path, &backup_path).is_ok() {
+        let _ = secure_state_file(&backup_path);
+        let _ = sync_state_parent(&path);
+    }
 }
 
 fn config_dir() -> PathBuf {
@@ -457,6 +460,43 @@ mod tests {
                     .starts_with("state.json.failed-")
             });
         assert!(backup_exists, "corrupt state should be backed up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn corrupt_state_backup_uses_private_unix_permissions() {
+        let dir = std::env::temp_dir().join(format!(
+            "remoteshare-corrupt-state-backup-permissions-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("test config dir should be created");
+        let state_path = dir.join(STATE_FILE);
+        fs::write(&state_path, "{not valid json").expect("corrupt state should be written");
+        fs::set_permissions(&state_path, fs::Permissions::from_mode(0o644))
+            .expect("test should create a lax legacy state file");
+        set_test_config_dir(dir.clone());
+
+        let state = PersistedState::load_or_create();
+
+        assert!(!state.identity.id.is_empty());
+        let backup = fs::read_dir(&dir)
+            .expect("test config dir should be readable")
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("state.json.failed-")
+            })
+            .expect("corrupt state should be backed up");
+        let backup_mode = backup
+            .metadata()
+            .expect("backup metadata should be readable")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(backup_mode, 0o600);
     }
 
     #[cfg(unix)]
