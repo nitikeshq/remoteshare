@@ -810,6 +810,24 @@ function inputReadiness(permissions: InputPermissionStatus, platform: string) {
   };
 }
 
+function roleCapabilityMessage(
+  role: ComputerRole,
+  platform: string,
+  permissions: InputPermissionStatus
+) {
+  if (!canSendInput(role) || permissions.captureEngine === "ready") return null;
+
+  if (isWindowsPlatform(platform)) {
+    return "Windows Main capture is planned; use Client for the first Mac-to-Windows MVP.";
+  }
+
+  if (isMacPlatform(platform)) {
+    return "Main needs Mac Input Monitoring before Capture can start.";
+  }
+
+  return "Main needs a ready capture engine before Capture can start.";
+}
+
 function plural(count: number, singular: string, pluralValue = `${singular}s`) {
   return `${count} ${count === 1 ? singular : pluralValue}`;
 }
@@ -1604,6 +1622,10 @@ function App() {
   const inputDiagnostic = useMemo(
     () => inputReadiness(permissions, status.platform),
     [permissions, status.platform]
+  );
+  const roleCapability = useMemo(
+    () => roleCapabilityMessage(status.mode, status.platform, permissions),
+    [permissions, status.mode, status.platform]
   );
   const captureReady = permissions.captureEngine === "ready";
   const sendRoleReady = canSendInput(status.mode);
@@ -2567,7 +2589,10 @@ function App() {
 
         <section className="settings-row">
           <label>
-            <span>This computer role</span>
+            <span className="setting-label-stack">
+              <span>This computer role</span>
+              {roleCapability && <small>{roleCapability}</small>}
+            </span>
             <select
               value={status.mode}
               disabled={actionIsActive("setting:role")}

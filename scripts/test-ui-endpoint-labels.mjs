@@ -69,6 +69,16 @@ try {
   assert.equal(labels.validateManualEndpoint("fe80::1", true).ok, false);
   assert.equal(labels.validateManualEndpoint("windows-client.local", true).ok, true);
 
+  const mainTsx = fs.readFileSync("src/main.tsx", "utf8");
+  assert.match(mainTsx, /function roleCapabilityMessage\(/);
+  assert.match(mainTsx, /permissions\.captureEngine === "ready"/);
+  assert.match(
+    mainTsx,
+    /Windows Main capture is planned; use Client for the first Mac-to-Windows MVP\./
+  );
+  assert.match(mainTsx, /Main needs Mac Input Monitoring before Capture can start\./);
+  assert.match(mainTsx, /roleCapability && <small>\{roleCapability\}<\/small>/);
+
   console.log("UI endpoint label tests passed.");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });

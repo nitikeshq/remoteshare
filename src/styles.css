@@ -1125,10 +1125,25 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   min-height: 52px;
   padding: 0 14px;
   color: #334155;
   font-size: 14px;
+}
+
+.setting-label-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.setting-label-stack small {
+  max-width: 240px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .settings-row input {
