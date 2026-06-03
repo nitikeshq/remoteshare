@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Wifi
 } from "lucide-react";
-import { localEndpointChoiceLabel } from "./endpoint-labels";
+import { localEndpointChoiceLabel, localEndpointManualFallbackLabel } from "./endpoint-labels";
 import "./styles.css";
 
 type ComputerRole = "main" | "client" | "both";
@@ -613,14 +613,15 @@ function captureStoppedEvidence(
   ].join("; ");
 }
 
-function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: string) {
+function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: string, manualFallback: string) {
   return [
     "Local endpoint",
     `This computer: ${status.thisDevice}`,
     `Label: ${label}`,
     `Endpoint: ${endpoint}`,
     `TCP port: ${status.discovery.port}`,
-    `Private network only: ${status.privateNetworkOnly ? "enabled" : "disabled"}`
+    `Private network only: ${status.privateNetworkOnly ? "enabled" : "disabled"}`,
+    `Manual fallback: ${manualFallback}`
   ].join("; ");
 }
 
@@ -1049,8 +1050,8 @@ function App() {
     }
   }
 
-  async function copyLocalEndpointEvidence(endpoint: string, label: string) {
-    const evidence = localEndpointEvidence(status, endpoint, label);
+  async function copyLocalEndpointEvidence(endpoint: string, label: string, manualFallback: string) {
+    const evidence = localEndpointEvidence(status, endpoint, label, manualFallback);
     try {
       await navigator.clipboard.writeText(evidence);
       showActionMessage("Copied local endpoint evidence.");
@@ -1823,6 +1824,7 @@ function App() {
                 <div className="endpoint-list">
                   {localEndpoints.map((endpoint, index) => {
                     const endpointLabel = localEndpointChoiceLabel(endpoint, index);
+                    const manualFallback = localEndpointManualFallbackLabel(endpoint, index);
                     return (
                       <div className="endpoint-copy-row" key={endpoint}>
                         <button
@@ -1839,9 +1841,9 @@ function App() {
                         </button>
                         <button
                           className="endpoint-evidence-copy"
-                          onClick={() => copyLocalEndpointEvidence(endpoint, endpointLabel)}
+                          onClick={() => copyLocalEndpointEvidence(endpoint, endpointLabel, manualFallback)}
                           type="button"
-                          title="Copy local endpoint evidence"
+                          title={`Copy local endpoint evidence; manual fallback ${manualFallback}`}
                         >
                           <Copy size={12} />
                           <span>Evidence</span>

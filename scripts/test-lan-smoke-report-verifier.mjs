@@ -690,7 +690,7 @@ try {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine:
-      "| Copied endpoint label shown | Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled |"
+      "| Copied endpoint label shown | Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled; Manual fallback: preferred LAN IPv4 |"
   });
   runVerifier(
     missingManualEndpointLabel,
@@ -710,6 +710,20 @@ try {
     false,
     "vague manual endpoint label should fail",
     "Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output"
+  );
+
+  const missingManualFallbackEligibility = writeReport("missing-manual-fallback-eligibility.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    manualEndpointLabel:
+      "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled"
+  });
+  runVerifier(
+    missingManualFallbackEligibility,
+    false,
+    "missing manual fallback eligibility should fail",
+    "Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6."
   );
 
   const mismatchedManualEndpoint = writeReport("mismatched-manual-endpoint.md", {
@@ -1354,7 +1368,7 @@ try {
     omitLine: "",
     manualEndpoint: "[fd00::20]:44777",
     localEndpointEvidence:
-      "Local endpoint; This computer: Windows receiver; Label: LAN IPv6; Endpoint: [fd00::20]:44777; TCP port: 44777; Private network only: enabled"
+      "Local endpoint; This computer: Windows receiver; Label: LAN IPv6; Endpoint: [fd00::20]:44777; TCP port: 44777; Private network only: enabled; Manual fallback: LAN IPv6"
   });
   runVerifier(
     ipv6ManualEndpoint,
@@ -1499,7 +1513,7 @@ function writeReport(name, options) {
   const manualEndpoint = options.manualEndpoint ?? "192.168.1.20:44777";
   const localEndpointEvidence =
     options.localEndpointEvidence ??
-    "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled";
+    "Local endpoint; This computer: Windows receiver; Label: Best LAN IPv4; Endpoint: 192.168.1.20:44777; TCP port: 44777; Private network only: enabled; Manual fallback: preferred LAN IPv4";
   const manualDiscoveryFallback =
     options.manualDiscoveryFallback ?? "discovery skipped for manual fallback";
   const manualEndpointCopied =

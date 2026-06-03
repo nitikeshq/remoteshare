@@ -439,12 +439,18 @@ function requireManualFallbackEvidence(table) {
   if (!isLocalEndpointCopyEvidence(copied) || !/(receiver|windows|client)/.test(copied)) {
     throw new Error("Manual Fallback Run endpoint copy evidence must paste the peer computer's local endpoint Evidence output from the `This computer` row.");
   }
+  if (!/\bmanual\s+fallback:\s*(preferred\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(copied)) {
+    throw new Error("Manual Fallback Run endpoint copy evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6.");
+  }
 }
 
 function requireManualEndpointLabelEvidence(table) {
   const value = requireFilled(table, "Copied endpoint label shown", "Manual Fallback Run").toLowerCase();
   if (!isLocalEndpointCopyEvidence(value) || !/\blabel:\s*(best\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
     throw new Error("Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Label: Best LAN IPv4, LAN IPv4, or LAN IPv6.");
+  }
+  if (!/\bmanual\s+fallback:\s*(preferred\s+lan\s+ipv4|lan\s+ipv4|lan\s+ipv6)\b/.test(value)) {
+    throw new Error("Manual Fallback Run copied endpoint label evidence must paste local endpoint Evidence output with Manual fallback: preferred LAN IPv4, LAN IPv4, or LAN IPv6.");
   }
 }
 

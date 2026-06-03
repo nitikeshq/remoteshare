@@ -32,3 +32,11 @@ export function localEndpointChoiceLabel(endpoint: string, index: number) {
   if (host.includes(":")) return isUniqueLocalIpv6(host) ? "LAN IPv6" : "IPv6 fallback";
   return "Fallback IPv4";
 }
+
+export function localEndpointManualFallbackLabel(endpoint: string, index: number) {
+  const choice = localEndpointChoiceLabel(endpoint, index);
+  if (choice === "Best LAN IPv4") return "preferred LAN IPv4";
+  if (choice === "LAN IPv4") return "LAN IPv4";
+  if (choice === "LAN IPv6") return "LAN IPv6";
+  return "not first-MVP preferred";
+}
