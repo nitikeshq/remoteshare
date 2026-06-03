@@ -65,17 +65,18 @@ ${rows}
 1. Install the macOS DMG on the Mac sender/main computer.
 2. Install the Windows EXE on the Windows receiver/client.
 3. Complete \`lan-smoke-report.md\` for both auto-discovery and manual fallback runs.
-4. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
-5. Record a Test date that is on or after the release manifest date and not in the future.
-6. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
-7. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
-8. Record active capture target and elapsed start time before pressing Stop.
-9. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
-10. In the auto-discovery run, record the endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
-11. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
-12. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, record the visible manual IP / Set IP / Verify IP recovery hint, copied endpoint, TCP 44777, or firewall evidence.
-13. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured for pairing, reconnect, input, and capture evidence, and show \`Retest required: no\`; unresolved blocking issues, incomplete captured-evidence notes, or required retests fail release readiness.
-14. Verify the completed report:
+4. Use the pending pairing row \`Copy\` button to paste pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence.
+5. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
+6. Record a Test date that is on or after the release manifest date and not in the future.
+7. Record startup health TCP ready, UDP ready, and start-at-login not failed detail strings after restart.
+8. Record accepted \`key press r\` test input plus the Input Transport source device and relative time shown on the Windows receiver.
+9. Record active capture target and elapsed start time before pressing Stop.
+10. Record capture start/stop evidence with accepted mouse move, mouse click, scroll, and key events on the Windows receiver.
+11. In the auto-discovery run, record the endpoint source as discovery, reconnect, or saved endpoint exactly as shown in the UI.
+12. In the manual fallback run, record the copied endpoint label shown in the peer \`This computer\` row as Best LAN IPv4, LAN IPv4, or LAN IPv6.
+13. In the manual fallback run, record the endpoint source as saved endpoint or manual IP and a successful TCP 44777 probe such as Test-NetConnection, nc/netcat, telnet, socket connect, or port probe. If a retry was needed, use the trusted IP update \`Copy\` button to paste device, endpoint field, current endpoint/source, last failure, and recovery hint evidence.
+14. Confirm Notes show \`Blocking issues: none\`, identify screenshots or logs captured for pairing, reconnect, input, and capture evidence, and show \`Retest required: no\`; unresolved blocking issues, incomplete captured-evidence notes, or required retests fail release readiness.
+15. Verify the completed report:
 
 \`\`\`bash
 npm run verify:lan-smoke-report -- path/to/completed-lan-smoke-report.md

@@ -22,6 +22,8 @@ try {
   assertIncludes(summary, "# RemoteShare Release Candidate", "summary title");
   assertIncludes(summary, "RemoteShare_0.1.13_x64-setup.exe", "windows installer row");
   assertIncludes(summary, "npm run verify:release-readiness", "readiness command");
+  assertIncludes(summary, "pending pairing row `Copy` button", "pairing copy evidence");
+  assertIncludes(summary, "pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence", "pairing copied fields");
   assertIncludes(summary, "Trusted Device Audit", "fingerprint audit evidence");
   assertIncludes(summary, "Test date that is on or after the release manifest date and not in the future", "test date evidence");
   assertIncludes(summary, "startup health TCP ready, UDP ready, and start-at-login not failed", "startup health detail evidence");
@@ -33,7 +35,8 @@ try {
   assertIncludes(summary, "copied endpoint label shown in the peer `This computer` row as Best LAN IPv4, LAN IPv4, or LAN IPv6", "manual copied endpoint label evidence");
   assertIncludes(summary, "endpoint source as saved endpoint or manual IP", "manual endpoint source evidence");
   assertIncludes(summary, "successful TCP 44777 probe such as Test-NetConnection", "manual TCP probe evidence");
-  assertIncludes(summary, "manual IP / Set IP / Verify IP recovery hint", "manual fallback recovery evidence");
+  assertIncludes(summary, "trusted IP update `Copy` button", "trusted IP copy evidence");
+  assertIncludes(summary, "device, endpoint field, current endpoint/source, last failure, and recovery hint evidence", "manual fallback recovery evidence");
   assertIncludes(summary, "Blocking issues: none", "clear blocking issue notes evidence");
   assertIncludes(summary, "screenshots or logs captured for pairing, reconnect, input, and capture evidence", "captured evidence notes");
   assertIncludes(summary, "Retest required: no", "clear retest notes evidence");
