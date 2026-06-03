@@ -1655,13 +1655,13 @@ function App() {
             </div>
           ) : (
             <div className="event-list">
-              {status.recentInputEvents.map((event) => {
+              {status.recentInputEvents.map((event, index) => {
                 const deviceLabel = inputEventDeviceLabel(event, status.devices);
                 const detailLabel = inputEventDetailLabel(event);
                 return (
                   <div
                     className={`event-row ${event.accepted ? "event-row-success" : "event-row-failed"}`}
-                    key={`${event.atMs}-${event.deviceId}`}
+                    key={`${event.atMs}-${event.deviceId}-${event.direction}-${event.summary}-${index}`}
                   >
                     <Keyboard size={16} />
                     <span>{inputEventDirectionLabel(event)}</span>
