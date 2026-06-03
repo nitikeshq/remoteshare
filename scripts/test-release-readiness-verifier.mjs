@@ -181,6 +181,17 @@ try {
     "RemoteShare version/tag"
   );
 
+  const prefixVersionReport = smokeReportFixture("prefix-version.md", "Pass", {
+    version: `v${packageVersion}0`
+  });
+  runVerifier(
+    releaseAssets,
+    prefixVersionReport,
+    false,
+    "LAN smoke version prefix should fail",
+    "must include exact package version"
+  );
+
   const staleDateReport = smokeReportFixture("stale-date.md", "Pass", {
     testDate: "2026-05-31"
   });

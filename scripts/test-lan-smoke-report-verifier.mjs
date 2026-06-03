@@ -69,6 +69,19 @@ try {
     "Test Context Test date must be a valid calendar date"
   );
 
+  const prefixVersion = writeReport("prefix-version.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    version: `v${packageVersion}0`
+  });
+  runVerifier(
+    prefixVersion,
+    false,
+    "version prefix should fail",
+    "Test Context field must include exact package version"
+  );
+
   const duplicateContextField = writeReport("duplicate-context-field.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -470,7 +483,7 @@ try {
     wrongReportVersion,
     false,
     "wrong report version should fail",
-    `Test Context field must include package version ${packageVersion}`
+    `Test Context field must include exact package version ${packageVersion}`
   );
 
   const wrongInputDirection = writeReport("wrong-input-direction.md", {

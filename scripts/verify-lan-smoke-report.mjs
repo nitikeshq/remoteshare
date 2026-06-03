@@ -385,11 +385,16 @@ function isNoFailureEvidence(value) {
 
 function requirePackageVersion(table, field, section) {
   const value = requireFilled(table, field, section);
-  if (!value.includes(packageVersion)) {
+  if (!packageVersionTokenPattern(packageVersion).test(value)) {
     throw new Error(
-      `${section} field must include package version ${packageVersion}: ${field}`
+      `${section} field must include exact package version ${packageVersion}: ${field}`
     );
   }
+}
+
+function packageVersionTokenPattern(version) {
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.]|$)`);
 }
 
 function requireInstallerFile(table, field, section, extension) {

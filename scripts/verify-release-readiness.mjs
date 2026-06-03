@@ -112,11 +112,16 @@ function verifySmokeReportMatchesReleaseAssets(assetsRoot, smokeReportPath) {
 
 function assertSmokeVersionMatches(context, expectedVersion) {
   const reportVersion = context.get("RemoteShare version/tag") ?? "";
-  if (!reportVersion.includes(expectedVersion)) {
+  if (!packageVersionTokenPattern(expectedVersion).test(reportVersion)) {
     throw new Error(
-      `LAN smoke report RemoteShare version/tag must include package version ${expectedVersion}: got ${reportVersion || "<missing>"}`
+      `LAN smoke report RemoteShare version/tag must include exact package version ${expectedVersion}: got ${reportVersion || "<missing>"}`
     );
   }
+}
+
+function packageVersionTokenPattern(version) {
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^0-9A-Za-z.])v?${escaped}([^0-9A-Za-z.]|$)`);
 }
 
 function assertSmokeDateMatchesManifest(context, manifest) {
