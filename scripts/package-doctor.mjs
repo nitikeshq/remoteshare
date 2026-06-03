@@ -133,6 +133,7 @@ check("Windows bundle target is configured", workflow.includes("windows-latest")
 check("Linux bundle target is configured", workflow.includes("ubuntu-latest"));
 check("Release workflow bounds native build duration", workflow.includes("timeout-minutes: 60"));
 check("Release workflow bounds release assembly duration", countOccurrences(workflow, "timeout-minutes: 20") >= 2);
+check("Release workflow opts JavaScript actions into Node 24", workflow.includes('FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"'));
 check("Project metadata uses the public repository URL", packageJson.repository?.url === "git+https://github.com/nitikeshq/remoteshare.git" && packageJson.homepage === "https://github.com/nitikeshq/remoteshare#readme" && cargoToml.includes('repository = "https://github.com/nitikeshq/remoteshare"'));
 check("Project declares MIT license", packageJson.license === "MIT" && cargoToml.includes('license = "MIT"') && readme.includes("[MIT License](LICENSE)") && licenseText.includes("MIT License") && licenseText.includes("RemoteShare contributors"));
 check("Release workflow uses matrix artifact paths", workflow.includes("${{ matrix.artifact-path }}"));

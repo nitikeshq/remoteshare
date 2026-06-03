@@ -66,6 +66,8 @@ The GitHub Actions workflow `.github/workflows/release-builds.yml` is the prefer
 
 The workflow also runs `npm run clean:debug-cache` and `npm run clean:bundle-temp` after the Rust check/test gate and before the native bundle build so debug artifacts and stale generated DMG temp files do not compete with installer packaging space. The local `npm run build` script also runs `npm run clean:bundle-temp` before invoking Tauri.
 
+The release workflow sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` at workflow scope so JavaScript GitHub Actions run on Node 24 ahead of GitHub's Node 20 action runtime removal. Keep this env until all pinned release actions have been upgraded to versions that no longer need the compatibility opt-in.
+
 For a pre-tag build, run the workflow manually from GitHub Actions. The `Assemble Release Assets` job verifies all three native runner outputs, prepares flat release assets, writes `RELEASE-MANIFEST.json`, prepares a prefilled `lan-smoke-report.md`, writes `release-candidate-summary.md`, verifies the final flat release bundle with `npm run verify:assembled-release-assets -- release-assets`, publishes that summary into the GitHub Actions job summary, prints the installer rows for smoke evidence, and uploads one combined artifact named `remoteshare-release-assets`.
 
 To reproduce the same assembly locally from the three platform artifacts, download them into one local directory named `release-artifacts`. Keep the artifact subdirectories from GitHub intact, then run:
