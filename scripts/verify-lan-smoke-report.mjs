@@ -809,6 +809,10 @@ function requireAutoDiscoverySubnetEvidence(table) {
     throw new Error("Auto-Discovery Run IP/subnet fields must use peer LAN addresses, not localhost or unspecified bind addresses.");
   }
 
+  if (!isPrivateIpv4(mac.ip) || !isPrivateIpv4(windows.ip)) {
+    throw new Error("Auto-Discovery Run IP/subnet fields must use private LAN IPv4 addresses, not public IPv4 addresses.");
+  }
+
   const prefix = Math.min(mac.prefix, windows.prefix);
   if (networkNumber(mac.ip, prefix) !== networkNumber(windows.ip, prefix)) {
     throw new Error("Auto-Discovery Run macOS IP/subnet and Windows IP/subnet must be on the same IPv4 subnet.");
@@ -895,9 +899,16 @@ function isPublicIpLiteral(host) {
 function isPrivateOrLocalIpv4(address) {
   const octets = address.split(".").map((part) => Number(part));
   return (
-    octets[0] === 10 ||
+    isPrivateIpv4(address) ||
     octets[0] === 127 ||
-    (octets[0] === 169 && octets[1] === 254) ||
+    (octets[0] === 169 && octets[1] === 254)
+  );
+}
+
+function isPrivateIpv4(address) {
+  const octets = address.split(".").map((part) => Number(part));
+  return (
+    octets[0] === 10 ||
     (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
     (octets[0] === 192 && octets[1] === 168)
   );

@@ -1306,6 +1306,20 @@ try {
     "Auto-Discovery Run field must use IPv4 CIDR notation like 192.168.1.10/24: macOS IP/subnet"
   );
 
+  const publicAutoSubnet = writeReport("public-auto-subnet.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macIpSubnet: "8.8.8.10/24",
+    windowsIpSubnet: "8.8.8.20/24"
+  });
+  runVerifier(
+    publicAutoSubnet,
+    false,
+    "public auto-discovery subnet should fail",
+    "Auto-Discovery Run IP/subnet fields must use private LAN IPv4 addresses"
+  );
+
   const differentAutoSubnet = writeReport("different-auto-subnet.md", {
     autoPass: "Pass",
     manualPass: "Pass",
