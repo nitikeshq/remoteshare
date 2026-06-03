@@ -1308,7 +1308,8 @@ impl RuntimeStore {
     }
 
     pub fn trusted_reconnect_targets(&self) -> Vec<TrustedReconnectTarget> {
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
         state
             .persisted
             .trusted_devices
@@ -1332,7 +1333,8 @@ impl RuntimeStore {
     }
 
     pub fn trusted_target(&self, device_id: &str) -> Result<TrustedTarget, String> {
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
         let device = state
             .persisted
             .trusted_devices
@@ -1366,7 +1368,8 @@ impl RuntimeStore {
     ) -> Result<TrustedTarget, String> {
         let endpoint =
             normalized_endpoint(&endpoint).ok_or_else(|| INVALID_ENDPOINT_MESSAGE.to_string())?;
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
         if !private_guard_allows_endpoint(
             &endpoint,
             state.persisted.settings.private_network_only,
@@ -1393,7 +1396,8 @@ impl RuntimeStore {
     }
 
     pub fn active_capture_target(&self) -> Option<TrustedReconnectTarget> {
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        prune_runtime_state(&mut state, now_ms());
         if !state.persisted.settings.role.can_send_input() {
             return None;
         }
@@ -6075,6 +6079,48 @@ mod tests {
             .is_none());
         let state = store.state.lock().expect("runtime state poisoned");
         assert!(state.connection_failures.get("trusted-device").is_none());
+    }
+
+    #[test]
+    fn trusted_target_selection_prunes_stale_health() {
+        crate::identity::set_test_config_dir(unique_test_dir("trusted-target-prunes-health"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.60:44777".to_string(),
+                    last_seen_at_ms: now_ms() - super::PEER_RETENTION_MS - 1,
+                    latency_ms: Some(7),
+                },
+            );
+        }
+
+        assert_eq!(
+            store.trusted_reconnect_targets()[0].endpoints,
+            vec!["192.168.1.50:44777".to_string()]
+        );
+        assert_eq!(
+            store.trusted_target("trusted-device").unwrap().endpoint,
+            "192.168.1.50:44777"
+        );
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(state.connection_health.get("trusted-device").is_none());
     }
 
     fn unique_test_dir(name: &str) -> PathBuf {
