@@ -497,7 +497,12 @@ function parseTables(markdown) {
     index += 2;
     while (index < lines.length && lines[index].startsWith("|")) {
       const row = cells(lines[index]);
-      if (row.length >= 2) rows.set(row[0], row[1]);
+      if (row.length >= 2) {
+        if (rows.has(row[0])) {
+          throw new Error(`Duplicate LAN smoke report field in ${section}: ${row[0]}`);
+        }
+        rows.set(row[0], row[1]);
+      }
       index += 1;
     }
     index -= 1;

@@ -29,6 +29,32 @@ try {
   });
   runVerifier(missingLinuxField, false, "missing Linux installer field should fail", "Missing Test Context field: Linux installer file");
 
+  const duplicateContextField = writeReport("duplicate-context-field.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    extraContextRows: [`| Windows installer file | RemoteShare_${packageVersion}_stale.exe |`]
+  });
+  runVerifier(
+    duplicateContextField,
+    false,
+    "duplicate context field should fail",
+    "Duplicate LAN smoke report field in Test Context: Windows installer file"
+  );
+
+  const duplicateAutoField = writeReport("duplicate-auto-field.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    extraAutoRows: ["| Pass/fail | Fail |"]
+  });
+  runVerifier(
+    duplicateAutoField,
+    false,
+    "duplicate auto run field should fail",
+    "Duplicate LAN smoke report field in Auto-Discovery Run: Pass/fail"
+  );
+
   const missingAutoTransportContext = writeReport("missing-auto-transport-context.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -516,6 +542,9 @@ function writeReport(name, options) {
   const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
   const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
   const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? "enabled";
+  const extraContextRows = options.extraContextRows ?? [];
+  const extraAutoRows = options.extraAutoRows ?? [];
+  const extraManualRows = options.extraManualRows ?? [];
   const lines = [
     "# LAN Smoke Report",
     "",
@@ -531,6 +560,7 @@ function writeReport(name, options) {
     `| Windows role shown | ${windowsRole} |`,
     "| macOS model/version | MacBook / macOS 15 |",
     "| Windows model/version | PC / Windows 11 |",
+    ...extraContextRows,
     `| macOS installer file | ${macInstaller} |`,
     `| macOS installer SHA256 | ${macSha} |`,
     `| Windows installer file | ${windowsInstaller} |`,
@@ -568,6 +598,7 @@ function writeReport(name, options) {
     `| Active capture target and elapsed start time shown | ${autoCaptureTiming} |`,
     `| Captured mouse move, mouse click, scroll, and key events accepted on receiver | ${autoCaptureEvents} |`,
     `| Failure reason visible before retry | ${autoFailureReason} |`,
+    ...extraAutoRows,
     `| Pass/fail | ${options.autoPass} |`,
     "",
     "## Manual Fallback Run",
@@ -595,6 +626,7 @@ function writeReport(name, options) {
     `| Active capture target and elapsed start time shown | ${manualCaptureTiming} |`,
     `| Captured mouse move, mouse click, scroll, and key events accepted on receiver | ${manualCaptureEvents} |`,
     `| Failure reason visible before retry | ${manualFailureReason} |`,
+    ...extraManualRows,
     `| Pass/fail | ${options.manualPass} |`,
     ...(options.notes ?? [])
   ].filter((line) => line !== options.omitLine);
