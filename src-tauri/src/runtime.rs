@@ -564,23 +564,29 @@ impl RuntimeStore {
         ) {
             return Err(PUBLIC_ENDPOINT_PRIVATE_GUARD_MESSAGE.to_string());
         }
-        state.discovery.manual_endpoint = Some(endpoint.clone());
-        state.persisted.settings.manual_endpoint = Some(endpoint);
-        state
-            .persisted
+        let mut persisted = state.persisted.clone();
+        persisted.settings.manual_endpoint = Some(endpoint.clone());
+        persisted
             .save()
-            .map_err(|error| format!("Failed to save manual connection target: {error}"))
+            .map_err(|error| format!("Failed to save manual connection target: {error}"))?;
+        state.persisted = persisted;
+        state.discovery.manual_endpoint = Some(endpoint);
+        Ok(())
     }
 
     pub fn clear_manual_endpoint(&self) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
-        state.discovery.manual_endpoint = None;
-        state.persisted.settings.manual_endpoint = None;
-        match state.persisted.save() {
-            Ok(()) => NetworkAction {
-                ok: true,
-                message: "Manual connection target cleared.".to_string(),
-            },
+        let mut persisted = state.persisted.clone();
+        persisted.settings.manual_endpoint = None;
+        match persisted.save() {
+            Ok(()) => {
+                state.persisted = persisted;
+                state.discovery.manual_endpoint = None;
+                NetworkAction {
+                    ok: true,
+                    message: "Manual connection target cleared.".to_string(),
+                }
+            }
             Err(error) => NetworkAction {
                 ok: false,
                 message: format!("Failed to save manual connection target: {error}"),
@@ -624,57 +630,70 @@ impl RuntimeStore {
             };
         }
 
+        let mut persisted = state.persisted.clone();
         if let Some(auto_start) = request.auto_start {
-            state.persisted.settings.auto_start = auto_start;
+            persisted.settings.auto_start = auto_start;
         }
         if let Some(role) = request.role {
-            state.persisted.settings.role = role;
+            persisted.settings.role = role;
         }
         if let Some(trusted_reconnect) = request.trusted_reconnect {
-            state.persisted.settings.trusted_reconnect = trusted_reconnect;
+            persisted.settings.trusted_reconnect = trusted_reconnect;
         }
         if let Some(private_network_only) = request.private_network_only {
-            state.persisted.settings.private_network_only = private_network_only;
+            persisted.settings.private_network_only = private_network_only;
         }
         if let Some(allow_incoming_control) = request.allow_incoming_control {
-            state.persisted.settings.allow_incoming_control = allow_incoming_control;
+            persisted.settings.allow_incoming_control = allow_incoming_control;
         }
-        if !state.persisted.settings.role.can_receive_input() {
-            state.persisted.settings.allow_incoming_control = false;
-            for device in &mut state.persisted.trusted_devices {
+        if !persisted.settings.role.can_receive_input() {
+            persisted.settings.allow_incoming_control = false;
+            for device in &mut persisted.trusted_devices {
                 device.allow_incoming_control = false;
             }
         }
-        if !state.persisted.settings.role.can_send_input() {
-            clear_capture_state(&mut state);
-        }
+        let clear_capture_after_save = !persisted.settings.role.can_send_input();
         let mut cleaned_endpoints = false;
-        if state.persisted.settings.private_network_only {
-            cleaned_endpoints = sanitize_persisted_endpoints(&mut state.persisted).changed;
-            state.discovery.manual_endpoint = state.persisted.settings.manual_endpoint.clone();
-            let private_network_only = state.persisted.settings.private_network_only;
+        let mut connection_health = state.connection_health.clone();
+        let mut connection_failures = state.connection_failures.clone();
+        if persisted.settings.private_network_only {
+            cleaned_endpoints = sanitize_persisted_endpoints(&mut persisted).changed;
+            let private_network_only = persisted.settings.private_network_only;
             let health_count = state.connection_health.len();
-            state.connection_health.retain(|_, health| {
+            connection_health.retain(|_, health| {
                 private_guard_allows_endpoint(&health.endpoint, private_network_only)
             });
-            cleaned_endpoints |= state.connection_health.len() != health_count;
+            cleaned_endpoints |= connection_health.len() != health_count;
             let failure_count = state.connection_failures.len();
-            state.connection_failures.retain(|_, failure| {
+            connection_failures.retain(|_, failure| {
                 private_guard_allows_endpoint(&failure.endpoint, private_network_only)
             });
-            cleaned_endpoints |= state.connection_failures.len() != failure_count;
+            cleaned_endpoints |= connection_failures.len() != failure_count;
         }
-        clear_capture_if_target_unusable(&mut state);
 
-        match state.persisted.save() {
-            Ok(()) => NetworkAction {
-                ok: true,
-                message: if cleaned_endpoints {
-                    "Settings saved. Public or invalid saved endpoints were removed.".to_string()
-                } else {
-                    "Settings saved.".to_string()
-                },
-            },
+        match persisted.save() {
+            Ok(()) => {
+                state.persisted = persisted;
+                if state.persisted.settings.private_network_only {
+                    state.discovery.manual_endpoint =
+                        state.persisted.settings.manual_endpoint.clone();
+                    state.connection_health = connection_health;
+                    state.connection_failures = connection_failures;
+                }
+                if clear_capture_after_save {
+                    clear_capture_state(&mut state);
+                }
+                clear_capture_if_target_unusable(&mut state);
+                NetworkAction {
+                    ok: true,
+                    message: if cleaned_endpoints {
+                        "Settings saved. Public or invalid saved endpoints were removed."
+                            .to_string()
+                    } else {
+                        "Settings saved.".to_string()
+                    },
+                }
+            }
             Err(error) => NetworkAction {
                 ok: false,
                 message: format!("Failed to save settings: {error}"),
@@ -692,8 +711,8 @@ impl RuntimeStore {
             };
         }
 
-        let Some(device) = state
-            .persisted
+        let mut persisted = state.persisted.clone();
+        let Some(device) = persisted
             .trusted_devices
             .iter_mut()
             .find(|device| device.id == request.device_id)
@@ -712,11 +731,14 @@ impl RuntimeStore {
         }
 
         device.allow_incoming_control = request.allow_incoming_control;
-        match state.persisted.save() {
-            Ok(()) => NetworkAction {
-                ok: true,
-                message: "Device control permission saved.".to_string(),
-            },
+        match persisted.save() {
+            Ok(()) => {
+                state.persisted = persisted;
+                NetworkAction {
+                    ok: true,
+                    message: "Device control permission saved.".to_string(),
+                }
+            }
             Err(error) => NetworkAction {
                 ok: false,
                 message: format!("Failed to save device permission: {error}"),
@@ -755,21 +777,25 @@ impl RuntimeStore {
             };
         }
 
-        state.persisted.settings.allow_incoming_control = true;
-        for device in &mut state.persisted.trusted_devices {
+        let mut persisted = state.persisted.clone();
+        persisted.settings.allow_incoming_control = true;
+        for device in &mut persisted.trusted_devices {
             if device.shared_secret.is_some() {
                 device.allow_incoming_control = true;
             }
         }
 
-        match state.persisted.save() {
-            Ok(()) => NetworkAction {
-                ok: true,
-                message: format!(
-                    "Receive enabled for {ready_count} trusted device{}.",
-                    if ready_count == 1 { "" } else { "s" }
-                ),
-            },
+        match persisted.save() {
+            Ok(()) => {
+                state.persisted = persisted;
+                NetworkAction {
+                    ok: true,
+                    message: format!(
+                        "Receive enabled for {ready_count} trusted device{}.",
+                        if ready_count == 1 { "" } else { "s" }
+                    ),
+                }
+            }
             Err(error) => NetworkAction {
                 ok: false,
                 message: format!("Failed to save receive permissions: {error}"),
@@ -779,38 +805,40 @@ impl RuntimeStore {
 
     pub fn forget_trusted_device(&self, request: DeviceTrustRequest) -> NetworkAction {
         let mut state = self.state.lock().expect("runtime state poisoned");
-        let original_len = state.persisted.trusted_devices.len();
-        state
-            .persisted
+        let mut persisted = state.persisted.clone();
+        let original_len = persisted.trusted_devices.len();
+        persisted
             .trusted_devices
             .retain(|device| device.id != request.device_id);
 
-        if state.persisted.trusted_devices.len() == original_len {
+        if persisted.trusted_devices.len() == original_len {
             return NetworkAction {
                 ok: false,
                 message: "Trusted device not found.".to_string(),
             };
         }
 
-        state.connection_health.remove(&request.device_id);
-        state.connection_failures.remove(&request.device_id);
-        state
-            .input_events
-            .retain(|event| event.device_id != request.device_id);
-        state
-            .pending_pairings
-            .remove(&pairing_id(&request.device_id));
-        if state.capture.target_device_id.as_deref() == Some(&request.device_id) {
-            state.capture.active = false;
-            state.capture.target_device_id = None;
-            state.capture.started_at_ms = None;
-        }
-
-        match state.persisted.save() {
-            Ok(()) => NetworkAction {
-                ok: true,
-                message: "Trusted device forgotten.".to_string(),
-            },
+        match persisted.save() {
+            Ok(()) => {
+                state.persisted = persisted;
+                state.connection_health.remove(&request.device_id);
+                state.connection_failures.remove(&request.device_id);
+                state
+                    .input_events
+                    .retain(|event| event.device_id != request.device_id);
+                state
+                    .pending_pairings
+                    .remove(&pairing_id(&request.device_id));
+                if state.capture.target_device_id.as_deref() == Some(&request.device_id) {
+                    state.capture.active = false;
+                    state.capture.target_device_id = None;
+                    state.capture.started_at_ms = None;
+                }
+                NetworkAction {
+                    ok: true,
+                    message: "Trusted device forgotten.".to_string(),
+                }
+            }
             Err(error) => NetworkAction {
                 ok: false,
                 message: format!("Failed to save trusted devices: {error}"),
@@ -2823,6 +2851,30 @@ mod tests {
     }
 
     #[test]
+    fn settings_save_failure_does_not_mutate_runtime_settings() {
+        let config_file = unique_test_dir("settings-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        let action = store.update_settings(super::SettingsUpdateRequest {
+            role: Some(ComputerRole::Client),
+            auto_start: None,
+            trusted_reconnect: Some(false),
+            private_network_only: Some(false),
+            allow_incoming_control: Some(true),
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.starts_with("Failed to save settings:"));
+        let status = store.status();
+        assert_eq!(status.mode, ComputerRole::Main);
+        assert!(status.trusted_reconnect);
+        assert!(status.private_network_only);
+        assert!(!status.allow_incoming_control);
+    }
+
+    #[test]
     fn global_receive_requires_receive_role() {
         crate::identity::set_test_config_dir(unique_test_dir("global-receive-role"));
 
@@ -3401,6 +3453,41 @@ mod tests {
     }
 
     #[test]
+    fn receive_shortcut_save_failure_does_not_toggle_runtime_permissions() {
+        let config_file = unique_test_dir("receive-shortcut-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.enable_receive_for_trusted_devices();
+
+        assert!(!action.ok);
+        assert!(action
+            .message
+            .starts_with("Failed to save receive permissions:"));
+        let status = store.status();
+        assert!(!status.allow_incoming_control);
+        assert!(!status.devices[0].allow_incoming_control);
+    }
+
+    #[test]
     fn device_receive_permission_requires_receive_role_and_input_secret() {
         crate::identity::set_test_config_dir(unique_test_dir("device-receive-gating"));
 
@@ -3475,6 +3562,40 @@ mod tests {
             .find(|device| device.id == "stale-device")
             .expect("stale device should be listed")
             .allow_incoming_control);
+    }
+
+    #[test]
+    fn device_receive_save_failure_does_not_toggle_runtime_permission() {
+        let config_file = unique_test_dir("device-receive-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.settings.role = ComputerRole::Client;
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "ready-device".to_string(),
+                name: "Ready Mac".to_string(),
+                platform: "macos".to_string(),
+                role: ComputerRole::Main,
+                public_key_fingerprint: "ready-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("ready-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+        }
+
+        let action = store.update_device_control(super::DeviceControlUpdateRequest {
+            device_id: "ready-device".to_string(),
+            allow_incoming_control: true,
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.starts_with("Failed to save device permission:"));
+        assert!(!store.status().devices[0].allow_incoming_control);
     }
 
     #[test]
@@ -3592,6 +3713,21 @@ mod tests {
             .remember_manual_endpoint("localhost".to_string())
             .expect_err("invalid manual endpoint should be rejected");
         assert_eq!(error, INVALID_ENDPOINT_MESSAGE);
+    }
+
+    #[test]
+    fn manual_endpoint_save_failure_does_not_update_runtime_status() {
+        let config_file = unique_test_dir("manual-endpoint-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        let error = store
+            .remember_manual_endpoint("192.168.1.50".to_string())
+            .expect_err("save failure should reject manual endpoint persistence");
+
+        assert!(error.starts_with("Failed to save manual connection target:"));
+        assert_eq!(store.status().discovery.manual_endpoint, None);
     }
 
     #[test]
@@ -6235,10 +6371,12 @@ mod tests {
                 recent_endpoints: Vec::new(),
                 allow_incoming_control: false,
             });
-            state.pending_pairings.insert(
-                pairing_id("trusted-device"),
-                expired_pairing("trusted-device", "123456"),
-            );
+            let mut pending_pairing = expired_pairing("trusted-device", "123456");
+            pending_pairing.created_at_ms = now_ms();
+            pending_pairing.expires_at_ms = now_ms() + super::PAIRING_TIMEOUT_MS;
+            state
+                .pending_pairings
+                .insert(pairing_id("trusted-device"), pending_pairing);
         }
 
         store
@@ -6291,6 +6429,67 @@ mod tests {
         assert!(!state.capture.active);
         assert_eq!(state.capture.target_device_id, None);
         assert_eq!(state.capture.started_at_ms, None);
+    }
+
+    #[test]
+    fn forget_trusted_device_save_failure_keeps_runtime_state() {
+        let config_file = unique_test_dir("forget-save-failure-file");
+        fs::write(&config_file, "not a directory").expect("test config path should be a file");
+        crate::identity::set_test_config_dir(config_file);
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.persisted.trusted_devices.push(TrustedDevice {
+                id: "trusted-device".to_string(),
+                name: "Trusted Windows".to_string(),
+                platform: "windows".to_string(),
+                role: ComputerRole::Client,
+                public_key_fingerprint: "trusted-fingerprint".to_string(),
+                public_key: None,
+                shared_secret: Some("shared-secret".to_string()),
+                last_endpoint: Some("192.168.1.50:44777".to_string()),
+                recent_endpoints: Vec::new(),
+                allow_incoming_control: false,
+            });
+            state.pending_pairings.insert(
+                pairing_id("trusted-device"),
+                expired_pairing("trusted-device", "123456"),
+            );
+            state.connection_health.insert(
+                "trusted-device".to_string(),
+                super::ConnectionHealth {
+                    endpoint: "192.168.1.50:44777".to_string(),
+                    last_seen_at_ms: now_ms(),
+                    latency_ms: Some(4),
+                },
+            );
+        }
+
+        store.record_outgoing_input(
+            "trusted-device".to_string(),
+            RuntimeStore::test_input_event(),
+        );
+        let action = store.start_capture(super::CaptureControlRequest {
+            device_id: "trusted-device".to_string(),
+        });
+        assert!(action.ok, "{}", action.message);
+
+        let action = store.forget_trusted_device(super::DeviceTrustRequest {
+            device_id: "trusted-device".to_string(),
+        });
+
+        assert!(!action.ok);
+        assert!(action.message.starts_with("Failed to save trusted devices:"));
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert_eq!(state.persisted.trusted_devices.len(), 1);
+        assert!(state.connection_health.get("trusted-device").is_some());
+        assert_eq!(state.input_events.len(), 1);
+        assert!(state.capture.active);
+        assert_eq!(
+            state.capture.target_device_id.as_deref(),
+            Some("trusted-device")
+        );
     }
 
     #[test]
