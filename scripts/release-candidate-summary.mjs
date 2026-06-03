@@ -67,7 +67,7 @@ ${rows}
 3. Complete \`lan-smoke-report.md\` for both auto-discovery and manual fallback runs.
 4. Use the setup checklist \`Copy\` button on each computer to paste role, platform, first-MVP input direction, and checklist step evidence.
 5. Use the pending pairing row \`Copy\` button to paste pairing direction, visible code, typed-code state, local/remote approval, and expiry evidence.
-6. Use the Trusted Device Audit view to copy or visually compare the local and peer full fingerprints on both machines.
+6. Use the Trusted Device Audit peer row \`Evidence\` button to paste this computer, local fingerprint, peer, peer role, and peer fingerprint evidence.
 7. Record a Test date that is on or after the release manifest date and not in the future.
 8. Use the Startup health \`Copy\` button to paste \`TCP:\`, \`UDP:\`, \`Start:\`, and started/reconnect timing evidence after restart.
 9. After restart/wake, use the trusted row reconnect \`Copy\` button to paste \`Auto reconnect: enabled\`, \`Check: reachable\`, last-seen timing, endpoint source, endpoint, last failure, and recovery evidence.

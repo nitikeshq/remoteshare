@@ -599,6 +599,17 @@ function localEndpointEvidence(status: RuntimeStatus, endpoint: string, label: s
   ].join("; ");
 }
 
+function fingerprintAuditEvidence(status: RuntimeStatus, device: Device) {
+  return [
+    "Trusted Device Audit",
+    `This computer: ${status.thisDevice}`,
+    `Local fingerprint: ${status.thisPublicKeyFingerprint}`,
+    `Peer: ${device.name}`,
+    `Peer role: ${roleLabel(device.role)}`,
+    `Peer fingerprint: ${device.publicKeyFingerprint ?? "unavailable"}`
+  ].join("; ");
+}
+
 function receiveControlEvidence(status: RuntimeStatus, device: Device) {
   return [
     "Receive control",
@@ -1039,6 +1050,21 @@ function App() {
       showActionMessage(`Copied full fingerprint for ${device.name}.`);
     } catch {
       showActionMessage(`Copy failed. Full fingerprint for ${device.name}: ${device.publicKeyFingerprint}`, true);
+    }
+  }
+
+  async function copyFingerprintAuditEvidence(device: Device) {
+    if (!device.publicKeyFingerprint) {
+      showActionMessage(`Full fingerprint unavailable for ${device.name}.`, true);
+      return;
+    }
+
+    const evidence = fingerprintAuditEvidence(status, device);
+    try {
+      await navigator.clipboard.writeText(evidence);
+      showActionMessage(`Copied fingerprint audit evidence for ${device.name}.`);
+    } catch {
+      showActionMessage(`Copy failed. Fingerprint audit evidence: ${evidence}`, true);
     }
   }
 
@@ -2195,6 +2221,17 @@ function App() {
                           >
                             <Copy size={12} />
                             Key
+                          </button>
+                        )}
+                        {device.publicKeyFingerprint && (
+                          <button
+                            className="fingerprint-copy"
+                            onClick={() => copyFingerprintAuditEvidence(device)}
+                            title={`Copy fingerprint audit evidence for ${device.name}`}
+                            type="button"
+                          >
+                            <Copy size={12} />
+                            Evidence
                           </button>
                         )}
                       </dd>

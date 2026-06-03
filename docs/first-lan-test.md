@@ -47,7 +47,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 9. Use the pending pairing row `Copy` button to capture direction, endpoint, visible code, typed-code state, local/remote approval, and expiry evidence.
 10. Type the six-digit code shown on the other computer, then click `Confirm` on both computers.
 11. Verify that the device row shows `Trusted` and a shortened key fingerprint.
-12. Open `Trusted Device Audit` and use its `Key` buttons to copy or compare the full local and peer fingerprints for evidence.
+12. Open `Trusted Device Audit` and use the peer row `Evidence` button to copy this computer, local fingerprint, peer, peer role, and peer fingerprint into the report.
 
 ## Reconnect
 
@@ -83,7 +83,7 @@ Record one test row for auto-discovery and one test row for manual fallback. Use
 | Discovery result | Peer appeared in `Scan LAN` | Discovery intentionally skipped or failed |
 | Manual endpoint used | None | Discovery skipped/failed, endpoint copied from `This computer` on peer, local endpoint `Evidence` output records label `Best LAN IPv4`, `LAN IPv4`, or `LAN IPv6`, and successful TCP `44777` probe recorded |
 | Pairing result | Same six-digit code typed and confirmed on both machines | Same six-digit code typed and confirmed on both machines |
-| Trusted fingerprint check | Full fingerprint copied or visually compared | Full fingerprint copied or visually compared |
+| Trusted fingerprint check | Trusted Device Audit `Evidence` output pasted | Trusted Device Audit `Evidence` output pasted |
 | Reconnect result | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake | Trusted row reconnect `Copy` output shows `Check: reachable` after app restart or wake |
 | Startup health | Startup health `Copy` output shows `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart | Startup health `Copy` output shows `TCP:`, `UDP:`, `Start:`, and started/reconnect timing after restart |
 | Endpoint source shown | Discovery, reconnect, or saved endpoint | Saved endpoint or manual IP |

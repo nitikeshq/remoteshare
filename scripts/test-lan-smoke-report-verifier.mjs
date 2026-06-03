@@ -706,33 +706,46 @@ try {
     vagueFingerprint,
     false,
     "vague fingerprint evidence should fail",
-    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+    "Auto-Discovery Run fingerprint evidence must paste the Trusted Device Audit evidence output"
   );
 
   const localOnlyFingerprint = writeReport("local-only-fingerprint.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoFingerprint: "Pass - Trusted Device Audit copied full local fingerprint"
+    autoFingerprint: "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   });
   runVerifier(
     localOnlyFingerprint,
     false,
     "local-only fingerprint evidence should fail",
-    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+    "Auto-Discovery Run fingerprint evidence must paste the Trusted Device Audit evidence output"
   );
 
   const peerOnlyFingerprint = writeReport("peer-only-fingerprint.md", {
     autoPass: "Pass",
     manualPass: "Pass",
     omitLine: "",
-    autoFingerprint: "Pass - Trusted Device Audit copied full peer fingerprint"
+    autoFingerprint: "Trusted Device Audit; This computer: Mac sender; Peer: Windows receiver; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   });
   runVerifier(
     peerOnlyFingerprint,
     false,
     "peer-only fingerprint evidence should fail",
-    "Auto-Discovery Run fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view"
+    "Auto-Discovery Run fingerprint evidence must paste the Trusted Device Audit evidence output"
+  );
+
+  const unavailableFingerprint = writeReport("unavailable-fingerprint.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    autoFingerprint: "Trusted Device Audit; This computer: Mac sender; Local fingerprint: unavailable; Peer: Windows receiver; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  });
+  runVerifier(
+    unavailableFingerprint,
+    false,
+    "unavailable fingerprint evidence should fail",
+    "Auto-Discovery Run fingerprint evidence must paste the Trusted Device Audit evidence output"
   );
 
   const vagueCaptureStartStop = writeReport("vague-capture-start-stop.md", {
@@ -1174,9 +1187,11 @@ function writeReport(name, options) {
   const manualInputTransportContext =
     options.manualInputTransportContext ?? "Input Transport row shows Mac sender source device and 3 seconds ago";
   const autoFingerprint =
-    options.autoFingerprint ?? "Pass - Trusted Device Audit copied full local and peer fingerprints";
+    options.autoFingerprint ??
+    "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const manualFingerprint =
-    options.manualFingerprint ?? "Pass - Trusted Device Audit copied full local and peer fingerprints";
+    options.manualFingerprint ??
+    "Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const autoCaptureStartStop = options.autoCaptureStartStop ?? "started and stopped cleanly";
   const manualCaptureStartStop = options.manualCaptureStartStop ?? "started and stopped cleanly";
   const autoCaptureTiming =

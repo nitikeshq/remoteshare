@@ -130,7 +130,6 @@ const successFields = [
   "Same six-digit code shown on both machines",
   "Six-digit code typed on both machines",
   "`Trusted` shown on both machines",
-  "Full fingerprint copied or visually compared",
   "Sender `Test` delivered accepted `key press r` input event",
   "Capture started on sender and stopped cleanly",
   "Captured mouse move, mouse click, scroll, and key events accepted on receiver"
@@ -266,12 +265,13 @@ function isSetupEvidence(value) {
 function requireFingerprintEvidence(table, section) {
   const value = requireFilled(table, "Full fingerprint copied or visually compared", section).toLowerCase();
   if (
-    !/(audit|copy|copied|compare|compared|visual)/.test(value) ||
-    !/full/.test(value) ||
-    !/(local|mac|macos|sender)/.test(value) ||
-    !/(peer|windows|receiver|client)/.test(value)
+    !/trusted\s+device\s+audit/.test(value) ||
+    !/this\s+computer:\s*[^;|]+/.test(value) ||
+    !/local\s+fingerprint:\s*(?!unavailable\b)[a-f0-9][a-f0-9:\-\s]{15,}/.test(value) ||
+    !/peer:\s*[^;|]+/.test(value) ||
+    !/peer\s+fingerprint:\s*(?!unavailable\b)[a-f0-9][a-f0-9:\-\s]{15,}/.test(value)
   ) {
-    throw new Error(`${section} fingerprint evidence must mention full local and peer fingerprints copied or compared from the audit view.`);
+    throw new Error(`${section} fingerprint evidence must paste the Trusted Device Audit evidence output with this computer, local fingerprint, peer, and peer fingerprint.`);
   }
 }
 

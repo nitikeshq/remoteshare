@@ -449,7 +449,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Six-digit code typed on both machines | confirmed |
 | Pairing evidence copied from pending row | Pairing: Outgoing; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 86s left |
 | \`Trusted\` shown on both machines | shown |
-| Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
+| Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
 | \`Auto reconnect\` enabled after restart/wake | ${autoReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Reconnect: 3s ago |
 | \`Check\` succeeded after restart/wake | ${autoReconnectEvidence} |
@@ -478,7 +478,7 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Six-digit code typed on both machines | confirmed |
 | Pairing evidence copied from pending row | Pairing: Incoming; Device: Windows receiver; Endpoint: 192.168.1.20:44777; Visible code: 123456; Typed code state: Codes match; Local: approved; Remote: pending; Expires: 84s left |
 | \`Trusted\` shown on both machines | shown |
-| Full fingerprint copied or visually compared | Pass - Trusted Device Audit copied full local and peer fingerprints |
+| Full fingerprint copied or visually compared | Trusted Device Audit; This computer: Mac sender; Local fingerprint: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Peer: Windows receiver; Peer role: Client; Peer fingerprint: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb |
 | \`Auto reconnect\` enabled after restart/wake | ${manualReconnectEvidence} |
 | Startup health shows TCP ready, UDP ready, and start-at-login not failed | TCP: TCP ready on 0.0.0.0:44777; UDP: UDP ready on 0.0.0.0:44778; Start: start-at-login ok; Started: 10s ago |
 | \`Check\` succeeded after restart/wake | ${manualReconnectEvidence} |
