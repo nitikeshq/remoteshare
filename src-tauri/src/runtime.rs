@@ -1226,12 +1226,22 @@ impl RuntimeStore {
     }
 
     pub fn pending_pairing_shared_secret(&self, pairing_id: &str) -> Result<String, String> {
-        let state = self.state.lock().expect("runtime state poisoned");
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        if state
+            .pending_pairings
+            .get(pairing_id)
+            .is_some_and(|pairing| pairing_is_expired(pairing, now_ms()))
+        {
+            state.pending_pairings.remove(pairing_id);
+            return Err("Pairing request expired. Start pairing again.".to_string());
+        }
+
         let pairing = state
             .pending_pairings
             .get(pairing_id)
+            .cloned()
             .ok_or_else(|| "Pairing request not found.".to_string())?;
-        pending_pairing_shared_secret(&state.persisted.identity.id, pairing)
+        pending_pairing_shared_secret(&state.persisted.identity.id, &pairing)
     }
 
     pub fn remove_pending_pairing(&self, pairing_id: &str) {
@@ -4588,6 +4598,28 @@ mod tests {
         }
 
         assert!(store.status().pending_pairings.is_empty());
+
+        let state = store.state.lock().expect("runtime state poisoned");
+        assert!(!state.pending_pairings.contains_key("pair-old-device"));
+    }
+
+    #[test]
+    fn pending_pairing_shared_secret_rejects_expired_pairing() {
+        crate::identity::set_test_config_dir(unique_test_dir("secret-prunes-expired-pairing"));
+
+        let store = RuntimeStore::load_or_init();
+        {
+            let mut state = store.state.lock().expect("runtime state poisoned");
+            state.pending_pairings.insert(
+                "pair-old-device".to_string(),
+                expired_pairing("old-device", "111111"),
+            );
+        }
+
+        let error = store
+            .pending_pairing_shared_secret("pair-old-device")
+            .expect_err("expired pairing should not expose a shared secret");
+        assert_eq!(error, "Pairing request expired. Start pairing again.");
 
         let state = store.state.lock().expect("runtime state poisoned");
         assert!(!state.pending_pairings.contains_key("pair-old-device"));
