@@ -178,6 +178,45 @@ try {
     "Auto-Discovery Run must be marked Pass"
   );
 
+  const passedWithBlockingIssue = writeReport("passed-with-blocking-issue.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: RS-123"]
+  });
+  runVerifier(
+    passedWithBlockingIssue,
+    false,
+    "passed report with blocking issue should fail",
+    "LAN smoke report Notes must not list unresolved blocking issues for release readiness"
+  );
+
+  const passedWithRetestRequired = writeReport("passed-with-retest-required.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: none", "- Retest required: yes after firewall change"]
+  });
+  runVerifier(
+    passedWithRetestRequired,
+    false,
+    "passed report with retest required should fail",
+    "LAN smoke report Notes must not require retest for release readiness"
+  );
+
+  const passedWithClearNotes = writeReport("passed-with-clear-notes.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    notes: ["", "## Notes", "", "- Blocking issues: none", "- Retest required: no"]
+  });
+  runVerifier(
+    passedWithClearNotes,
+    true,
+    "passed report with clear notes should pass",
+    "Verified LAN smoke report"
+  );
+
   const failedReconnect = writeReport("failed-reconnect.md", {
     autoPass: "Pass",
     manualPass: "Pass",

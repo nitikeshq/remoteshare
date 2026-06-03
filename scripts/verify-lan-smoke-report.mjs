@@ -166,6 +166,7 @@ requireManualFallbackEvidence(manualFallback);
 requireManualEndpointLabelEvidence(manualFallback);
 requireManualTcpReachabilityEvidence(manualFallback);
 requireManualEndpoint(manualFallback, "Endpoint used", "Manual Fallback Run");
+requireNoBlockingNotes(report);
 
 console.log(`Verified LAN smoke report: ${path.relative(process.cwd(), reportPath)}`);
 
@@ -478,6 +479,45 @@ function requireManualEndpoint(table, field, section) {
   if (isLinkLocalIpv6Literal(endpoint.host)) {
     throw new Error(`${section} field must not use a link-local IPv6 literal; copy a private IPv4 or unique-local IPv6 endpoint from the peer computer: ${field}`);
   }
+}
+
+function requireNoBlockingNotes(markdown) {
+  const notes = parseNotes(markdown);
+  const blockingIssues = notes.get("blocking issues");
+  if (blockingIssues && !isNoneNote(blockingIssues)) {
+    throw new Error("LAN smoke report Notes must not list unresolved blocking issues for release readiness.");
+  }
+
+  const retestRequired = notes.get("retest required");
+  if (retestRequired && !isNoneNote(retestRequired)) {
+    throw new Error("LAN smoke report Notes must not require retest for release readiness.");
+  }
+}
+
+function parseNotes(markdown) {
+  const notes = new Map();
+  const lines = markdown.split(/\r?\n/);
+  let inNotes = false;
+
+  for (const line of lines) {
+    const heading = line.match(/^##\s+(.+)$/);
+    if (heading) {
+      inNotes = heading[1].trim() === "Notes";
+      continue;
+    }
+
+    if (!inNotes) continue;
+
+    const note = line.match(/^-\s*([^:]+):\s*(.*)$/);
+    if (!note) continue;
+    notes.set(note[1].trim().toLowerCase(), note[2].trim());
+  }
+
+  return notes;
+}
+
+function isNoneNote(value) {
+  return value.length === 0 || /^(none|no|n\/a|not applicable)$/i.test(value.trim());
 }
 
 function requireAutoDiscoverySubnetEvidence(table) {
