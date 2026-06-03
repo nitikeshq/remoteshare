@@ -69,6 +69,19 @@ try {
     "Test Context Test date must be a valid calendar date"
   );
 
+  const futureTestDate = writeReport("future-test-date.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    testDate: futureIsoDate()
+  });
+  runVerifier(
+    futureTestDate,
+    false,
+    "future test date should fail",
+    "Test Context Test date cannot be in the future"
+  );
+
   const prefixVersion = writeReport("prefix-version.md", {
     autoPass: "Pass",
     manualPass: "Pass",
@@ -857,6 +870,12 @@ function writeReport(name, options) {
 
   fs.writeFileSync(file, `${lines.join("\n")}\n`);
   return file;
+}
+
+function futureIsoDate() {
+  const date = new Date();
+  date.setUTCFullYear(date.getUTCFullYear() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 function runVerifier(file, shouldPass, label, expectedOutput) {

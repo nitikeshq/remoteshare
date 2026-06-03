@@ -213,6 +213,15 @@ function requireIsoDate(table, field, section) {
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
     throw new Error(`${section} ${field} must be a valid calendar date.`);
   }
+
+  const today = todayIsoDate();
+  if (value > today) {
+    throw new Error(`${section} ${field} cannot be in the future: got ${value}, today is ${today}.`);
+  }
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function requireInputDirection(table) {

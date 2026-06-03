@@ -225,6 +225,17 @@ try {
     "Test date must be an ISO date"
   );
 
+  const futureDateReport = smokeReportFixture("future-date.md", "Pass", {
+    testDate: futureIsoDate()
+  });
+  runVerifier(
+    releaseAssets,
+    futureDateReport,
+    false,
+    "future LAN smoke test date should fail",
+    "Test date cannot be in the future"
+  );
+
   const missingGeneratedAtAssets = releaseFixture("missing-generated-at");
   const missingGeneratedAtManifestPath = path.join(missingGeneratedAtAssets, "RELEASE-MANIFEST.json");
   const missingGeneratedAtManifest = JSON.parse(fs.readFileSync(missingGeneratedAtManifestPath, "utf8"));
@@ -479,4 +490,10 @@ function runVerifier(releaseAssets, smokeReport, shouldPass, label, expectedOutp
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function futureIsoDate() {
+  const date = new Date();
+  date.setUTCFullYear(date.getUTCFullYear() + 1);
+  return date.toISOString().slice(0, 10);
 }

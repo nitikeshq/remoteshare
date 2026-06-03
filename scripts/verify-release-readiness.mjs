@@ -140,12 +140,21 @@ function assertSmokeDateMatchesManifest(context, manifest) {
     throw new Error(`LAN smoke report Test date is invalid: ${testDate}`);
   }
 
+  const today = todayIsoDate();
+  if (testDate > today) {
+    throw new Error(`LAN smoke report Test date cannot be in the future: got ${testDate}, today is ${today}`);
+  }
+
   const releaseDate = generatedAt.slice(0, 10);
   if (testDate < releaseDate) {
     throw new Error(
       `LAN smoke report Test date must be on or after release manifest date ${releaseDate}: got ${testDate}`
     );
   }
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function assertSmokeInstallerMatches(context, artifactsByType, field, type) {
