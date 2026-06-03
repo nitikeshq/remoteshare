@@ -204,6 +204,31 @@ fn reconnect_pong_identity_matches(source: &PairingPeer, target: &TrustedTarget)
             .is_none_or(|public_key| public_key == &source.public_key)
 }
 
+fn reconnect_identity_failure_message(source: &PairingPeer, target: &TrustedTarget) -> String {
+    if source.device_id != target.device_id {
+        return "Authenticated reconnect replied with a different device ID.".to_string();
+    }
+
+    if source.public_key_fingerprint != target.public_key_fingerprint {
+        return "Authenticated reconnect replied with a different trusted fingerprint.".to_string();
+    }
+
+    if !peer_public_key_matches_fingerprint(&source.public_key, &source.public_key_fingerprint) {
+        return "Authenticated reconnect replied with a public key that does not match its fingerprint."
+            .to_string();
+    }
+
+    if target
+        .public_key
+        .as_ref()
+        .is_some_and(|public_key| public_key != &source.public_key)
+    {
+        return "Authenticated reconnect replied with a different trusted public key.".to_string();
+    }
+
+    "Authenticated reconnect replied with an unexpected identity.".to_string()
+}
+
 fn peer_public_key_matches_fingerprint(public_key: &str, fingerprint: &str) -> bool {
     if public_key.is_empty() {
         return true;
@@ -225,8 +250,8 @@ fn reconnect_failure_message(
         {
             "Authenticated reconnect replied with a stale challenge.".to_string()
         }
-        Ok(Some(ControlMessage::Pong { .. })) => {
-            "Authenticated reconnect replied with an unexpected identity.".to_string()
+        Ok(Some(ControlMessage::Pong { source, .. })) => {
+            reconnect_identity_failure_message(&source, target)
         }
         Ok(Some(_)) => {
             "Authenticated reconnect replied with an unexpected control message.".to_string()
@@ -2879,7 +2904,7 @@ Wireless LAN adapter Wi-Fi:
                 &target,
                 "ping-challenge",
             ),
-            "Authenticated reconnect replied with an unexpected identity."
+            "Authenticated reconnect replied with a different trusted fingerprint."
         );
         assert_eq!(
             super::reconnect_failure_message(
@@ -2906,6 +2931,77 @@ Wireless LAN adapter Wi-Fi:
                 "ping-challenge",
             ),
             "Authenticated reconnect check failed: control connection timed out"
+        );
+    }
+
+    #[test]
+    fn reconnect_failure_message_explains_identity_mismatch() {
+        let target = trusted_target();
+        assert_eq!(
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer("other-device", "trusted-fingerprint"),
+                    challenge: "ping-challenge".to_string(),
+                })),
+                &target,
+                "ping-challenge",
+            ),
+            "Authenticated reconnect replied with a different device ID."
+        );
+        assert_eq!(
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer("trusted-device", "wrong-fingerprint"),
+                    challenge: "ping-challenge".to_string(),
+                })),
+                &target,
+                "ping-challenge",
+            ),
+            "Authenticated reconnect replied with a different trusted fingerprint."
+        );
+
+        let (_other_private_key, other_public_key) = crate::crypto::identity_keypair();
+        assert_eq!(
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer_with_public_key(
+                        "trusted-device",
+                        "trusted-fingerprint",
+                        &other_public_key,
+                    ),
+                    challenge: "ping-challenge".to_string(),
+                })),
+                &target,
+                "ping-challenge",
+            ),
+            "Authenticated reconnect replied with a public key that does not match its fingerprint."
+        );
+
+        let (_trusted_private_key, trusted_public_key) = crate::crypto::identity_keypair();
+        let (_replacement_private_key, replacement_public_key) = crate::crypto::identity_keypair();
+        let replacement_fingerprint =
+            crate::crypto::fingerprint_from_public_key(&replacement_public_key).unwrap();
+        let target_with_stored_public_key = TrustedTarget {
+            device_id: "trusted-device".to_string(),
+            endpoint: "192.168.1.50:44777".to_string(),
+            public_key_fingerprint: replacement_fingerprint.clone(),
+            public_key: Some(trusted_public_key),
+            shared_secret: Some("shared-secret".to_string()),
+        };
+        assert_eq!(
+            super::reconnect_failure_message(
+                Ok(Some(super::ControlMessage::Pong {
+                    source: peer_with_public_key(
+                        "trusted-device",
+                        &replacement_fingerprint,
+                        &replacement_public_key,
+                    ),
+                    challenge: "ping-challenge".to_string(),
+                })),
+                &target_with_stored_public_key,
+                "ping-challenge",
+            ),
+            "Authenticated reconnect replied with a different trusted public key."
         );
     }
 
