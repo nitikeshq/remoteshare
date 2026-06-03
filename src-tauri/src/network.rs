@@ -772,9 +772,12 @@ fn record_successful_input_source(
     source: &PairingPeer,
     sender: SocketAddr,
 ) -> Result<(), String> {
+    let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
+        return Err("Trusted source advertised an invalid control port.".to_string());
+    };
     store.record_trusted_connection(
         source.device_id.clone(),
-        endpoint(sender, source.control_port),
+        source_endpoint,
         None,
     )
 }
@@ -785,9 +788,12 @@ fn record_failed_input_source(
     sender: SocketAddr,
     message: &str,
 ) {
+    let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
+        return;
+    };
     store.record_trusted_connection_failure(
         &source.device_id,
-        &endpoint(sender, source.control_port),
+        &source_endpoint,
         message,
     );
 }
@@ -798,9 +804,12 @@ fn record_failed_reconnect_source(
     sender: SocketAddr,
     message: &str,
 ) {
+    let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
+        return;
+    };
     store.record_trusted_connection_failure(
         &source.device_id,
-        &endpoint(sender, source.control_port),
+        &source_endpoint,
         message,
     );
 }
@@ -1114,7 +1123,12 @@ async fn handle_control_stream(
                 return;
             }
 
-            let source_endpoint = endpoint(sender, source.control_port);
+            let Some(source_endpoint) = source_endpoint(sender, source.control_port) else {
+                let message = "Rejected reconnect ping because source control port is invalid.";
+                let _ = app.emit("remoteshare://network-error", message);
+                let _ = app.emit("remoteshare://devices-changed", ());
+                return;
+            };
             if let Err(error) = store.record_trusted_connection(
                 source.device_id.clone(),
                 source_endpoint.clone(),
@@ -1591,6 +1605,10 @@ fn endpoint(sender: SocketAddr, control_port: u16) -> String {
             format!("[{address}]:{control_port}")
         }
     }
+}
+
+fn source_endpoint(sender: SocketAddr, control_port: u16) -> Option<String> {
+    (control_port != 0).then(|| endpoint(sender, control_port))
 }
 
 fn discovery_reply_target(sender: SocketAddr) -> SocketAddr {
@@ -2491,6 +2509,29 @@ Wireless LAN adapter Wi-Fi:
     }
 
     #[test]
+    fn accepted_incoming_input_rejects_invalid_source_control_port() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-invalid-port"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let mut source = peer("trusted-device", "trusted-fingerprint");
+        source.control_port = 0;
+        let sender = "192.168.1.70:50123".parse().unwrap();
+
+        let error = super::record_successful_input_source(&store, &source, sender)
+            .expect_err("invalid source port should not refresh health");
+        assert_eq!(error, "Trusted source advertised an invalid control port.");
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be visible");
+        assert_eq!(device.endpoint.as_deref(), Some("192.168.1.50:44777"));
+        assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
     fn authenticated_input_failure_records_source_failure() {
         crate::identity::set_test_config_dir(unique_test_dir("incoming-input-auth-failure"));
 
@@ -2513,6 +2554,31 @@ Wireless LAN adapter Wi-Fi:
     }
 
     #[test]
+    fn authenticated_input_failure_ignores_invalid_source_control_port() {
+        crate::identity::set_test_config_dir(unique_test_dir("incoming-input-failure-invalid-port"));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let mut source = peer("trusted-device", "trusted-fingerprint");
+        source.control_port = 0;
+        let sender = "192.168.1.70:50123".parse().unwrap();
+
+        super::record_failed_input_source(
+            &store,
+            &source,
+            sender,
+            "Rejected input event because authentication failed.",
+        );
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be visible");
+        assert!(device.last_connection_failure.is_none());
+    }
+
+    #[test]
     fn authenticated_reconnect_failure_records_source_failure() {
         crate::identity::set_test_config_dir(unique_test_dir("incoming-reconnect-auth-failure"));
 
@@ -2532,6 +2598,33 @@ Wireless LAN adapter Wi-Fi:
             .expect("trusted reconnect auth failure should be visible");
         assert_eq!(failure.endpoint, "192.168.1.71:44777");
         assert_eq!(failure.message, message);
+    }
+
+    #[test]
+    fn authenticated_reconnect_failure_ignores_invalid_source_control_port() {
+        crate::identity::set_test_config_dir(unique_test_dir(
+            "incoming-reconnect-failure-invalid-port",
+        ));
+
+        let store = trusted_store_for_network_test("192.168.1.50:44777");
+        let mut source = peer("trusted-device", "trusted-fingerprint");
+        source.control_port = 0;
+        let sender = "192.168.1.71:50123".parse().unwrap();
+
+        super::record_failed_reconnect_source(
+            &store,
+            &source,
+            sender,
+            "Rejected reconnect ping because authentication failed.",
+        );
+
+        let status = store.status();
+        let device = status
+            .devices
+            .iter()
+            .find(|device| device.id == "trusted-device")
+            .expect("trusted device should be visible");
+        assert!(device.last_connection_failure.is_none());
     }
 
     #[test]
