@@ -32,7 +32,7 @@ New-NetFirewallRule -DisplayName "RemoteShare UDP 44778" -Direction Inbound -Pro
 1. Open System Settings > Network > Firewall.
 2. Open Options and allow incoming connections for RemoteShare.
 3. Open System Settings > Privacy & Security.
-4. Grant Accessibility for receiving injected input and Input Monitoring for capturing local keyboard/mouse events.
+4. Grant Accessibility for receiving injected input and Input Monitoring for capturing local keyboard/mouse events. Use the setup checklist `Copy` button on the Mac sender after both are ready so the report permission rows show `Mac input permissions: done`.
 
 ## Pairing
 

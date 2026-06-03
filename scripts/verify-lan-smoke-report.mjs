@@ -113,8 +113,8 @@ requireInputDirection(context);
 requireMvpRoles(context);
 requireSuccess(context, "macOS firewall status", "Test Context");
 requireSuccess(context, "Windows firewall status", "Test Context");
-requireSuccess(context, "macOS Accessibility permission", "Test Context");
-requireSuccess(context, "macOS Input Monitoring permission", "Test Context");
+requireMacInputPermissionEvidence(context, "macOS Accessibility permission");
+requireMacInputPermissionEvidence(context, "macOS Input Monitoring permission");
 requirePackageVersion(context, "RemoteShare version/tag", "Test Context");
 requireInstallerFile(context, "macOS installer file", "Test Context", ".dmg");
 requireInstallerFile(context, "Windows installer file", "Test Context", ".exe");
@@ -248,6 +248,20 @@ function requireMvpRoles(table) {
   const windowsRole = requireFilled(table, "Windows role shown", "Test Context").toLowerCase();
   if (!isSetupEvidence(windowsRole) || !/platform:\s*windows/.test(windowsRole) || !/role:\s*client/.test(windowsRole)) {
     throw new Error("Test Context Windows role shown must paste setup checklist Copy output with Platform: windows and Role: Client.");
+  }
+}
+
+function requireMacInputPermissionEvidence(table, field) {
+  const value = requireFilled(table, field, "Test Context").toLowerCase();
+  if (
+    !isSetupEvidence(value) ||
+    !/platform:\s*macos/.test(value) ||
+    !/role:\s*main/.test(value) ||
+    !/mac\s+input\s+permissions:\s*done/.test(value) ||
+    !/accessibility/.test(value) ||
+    !/input\s+monitoring/.test(value)
+  ) {
+    throw new Error(`Test Context ${field} must paste the Mac sender setup checklist Copy output with Mac input permissions: done for Accessibility and Input Monitoring.`);
   }
 }
 

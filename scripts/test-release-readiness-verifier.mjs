@@ -440,8 +440,8 @@ ${extraContextRows}| Input direction | ${macSetupEvidence} |
 | Same subnet confirmed | yes |
 | macOS firewall status | allowed |
 | Windows firewall status | allowed |
-| macOS Accessibility permission | enabled |
-| macOS Input Monitoring permission | enabled |
+| macOS Accessibility permission | ${macSetupEvidence} |
+| macOS Input Monitoring permission | ${macSetupEvidence} |
 
 ## Auto-Discovery Run
 

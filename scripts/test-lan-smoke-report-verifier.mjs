@@ -1118,7 +1118,21 @@ try {
     deniedInputMonitoring,
     false,
     "denied input monitoring should fail",
-    "Test Context field must show success: macOS Input Monitoring permission"
+    "Test Context macOS Input Monitoring permission must paste the Mac sender setup checklist Copy output"
+  );
+
+  const pendingMacInputPermissionEvidence = writeReport("pending-mac-input-permission-evidence.md", {
+    autoPass: "Pass",
+    manualPass: "Pass",
+    omitLine: "",
+    macosAccessibilityPermission:
+      "Setup; Input direction: macOS sender/main -> Windows receiver/client; This computer: Mac sender; Platform: macos; Role: Main; Choose roles: done - Set this Mac to Main; Mac input permissions: pending - Grant Input Monitoring and Accessibility on the Mac sender."
+  });
+  runVerifier(
+    pendingMacInputPermissionEvidence,
+    false,
+    "pending mac input permission evidence should fail",
+    "Test Context macOS Accessibility permission must paste the Mac sender setup checklist Copy output"
   );
 
   const wrongInstallerVersion = writeReport("wrong-installer-version.md", {
@@ -1384,8 +1398,8 @@ function writeReport(name, options) {
   const windowsRole = options.windowsRole ?? windowsSetupEvidence;
   const macosFirewallStatus = options.macosFirewallStatus ?? "allowed";
   const windowsFirewallStatus = options.windowsFirewallStatus ?? "allowed";
-  const macosAccessibilityPermission = options.macosAccessibilityPermission ?? "enabled";
-  const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? "enabled";
+  const macosAccessibilityPermission = options.macosAccessibilityPermission ?? macSetupEvidence;
+  const macosInputMonitoringPermission = options.macosInputMonitoringPermission ?? macSetupEvidence;
   const testDate = options.testDate ?? "2026-06-02";
   const extraContextRows = options.extraContextRows ?? [];
   const extraAutoRows = options.extraAutoRows ?? [];
