@@ -2530,14 +2530,14 @@ pub(crate) fn normalized_endpoint(endpoint: &str) -> Option<String> {
         if address.port() == 0 || socket_address_is_local_only(address) {
             return None;
         }
-        return Some(trimmed.to_string());
+        return Some(address.to_string());
     }
 
     if let Ok(address) = trimmed.parse::<std::net::Ipv4Addr>() {
         if address.is_loopback() || address.is_unspecified() {
             return None;
         }
-        return Some(format!("{trimmed}:44777"));
+        return Some(format!("{address}:44777"));
     }
 
     if let Ok(address) = trimmed.parse::<std::net::Ipv6Addr>() {
@@ -2547,7 +2547,7 @@ pub(crate) fn normalized_endpoint(endpoint: &str) -> Option<String> {
         {
             return None;
         }
-        return Some(format!("[{trimmed}]:44777"));
+        return Some(format!("[{address}]:44777"));
     }
 
     if trimmed.starts_with('[') {
@@ -2555,39 +2555,49 @@ pub(crate) fn normalized_endpoint(endpoint: &str) -> Option<String> {
             .strip_prefix('[')
             .and_then(|value| value.strip_suffix(']'))
         {
-            if host
-                .parse::<std::net::Ipv6Addr>()
-                .is_ok_and(|address| {
-                    !address.is_loopback()
-                        && !address.is_unspecified()
-                        && !ipv6_is_unscoped_link_local(address)
-                })
-            {
-                return Some(format!("[{host}]:44777"));
+            if let Ok(address) = host.parse::<std::net::Ipv6Addr>() {
+                if !address.is_loopback()
+                    && !address.is_unspecified()
+                    && !ipv6_is_unscoped_link_local(address)
+                {
+                    return Some(format!("[{address}]:44777"));
+                }
+                return None;
             }
             return None;
         }
 
         let (host, port) = trimmed.rsplit_once("]:")?;
         let host = host.strip_prefix('[')?;
-        if host
-            .parse::<std::net::Ipv6Addr>()
-            .is_ok_and(|address| {
-                !address.is_loopback()
-                    && !address.is_unspecified()
-                    && !ipv6_is_unscoped_link_local(address)
-            })
-            && valid_port(port)
-        {
-            return Some(trimmed.to_string());
+        if let Ok(address) = host.parse::<std::net::Ipv6Addr>() {
+            if !address.is_loopback()
+                && !address.is_unspecified()
+                && !ipv6_is_unscoped_link_local(address)
+                && valid_port(port)
+            {
+                return Some(format!("[{address}]:{port}"));
+            }
         }
         return None;
     }
 
     if let Some((host, port)) = trimmed.rsplit_once(':') {
+        if let Ok(address) = host.parse::<std::net::Ipv4Addr>() {
+            if address.is_loopback() || address.is_unspecified() || !valid_port(port) {
+                return None;
+            }
+            return Some(format!("{address}:{port}"));
+        }
+        if hostname_is_ipv4_like(host) {
+            return None;
+        }
         if valid_hostname(host) && !hostname_is_local_only(host) && valid_port(port) {
             return Some(format!("{}:{port}", canonical_hostname(host)));
         }
+        return None;
+    }
+
+    if hostname_is_ipv4_like(trimmed) {
         return None;
     }
 
@@ -2745,6 +2755,15 @@ fn hostname_is_local_only(host: &str) -> bool {
 
 fn canonical_hostname(host: &str) -> String {
     host.trim_end_matches('.').to_ascii_lowercase()
+}
+
+fn hostname_is_ipv4_like(host: &str) -> bool {
+    let mut parts = host.split('.');
+    (0..4).all(|_| {
+        parts
+            .next()
+            .is_some_and(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+    }) && parts.next().is_none()
 }
 
 fn valid_hostname(host: &str) -> bool {
@@ -2905,6 +2924,31 @@ mod tests {
         assert_eq!(
             normalized_endpoint("192.168.1.25:44777"),
             Some("192.168.1.25:44777".to_string())
+        );
+    }
+
+    #[test]
+    fn canonicalizes_literal_address_endpoints() {
+        assert_eq!(
+            normalized_endpoint("  192.168.001.025:44778  "),
+            None,
+            "non-canonical IPv4 octets should not be accepted by the structured parser"
+        );
+        assert_eq!(
+            normalized_endpoint("  192.168.1.25:44778  "),
+            Some("192.168.1.25:44778".to_string())
+        );
+        assert_eq!(
+            normalized_endpoint("FD12:3456:789A:0000:0000:0000:0000:0010"),
+            Some("[fd12:3456:789a::10]:44777".to_string())
+        );
+        assert_eq!(
+            normalized_endpoint("[FD12:3456:789A:0000:0000:0000:0000:0010]"),
+            Some("[fd12:3456:789a::10]:44777".to_string())
+        );
+        assert_eq!(
+            normalized_endpoint("  [FD12:3456:789A:0000:0000:0000:0000:0010]:44778  "),
+            Some("[fd12:3456:789a::10]:44778".to_string())
         );
     }
 
