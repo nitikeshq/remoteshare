@@ -505,6 +505,7 @@ function requireManualFailureReasonEvidence(table) {
 function requireTrustedIpUpdateCopyEvidence(value) {
   if (
     !/trusted\s+ip\s+update/.test(value) ||
+    !/this\s+computer:\s*[^;|]+/.test(value) ||
     !/device:\s*[^;|]+/.test(value) ||
     !/action:\s*(verify\s+ip\s+without\s+re-pairing|pair\s+manually\s+with\s+copied\s+endpoint)/.test(value) ||
     !/endpoint\s+field:\s*[^;|]+/.test(value) ||
@@ -513,7 +514,7 @@ function requireTrustedIpUpdateCopyEvidence(value) {
     !/last\s+failure:\s*[^;|]+/.test(value) ||
     !/recovery:\s*[^;|]+/.test(value)
   ) {
-    throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint.");
+    throw new Error("Manual Fallback Run retry evidence must paste the trusted IP update Copy output with this computer, device, recovery action, endpoint field, current endpoint/source, last failure, and recovery hint.");
   }
 }
 

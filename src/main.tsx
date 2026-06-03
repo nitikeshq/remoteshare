@@ -651,7 +651,7 @@ function setupChecklistEvidence(status: RuntimeStatus, steps: SetupStep[]) {
   ].join("; ");
 }
 
-function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
+function trustedEndpointUpdateEvidence(status: RuntimeStatus, device: Device, endpointField: string) {
   const failure = connectionFailureDiagnostic(device);
   const hint = connectionFailureHint(device);
   const action = device.inputControlReady
@@ -659,6 +659,7 @@ function trustedEndpointUpdateEvidence(device: Device, endpointField: string) {
     : "Pair manually with copied endpoint";
   return [
     "Trusted IP update",
+    `This computer: ${status.thisDevice}`,
     `Device: ${device.name}`,
     `Action: ${action}`,
     `Endpoint field: ${endpointField.trim() || "empty"}`,
@@ -1144,7 +1145,7 @@ function App() {
   }
 
   async function copyTrustedEndpointUpdateEvidence(device: Device) {
-    const evidence = trustedEndpointUpdateEvidence(device, manualEndpoint);
+    const evidence = trustedEndpointUpdateEvidence(status, device, manualEndpoint);
     try {
       await navigator.clipboard.writeText(evidence);
       showActionMessage("Copied trusted IP evidence.");
