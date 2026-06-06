@@ -14,11 +14,11 @@ import {
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "remoteshare-release-artifacts-lib-"));
 
 try {
-  writeFile("mac/RemoteShare_0.1.13_aarch64.DMG", "dmg");
-  writeFile("win/RemoteShare_0.1.13_x64-setup.exe", "exe");
-  writeFile("linux/RemoteShare_0.1.13_amd64.deb", "deb");
-  writeFile("extra/RemoteShare_0.1.13_x64.msi", "msi");
-  writeFile("extra/RemoteShare_0.1.13.AppImage", "appimage");
+  writeFile("mac/RemoteShare_0.1.14_aarch64.DMG", "dmg");
+  writeFile("win/RemoteShare_0.1.14_x64-setup.exe", "exe");
+  writeFile("linux/RemoteShare_0.1.14_amd64.deb", "deb");
+  writeFile("extra/RemoteShare_0.1.14_x64.msi", "msi");
+  writeFile("extra/RemoteShare_0.1.14.AppImage", "appimage");
   writeFile("notes/readme.txt", "notes");
 
   const requiredTypes = [...requiredArtifactTypes.keys()];
@@ -36,7 +36,7 @@ try {
   const unexpected = findUnexpectedInstallerArtifacts(root);
   assertEqual(
     unexpected.map((file) => path.basename(file)).join(","),
-    "RemoteShare_0.1.13.AppImage,RemoteShare_0.1.13_x64.msi",
+    "RemoteShare_0.1.14.AppImage,RemoteShare_0.1.14_x64.msi",
     "unexpected installer artifacts"
   );
 
@@ -60,7 +60,7 @@ try {
 
   validateManifestArtifactTypes(artifacts);
   assertThrows(
-    () => validateManifestArtifactTypes([{ file: "RemoteShare_0.1.13.dmg" }]),
+    () => validateManifestArtifactTypes([{ file: "RemoteShare_0.1.14.dmg" }]),
     "Release manifest artifact must have a type.",
     "missing manifest type"
   );
@@ -77,62 +77,62 @@ try {
 
   const manifestArtifact = validateReleaseManifestArtifact(
     {
-      file: "RemoteShare_0.1.13_aarch64.dmg",
+      file: "RemoteShare_0.1.14_aarch64.dmg",
       sha256: "a".repeat(64),
       sizeBytes: 1,
       type: "dmg"
     },
     0,
-    "0.1.13"
+    "0.1.14"
   );
   assertEqual(manifestArtifact.type, "dmg", "validated release manifest artifact type");
   assertThrows(
-    () => validateReleaseManifestArtifact(null, 2, "0.1.13"),
+    () => validateReleaseManifestArtifact(null, 2, "0.1.14"),
     "Release manifest artifact 2 must be an object.",
     "non-object release manifest artifact"
   );
   assertThrows(
-    () => validateReleaseManifestArtifact({ file: "RemoteShare_0.1.13_x64.msi", type: "msi" }, 1, "0.1.13"),
+    () => validateReleaseManifestArtifact({ file: "RemoteShare_0.1.14_x64.msi", type: "msi" }, 1, "0.1.14"),
     "Release manifest artifact 1 has invalid type: msi.",
     "invalid release manifest artifact type"
   );
   assertThrows(
-    () => validateReleaseManifestArtifact({ file: "../RemoteShare_0.1.13_aarch64.dmg", type: "dmg" }, 1, "0.1.13"),
+    () => validateReleaseManifestArtifact({ file: "../RemoteShare_0.1.14_aarch64.dmg", type: "dmg" }, 1, "0.1.14"),
     "Release manifest artifact 1 must use a basename-only file path.",
     "release manifest basename-only artifact"
   );
   assertThrows(
     () => validateReleaseManifestArtifact(
-      { file: "RemoteShare_0.1.13_aarch64.exe", sha256: "a".repeat(64), sizeBytes: 1, type: "dmg" },
+      { file: "RemoteShare_0.1.14_aarch64.exe", sha256: "a".repeat(64), sizeBytes: 1, type: "dmg" },
       1,
-      "0.1.13"
+      "0.1.14"
     ),
-    "Release manifest dmg artifact must use .dmg extension: RemoteShare_0.1.13_aarch64.exe.",
+    "Release manifest dmg artifact must use .dmg extension: RemoteShare_0.1.14_aarch64.exe.",
     "release manifest artifact extension"
   );
   assertThrows(
     () => validateReleaseManifestArtifact(
       { file: "RemoteShare_0.1.12_aarch64.dmg", sha256: "a".repeat(64), sizeBytes: 1, type: "dmg" },
       1,
-      "0.1.13"
+      "0.1.14"
     ),
-    "Release manifest dmg artifact filename must include package version 0.1.13.",
+    "Release manifest dmg artifact filename must include package version 0.1.14.",
     "release manifest artifact version"
   );
   assertThrows(
     () => validateReleaseManifestArtifact(
-      { file: "RemoteShare_0.1.13_aarch64.dmg", sha256: "not-a-sha256", sizeBytes: 1, type: "dmg" },
+      { file: "RemoteShare_0.1.14_aarch64.dmg", sha256: "not-a-sha256", sizeBytes: 1, type: "dmg" },
       1,
-      "0.1.13"
+      "0.1.14"
     ),
     "Release manifest dmg artifact has invalid sha256.",
     "release manifest artifact sha256"
   );
   assertThrows(
     () => validateReleaseManifestArtifact(
-      { file: "RemoteShare_0.1.13_aarch64.dmg", sha256: "a".repeat(64), sizeBytes: 0, type: "dmg" },
+      { file: "RemoteShare_0.1.14_aarch64.dmg", sha256: "a".repeat(64), sizeBytes: 0, type: "dmg" },
       1,
-      "0.1.13"
+      "0.1.14"
     ),
     "Release manifest dmg artifact has invalid sizeBytes.",
     "release manifest artifact size"

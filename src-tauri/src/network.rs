@@ -666,77 +666,66 @@ pub async fn update_trusted_endpoint(
 }
 
 fn start_capture_forwarder(app: AppHandle, store: RuntimeStore) {
-    #[cfg(target_os = "macos")]
-    {
-        tauri::async_runtime::spawn_blocking(move || {
-            let receiver = loop {
-                match input::start_capture_stream() {
-                    Ok(receiver) => break receiver,
-                    Err(input::InputError::MissingCapturePermission) => {
-                        std::thread::sleep(Duration::from_secs(10));
+    tauri::async_runtime::spawn_blocking(move || {
+        let receiver = loop {
+            match input::start_capture_stream() {
+                Ok(receiver) => break receiver,
+                Err(input::InputError::MissingCapturePermission) => {
+                    std::thread::sleep(Duration::from_secs(10));
+                }
+                Err(_) => {
+                    // Capture not supported on this platform; forwarder inactive.
+                    return;
+                }
+            }
+        };
+
+        let mut last_mouse_move_at = Instant::now() - Duration::from_secs(1);
+        let mouse_move_in_flight = Arc::new(AtomicBool::new(false));
+        while let Ok(event) = receiver.recv() {
+            let is_mouse_move = matches!(event.kind, InputEventKind::MouseMove);
+            if is_mouse_move {
+                let now = Instant::now();
+                if now.duration_since(last_mouse_move_at) < Duration::from_millis(8) {
+                    continue;
+                }
+                last_mouse_move_at = now;
+                if mouse_move_in_flight.swap(true, Ordering::AcqRel) {
+                    continue;
+                }
+            }
+
+            let Some(target) = store.active_capture_target() else {
+                if is_mouse_move {
+                    mouse_move_in_flight.store(false, Ordering::Release);
+                }
+                continue;
+            };
+            let app = app.clone();
+            let store = store.clone();
+            let mouse_move_in_flight = mouse_move_in_flight.clone();
+            tauri::async_runtime::spawn(async move {
+                let target_device_id = target.device_id.clone();
+                match send_input_to_target(store.clone(), target, event).await {
+                    Ok(()) => {
+                        let _ = app.emit("remoteshare://devices-changed", ());
                     }
                     Err(error) => {
+                        let message = format!("Failed to forward captured input: {error}");
+                        store.stop_capture_if_target(&target_device_id);
                         let _ = app.emit(
                             "remoteshare://network-error",
-                            format!("Input capture unavailable: {error}"),
+                            format!("{message}. Capture stopped."),
                         );
-                        return;
+                        let _ = app.emit("remoteshare://devices-changed", ());
                     }
                 }
-            };
-
-            let mut last_mouse_move_at = Instant::now() - Duration::from_secs(1);
-            let mouse_move_in_flight = Arc::new(AtomicBool::new(false));
-            while let Ok(event) = receiver.recv() {
-                let is_mouse_move = matches!(event.kind, InputEventKind::MouseMove);
                 if is_mouse_move {
-                    let now = Instant::now();
-                    if now.duration_since(last_mouse_move_at) < Duration::from_millis(8) {
-                        continue;
-                    }
-                    last_mouse_move_at = now;
-                    if mouse_move_in_flight.swap(true, Ordering::AcqRel) {
-                        continue;
-                    }
+                    mouse_move_in_flight.store(false, Ordering::Release);
                 }
-
-                let Some(target) = store.active_capture_target() else {
-                    if is_mouse_move {
-                        mouse_move_in_flight.store(false, Ordering::Release);
-                    }
-                    continue;
-                };
-                let app = app.clone();
-                let store = store.clone();
-                let mouse_move_in_flight = mouse_move_in_flight.clone();
-                tauri::async_runtime::spawn(async move {
-                    let target_device_id = target.device_id.clone();
-                    match send_input_to_target(store.clone(), target, event).await {
-                        Ok(()) => {
-                            let _ = app.emit("remoteshare://devices-changed", ());
-                        }
-                        Err(error) => {
-                            let message = format!("Failed to forward captured input: {error}");
-                            store.stop_capture_if_target(&target_device_id);
-                            let _ = app.emit(
-                                "remoteshare://network-error",
-                                format!("{message}. Capture stopped."),
-                            );
-                            let _ = app.emit("remoteshare://devices-changed", ());
-                        }
-                    }
-                    if is_mouse_move {
-                        mouse_move_in_flight.store(false, Ordering::Release);
-                    }
-                });
-            }
-        });
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (app, store);
-    }
+            });
+        }
+    });
 }
 
 async fn send_input_to_target(
@@ -1534,7 +1523,7 @@ fn platform_local_ipv6_addresses() -> Vec<Ipv6Addr> {
     Vec::new()
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[allow(dead_code)]
 fn parse_ifconfig_broadcast_addresses(output: &str) -> Vec<Ipv4Addr> {
     let mut addresses = HashSet::new();
     let tokens = output.split_whitespace().collect::<Vec<_>>();
@@ -1554,7 +1543,7 @@ fn parse_ifconfig_broadcast_addresses(output: &str) -> Vec<Ipv4Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[allow(dead_code)]
 fn parse_ifconfig_local_ipv4_addresses(output: &str) -> Vec<Ipv4Addr> {
     let mut addresses = HashSet::new();
     let tokens = output.split_whitespace().collect::<Vec<_>>();
@@ -1577,7 +1566,7 @@ fn parse_ifconfig_local_ipv4_addresses(output: &str) -> Vec<Ipv4Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[allow(dead_code)]
 fn parse_ifconfig_local_ipv6_addresses(output: &str) -> Vec<Ipv6Addr> {
     let mut addresses = HashSet::new();
     let tokens = output.split_whitespace().collect::<Vec<_>>();
@@ -1597,7 +1586,7 @@ fn parse_ifconfig_local_ipv6_addresses(output: &str) -> Vec<Ipv6Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn parse_ipconfig_broadcast_addresses(output: &str) -> Vec<Ipv4Addr> {
     let mut addresses = HashSet::new();
     let mut current_ipv4 = None;
@@ -1627,7 +1616,7 @@ fn parse_ipconfig_broadcast_addresses(output: &str) -> Vec<Ipv4Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn parse_ipconfig_local_ipv4_addresses(output: &str) -> Vec<Ipv4Addr> {
     let mut addresses = HashSet::new();
 
@@ -1645,7 +1634,7 @@ fn parse_ipconfig_local_ipv4_addresses(output: &str) -> Vec<Ipv4Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn parse_ipconfig_local_ipv6_addresses(output: &str) -> Vec<Ipv6Addr> {
     let mut addresses = HashSet::new();
 
@@ -1664,7 +1653,7 @@ fn parse_ipconfig_local_ipv6_addresses(output: &str) -> Vec<Ipv6Addr> {
     addresses.into_iter().collect()
 }
 
-#[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn ipv4_broadcast(address: Ipv4Addr, mask: Ipv4Addr) -> Ipv4Addr {
     let address = u32::from(address);
     let mask = u32::from(mask);
@@ -2175,7 +2164,6 @@ mod tests {
     };
     use tokio::net::TcpListener;
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn parses_ifconfig_broadcast_addresses() {
         let output = r#"
@@ -2197,7 +2185,6 @@ eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST> mtu 1500
         );
     }
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn parses_ifconfig_local_ipv4_addresses() {
         let output = r#"
@@ -2222,7 +2209,6 @@ eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST> mtu 1500
         );
     }
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn parses_ifconfig_local_ipv6_addresses() {
         let output = r#"
@@ -2249,7 +2235,6 @@ eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST> mtu 1500
         );
     }
 
-    #[cfg(target_os = "windows")]
     #[test]
     fn parses_ipconfig_local_ipv4_addresses() {
         let output = r#"
@@ -2265,7 +2250,32 @@ Wireless LAN adapter Wi-Fi:
         assert_eq!(addresses, vec![Ipv4Addr::new(192, 168, 1, 44)]);
     }
 
-    #[cfg(target_os = "windows")]
+    #[test]
+    fn parses_ipconfig_broadcast_addresses() {
+        let output = r#"
+Wireless LAN adapter Wi-Fi:
+
+   IPv4 Address. . . . . . . . . . . : 192.168.1.44(Preferred)
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+
+Ethernet adapter Ethernet:
+
+   IPv4 Address. . . . . . . . . . . : 10.0.0.12
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+"#;
+
+        let mut addresses = super::parse_ipconfig_broadcast_addresses(output);
+        addresses.sort();
+
+        assert_eq!(
+            addresses,
+            vec![
+                Ipv4Addr::new(10, 0, 0, 255),
+                Ipv4Addr::new(192, 168, 1, 255),
+            ]
+        );
+    }
+
     #[test]
     fn parses_ipconfig_local_ipv6_addresses() {
         let output = r#"

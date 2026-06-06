@@ -416,10 +416,18 @@ function mvpRoleStep(platform: string, role: ComputerRole) {
 
 function mvpInputPermissionStep(platform: string, permissions: InputPermissionStatus) {
   if (isWindowsPlatform(platform)) {
+    const captureReady = permissions.captureEngine === "ready";
+    const injectionReady = permissions.injectionEngine === "ready";
     return {
-      label: "Windows receive ready",
-      done: permissions.injectionEngine === "ready",
-      detail: "Use Windows as the receiver; local Windows capture is planned for later."
+      label: "Windows input ready",
+      done: injectionReady || captureReady,
+      detail: captureReady && injectionReady
+        ? "Windows capture and injection engines are both ready."
+        : captureReady
+          ? "Windows capture engine is ready; injection is pending."
+          : injectionReady
+            ? "Windows injection is ready; use as receiver."
+            : "Windows input engines are not yet available."
     };
   }
 
@@ -786,9 +794,18 @@ function inputReadiness(permissions: InputPermissionStatus, platform: string) {
   }
 
   if (isWindowsPlatform(platform)) {
+    if (captureReady) {
+      return {
+        state: "Windows capture ready",
+        detail: "Windows capture engine is available; injection is pending.",
+        action: "Use this computer as sender, or wait for injection support to receive."
+      };
+    }
     return {
       state: injectionReady ? "Windows receive ready" : "Windows input pending",
-      detail: "Windows injection is available; local capture is planned for a later milestone.",
+      detail: injectionReady
+        ? "Windows injection is available; use as receiver."
+        : "Windows input engines are not yet available.",
       action: "Use this computer as receiver for the first Test flow."
     };
   }
@@ -1857,22 +1874,37 @@ function App() {
             <ShieldCheck size={18} />
             <div>
               <span>Permissions</span>
-              <strong>
-                Accessibility {statusValueLabel(permissions.accessibility)}
-              </strong>
-              <small>
-                Input Monitoring {statusValueLabel(permissions.inputMonitoring)} · Native input{" "}
-                {statusValueLabel(permissions.inputInjection)}
-              </small>
+              {isMacPlatform(status.platform) ? (
+                <>
+                  <strong>
+                    Accessibility {statusValueLabel(permissions.accessibility)}
+                  </strong>
+                  <small>
+                    Input Monitoring {statusValueLabel(permissions.inputMonitoring)} · Native input{" "}
+                    {statusValueLabel(permissions.inputInjection)}
+                  </small>
+                </>
+              ) : (
+                <>
+                  <strong>
+                    Capture {statusValueLabel(permissions.captureEngine)}
+                  </strong>
+                  <small>
+                    Injection {statusValueLabel(permissions.injectionEngine)}
+                  </small>
+                </>
+              )}
             </div>
-            <button
-              className="secondary-button compact"
-              disabled={requestInputPermissionsActive}
-              onClick={requestInputPermissions}
-              type="button"
-            >
-              {requestInputPermissionsActive ? "Requesting" : "Request"}
-            </button>
+            {isMacPlatform(status.platform) && (
+              <button
+                className="secondary-button compact"
+                disabled={requestInputPermissionsActive}
+                onClick={requestInputPermissions}
+                type="button"
+              >
+                {requestInputPermissionsActive ? "Requesting" : "Request"}
+              </button>
+            )}
           </div>
         </section>
 
@@ -2008,14 +2040,16 @@ function App() {
               {statusValueLabel(permissions.injectionEngine)}
             </small>
           </div>
-          <button
-            className="secondary-button compact"
-            disabled={requestInputPermissionsActive}
-            onClick={requestInputPermissions}
-            type="button"
-          >
-            {requestInputPermissionsActive ? "Requesting" : "Request"}
-          </button>
+          {isMacPlatform(status.platform) && (
+            <button
+              className="secondary-button compact"
+              disabled={requestInputPermissionsActive}
+              onClick={requestInputPermissions}
+              type="button"
+            >
+              {requestInputPermissionsActive ? "Requesting" : "Request"}
+            </button>
+          )}
         </section>
 
         <section className="panel">

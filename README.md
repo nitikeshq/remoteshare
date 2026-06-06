@@ -28,14 +28,13 @@ Working foundations:
 - authenticated trusted TCP control messages
 - auto-reconnect checks
 - macOS input capture/injection foundation
-- Windows input injection foundation
+- Windows input capture/injection foundation
 - GitHub Actions packaging for `.dmg`, `.exe`, and `.deb`
 
 Still planned:
 
 - full hardware smoke test on real Mac-to-Windows machines
 - broader keyboard/layout support
-- Windows input capture
 - Linux input support
 - OS keychain storage
 - encrypted internet relay

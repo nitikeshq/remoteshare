@@ -1,6 +1,6 @@
 {
   "name": "remoteshare",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Cross-platform keyboard and mouse sharing for trusted computers on a private network.",
   "private": true,
   "license": "MIT",

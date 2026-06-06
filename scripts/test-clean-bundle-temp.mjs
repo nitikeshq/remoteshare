@@ -10,55 +10,55 @@ try {
   const fixtureRoot = path.join(root, "with-temp-dmgs");
   writeFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/macos/rw.123.RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/macos/rw.123.RemoteShare_0.1.14_aarch64.dmg",
     "temporary macos dmg"
   );
   writeFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/dmg/rw.456.RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/dmg/rw.456.RemoteShare_0.1.14_aarch64.dmg",
     "temporary output dmg"
   );
   writeFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.14_aarch64.dmg",
     "final dmg"
   );
   writeFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/nsis/RemoteShare_0.1.13_x64-setup.exe",
+    "src-tauri/target/release/bundle/nsis/RemoteShare_0.1.14_x64-setup.exe",
     "final exe"
   );
 
   runCleaner(fixtureRoot, ["Removed 2 temporary bundle DMG files."]);
   assertMissing(
     fixtureRoot,
-    "src-tauri/target/release/bundle/macos/rw.123.RemoteShare_0.1.13_aarch64.dmg"
+    "src-tauri/target/release/bundle/macos/rw.123.RemoteShare_0.1.14_aarch64.dmg"
   );
   assertMissing(
     fixtureRoot,
-    "src-tauri/target/release/bundle/dmg/rw.456.RemoteShare_0.1.13_aarch64.dmg"
+    "src-tauri/target/release/bundle/dmg/rw.456.RemoteShare_0.1.14_aarch64.dmg"
   );
   assertFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.14_aarch64.dmg",
     "final dmg"
   );
   assertFile(
     fixtureRoot,
-    "src-tauri/target/release/bundle/nsis/RemoteShare_0.1.13_x64-setup.exe",
+    "src-tauri/target/release/bundle/nsis/RemoteShare_0.1.14_x64-setup.exe",
     "final exe"
   );
 
   const emptyRoot = path.join(root, "without-temp-dmgs");
   writeFile(
     emptyRoot,
-    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.14_aarch64.dmg",
     "final dmg"
   );
   runCleaner(emptyRoot, ["No temporary bundle DMG files were removed."]);
   assertFile(
     emptyRoot,
-    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.13_aarch64.dmg",
+    "src-tauri/target/release/bundle/dmg/RemoteShare_0.1.14_aarch64.dmg",
     "final dmg"
   );
 

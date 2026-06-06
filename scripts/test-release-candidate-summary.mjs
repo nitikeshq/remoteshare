@@ -9,18 +9,18 @@ const generatedAt = "2026-06-01T10:00:00.000Z";
 
 try {
   const valid = fixture("valid", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe"),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb")
     ]
   });
   const output = path.join(root, "candidate.md");
   runSummary(valid, output, true, "valid summary should pass", "Prepared release candidate summary");
   const summary = fs.readFileSync(output, "utf8");
   assertIncludes(summary, "# RemoteShare Release Candidate", "summary title");
-  assertIncludes(summary, "RemoteShare_0.1.13_x64-setup.exe", "windows installer row");
+  assertIncludes(summary, "RemoteShare_0.1.14_x64-setup.exe", "windows installer row");
   assertIncludes(summary, "npm run verify:release-readiness", "readiness command");
   assertIncludes(summary, "setup checklist `Copy` button", "setup copy evidence");
   assertIncludes(summary, "role, platform, first-MVP input direction, and checklist step evidence", "setup copied fields");
@@ -109,21 +109,21 @@ try {
   );
 
   const missingDeb = fixture("missing-deb", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe")
     ]
   });
   runSummary(missingDeb, path.join(root, "missing-deb.md"), false, "missing deb should fail", "missing artifact type(s): deb");
 
   const duplicateType = fixture("duplicate-type", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
-      artifact("exe", "RemoteShare_0.1.13_arm64-setup.exe", "windows exe 2"),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe"),
+      artifact("exe", "RemoteShare_0.1.14_arm64-setup.exe", "windows exe 2"),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb")
     ]
   });
   runSummary(
@@ -135,12 +135,12 @@ try {
   );
 
   const invalidType = fixture("invalid-type", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb"),
-      artifact("msi", "RemoteShare_0.1.13_x64.msi", "windows msi")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe"),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb"),
+      artifact("msi", "RemoteShare_0.1.14_x64.msi", "windows msi")
     ]
   });
   runSummary(
@@ -163,12 +163,12 @@ try {
   runSummary(wrongVersion, path.join(root, "wrong-version.md"), false, "wrong version should fail", "Release manifest version must match package version");
 
   const futureGeneratedAt = fixture("future-generated-at", {
-    version: "0.1.13",
+    version: "0.1.14",
     generatedAt: "2999-01-01T00:00:00.000Z",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe"),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe"),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb")
     ]
   });
   runSummary(
@@ -180,21 +180,21 @@ try {
   );
 
   const missingFile = fixture("missing-file", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe", { writeFile: false }),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe", { writeFile: false }),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb")
     ]
   });
   runSummary(missingFile, path.join(root, "missing-file.md"), false, "missing file should fail", "artifact file is missing");
 
   const hashMismatch = fixture("hash-mismatch", {
-    version: "0.1.13",
+    version: "0.1.14",
     artifacts: [
-      artifact("dmg", "RemoteShare_0.1.13_aarch64.dmg", "mac dmg"),
-      artifact("exe", "RemoteShare_0.1.13_x64-setup.exe", "windows exe", { sha256: "0".repeat(64) }),
-      artifact("deb", "RemoteShare_0.1.13_amd64.deb", "linux deb")
+      artifact("dmg", "RemoteShare_0.1.14_aarch64.dmg", "mac dmg"),
+      artifact("exe", "RemoteShare_0.1.14_x64-setup.exe", "windows exe", { sha256: "0".repeat(64) }),
+      artifact("deb", "RemoteShare_0.1.14_amd64.deb", "linux deb")
     ]
   });
   runSummary(hashMismatch, path.join(root, "hash-mismatch.md"), false, "hash mismatch should fail", "artifact hash mismatch");

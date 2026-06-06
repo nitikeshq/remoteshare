@@ -56,8 +56,8 @@ pub fn request_input_permissions() -> InputPermissionStatus {
 
 #[derive(Debug, Error)]
 pub enum InputError {
-    #[cfg(not(target_os = "macos"))]
-    #[error("input injection is not supported on this platform yet")]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[error("input is not supported on this platform yet")]
     UnsupportedPlatform,
     #[error("input injection requires Accessibility permission")]
     MissingPermission,
@@ -108,7 +108,12 @@ fn input_monitoring_status() -> PermissionState {
     }
 }
 
-#[cfg(any(target_os = "windows", target_os = "linux"))]
+#[cfg(target_os = "windows")]
+fn input_monitoring_status() -> PermissionState {
+    PermissionState::Granted
+}
+
+#[cfg(target_os = "linux")]
 fn input_monitoring_status() -> PermissionState {
     PermissionState::Unknown
 }
@@ -135,7 +140,12 @@ fn platform_capture_engine_status(input_monitoring: &PermissionState) -> EngineS
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+fn platform_capture_engine_status(_input_monitoring: &PermissionState) -> EngineState {
+    EngineState::Ready
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn platform_capture_engine_status(_input_monitoring: &PermissionState) -> EngineState {
     EngineState::Planned
 }
@@ -214,7 +224,18 @@ fn platform_start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputEr
     macos::start_capture_stream()
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+fn platform_start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputError> {
+    windows_capture::start_capture_stream()
+}
+
+#[cfg(target_os = "linux")]
+fn platform_start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputError> {
+    // Linux input capture (evdev/libinput) is planned but not yet implemented.
+    Err(InputError::UnsupportedPlatform)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn platform_start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputError> {
     Err(InputError::UnsupportedPlatform)
 }
@@ -768,6 +789,7 @@ mod macos {
             "end" => Some(0x77),
             "pageup" | "page-up" => Some(0x74),
             "pagedown" | "page-down" => Some(0x79),
+            "insert" => Some(0x72),
             _ => None,
         }
     }
@@ -830,6 +852,7 @@ mod macos {
             0x38 | 0x3c => Some("shift"),
             0x3a | 0x3d => Some("alt"),
             0x3b | 0x3e => Some("control"),
+            0x72 => Some("insert"),
             0x73 => Some("home"),
             0x74 => Some("pageup"),
             0x75 => Some("delete"),
@@ -1073,6 +1096,335 @@ mod windows {
     }
 }
 
+#[cfg(target_os = "windows")]
+mod windows_capture {
+    use std::ffi::c_void;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    use super::{InputError, InputEvent, InputEventKind};
+
+    type Dword = u32;
+    type Long = i32;
+    type LResult = isize;
+    type WParam = usize;
+    type LParam = isize;
+    type HHook = *mut c_void;
+    type HInstance = *mut c_void;
+
+    const WH_KEYBOARD_LL: i32 = 13;
+    const WH_MOUSE_LL: i32 = 14;
+    const WM_KEYDOWN: u32 = 0x0100;
+    const WM_KEYUP: u32 = 0x0101;
+    const WM_SYSKEYDOWN: u32 = 0x0104;
+    const WM_SYSKEYUP: u32 = 0x0105;
+    const WM_MOUSEMOVE: u32 = 0x0200;
+    const WM_LBUTTONDOWN: u32 = 0x0201;
+    const WM_LBUTTONUP: u32 = 0x0202;
+    const WM_RBUTTONDOWN: u32 = 0x0204;
+    const WM_RBUTTONUP: u32 = 0x0205;
+    const WM_MOUSEWHEEL: u32 = 0x020A;
+
+    #[repr(C)]
+    struct KbdLlHookStruct {
+        vk_code: Dword,
+        scan_code: Dword,
+        flags: Dword,
+        time: Dword,
+        extra_info: usize,
+    }
+
+    #[repr(C)]
+    struct MsLlHookStruct {
+        x: Long,
+        y: Long,
+        mouse_data: Dword,
+        flags: Dword,
+        time: Dword,
+        extra_info: usize,
+    }
+
+    #[repr(C)]
+    struct Msg {
+        hwnd: *mut c_void,
+        message: u32,
+        w_param: WParam,
+        l_param: LParam,
+        time: Dword,
+        pt_x: Long,
+        pt_y: Long,
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowsHookExW(
+            id_hook: i32,
+            lpfn: unsafe extern "system" fn(i32, WParam, LParam) -> LResult,
+            hmod: HInstance,
+            thread_id: Dword,
+        ) -> HHook;
+        fn CallNextHookEx(hhk: HHook, code: i32, w_param: WParam, l_param: LParam) -> LResult;
+        fn GetMessageW(msg: *mut Msg, hwnd: *mut c_void, filter_min: u32, filter_max: u32)
+            -> i32;
+        fn TranslateMessage(msg: *const Msg) -> i32;
+        fn DispatchMessageW(msg: *const Msg) -> LResult;
+    }
+
+    static mut KEYBOARD_SENDER: Option<*const mpsc::Sender<InputEvent>> = None;
+    static mut MOUSE_SENDER: Option<*const mpsc::Sender<InputEvent>> = None;
+
+    pub fn start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputError> {
+        let (tx, rx) = mpsc::channel();
+        let (ready_tx, ready_rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let sender = Box::new(tx);
+            let sender_ptr = Box::into_raw(sender);
+
+            unsafe {
+                KEYBOARD_SENDER = Some(sender_ptr);
+                MOUSE_SENDER = Some(sender_ptr);
+            }
+
+            let kb_hook = unsafe {
+                SetWindowsHookExW(
+                    WH_KEYBOARD_LL,
+                    keyboard_hook_proc,
+                    std::ptr::null_mut(),
+                    0,
+                )
+            };
+            if kb_hook.is_null() {
+                unsafe {
+                    KEYBOARD_SENDER = None;
+                    MOUSE_SENDER = None;
+                    drop(Box::from_raw(sender_ptr));
+                }
+                let _ = ready_tx.send(Err(InputError::CreateNativeEvent));
+                return;
+            }
+
+            let mouse_hook = unsafe {
+                SetWindowsHookExW(WH_MOUSE_LL, mouse_hook_proc, std::ptr::null_mut(), 0)
+            };
+            if mouse_hook.is_null() {
+                unsafe {
+                    KEYBOARD_SENDER = None;
+                    MOUSE_SENDER = None;
+                    drop(Box::from_raw(sender_ptr));
+                }
+                let _ = ready_tx.send(Err(InputError::CreateNativeEvent));
+                return;
+            }
+
+            let _ = ready_tx.send(Ok(()));
+
+            // Message loop required for low-level hooks to work
+            unsafe {
+                let mut msg: Msg = std::mem::zeroed();
+                while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+        });
+
+        match ready_rx.recv_timeout(Duration::from_secs(2)) {
+            Ok(Ok(())) => Ok(rx),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(InputError::CreateNativeEvent),
+        }
+    }
+
+    unsafe extern "system" fn keyboard_hook_proc(
+        code: i32,
+        w_param: WParam,
+        l_param: LParam,
+    ) -> LResult {
+        if code >= 0 {
+            if let Some(sender_ptr) = KEYBOARD_SENDER {
+                let info = &*(l_param as *const KbdLlHookStruct);
+                let msg = w_param as u32;
+                if let Some(event) = keyboard_event(info, msg) {
+                    let _ = (*sender_ptr).send(event);
+                }
+            }
+        }
+        CallNextHookEx(std::ptr::null_mut(), code, w_param, l_param)
+    }
+
+    unsafe extern "system" fn mouse_hook_proc(
+        code: i32,
+        w_param: WParam,
+        l_param: LParam,
+    ) -> LResult {
+        if code >= 0 {
+            if let Some(sender_ptr) = MOUSE_SENDER {
+                let info = &*(l_param as *const MsLlHookStruct);
+                let msg = w_param as u32;
+                if let Some(event) = mouse_event(info, msg) {
+                    let _ = (*sender_ptr).send(event);
+                }
+            }
+        }
+        CallNextHookEx(std::ptr::null_mut(), code, w_param, l_param)
+    }
+
+    fn keyboard_event(info: &KbdLlHookStruct, msg: u32) -> Option<InputEvent> {
+        let pressed = matches!(msg, WM_KEYDOWN | WM_SYSKEYDOWN);
+        let released = matches!(msg, WM_KEYUP | WM_SYSKEYUP);
+        if !pressed && !released {
+            return None;
+        }
+        let key = windows_vk_to_key_name(info.vk_code)?;
+        Some(InputEvent {
+            kind: InputEventKind::KeyPress,
+            x: None,
+            y: None,
+            button: None,
+            key: Some(key.to_string()),
+            delta: None,
+            pressed: Some(pressed),
+        })
+    }
+
+    fn mouse_event(info: &MsLlHookStruct, msg: u32) -> Option<InputEvent> {
+        match msg {
+            WM_MOUSEMOVE => Some(InputEvent {
+                kind: InputEventKind::MouseMove,
+                x: Some(info.x),
+                y: Some(info.y),
+                button: None,
+                key: None,
+                delta: None,
+                pressed: None,
+            }),
+            WM_LBUTTONDOWN => Some(InputEvent {
+                kind: InputEventKind::MouseClick,
+                x: Some(info.x),
+                y: Some(info.y),
+                button: Some("primary".to_string()),
+                key: None,
+                delta: None,
+                pressed: Some(true),
+            }),
+            WM_LBUTTONUP => Some(InputEvent {
+                kind: InputEventKind::MouseClick,
+                x: Some(info.x),
+                y: Some(info.y),
+                button: Some("primary".to_string()),
+                key: None,
+                delta: None,
+                pressed: Some(false),
+            }),
+            WM_RBUTTONDOWN => Some(InputEvent {
+                kind: InputEventKind::MouseClick,
+                x: Some(info.x),
+                y: Some(info.y),
+                button: Some("secondary".to_string()),
+                key: None,
+                delta: None,
+                pressed: Some(true),
+            }),
+            WM_RBUTTONUP => Some(InputEvent {
+                kind: InputEventKind::MouseClick,
+                x: Some(info.x),
+                y: Some(info.y),
+                button: Some("secondary".to_string()),
+                key: None,
+                delta: None,
+                pressed: Some(false),
+            }),
+            WM_MOUSEWHEEL => {
+                let delta = ((info.mouse_data >> 16) as i16) as i32 / 120;
+                Some(InputEvent {
+                    kind: InputEventKind::Scroll,
+                    x: None,
+                    y: None,
+                    button: None,
+                    key: None,
+                    delta: Some(delta.clamp(-120, 120)),
+                    pressed: None,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn windows_vk_to_key_name(vk: Dword) -> Option<&'static str> {
+        match vk {
+            0x41 => Some("a"),
+            0x42 => Some("b"),
+            0x43 => Some("c"),
+            0x44 => Some("d"),
+            0x45 => Some("e"),
+            0x46 => Some("f"),
+            0x47 => Some("g"),
+            0x48 => Some("h"),
+            0x49 => Some("i"),
+            0x4a => Some("j"),
+            0x4b => Some("k"),
+            0x4c => Some("l"),
+            0x4d => Some("m"),
+            0x4e => Some("n"),
+            0x4f => Some("o"),
+            0x50 => Some("p"),
+            0x51 => Some("q"),
+            0x52 => Some("r"),
+            0x53 => Some("s"),
+            0x54 => Some("t"),
+            0x55 => Some("u"),
+            0x56 => Some("v"),
+            0x57 => Some("w"),
+            0x58 => Some("x"),
+            0x59 => Some("y"),
+            0x5a => Some("z"),
+            0x30 => Some("0"),
+            0x31 => Some("1"),
+            0x32 => Some("2"),
+            0x33 => Some("3"),
+            0x34 => Some("4"),
+            0x35 => Some("5"),
+            0x36 => Some("6"),
+            0x37 => Some("7"),
+            0x38 => Some("8"),
+            0x39 => Some("9"),
+            0x20 => Some("space"),
+            0x0d => Some("enter"),
+            0x09 => Some("tab"),
+            0x08 => Some("backspace"),
+            0x2e => Some("delete"),
+            0x1b => Some("escape"),
+            0x10 => Some("shift"),
+            0x11 => Some("control"),
+            0x12 => Some("alt"),
+            0x5b => Some("meta"),
+            0x25 => Some("left"),
+            0x26 => Some("up"),
+            0x27 => Some("right"),
+            0x28 => Some("down"),
+            0x24 => Some("home"),
+            0x23 => Some("end"),
+            0x21 => Some("pageup"),
+            0x22 => Some("pagedown"),
+            0x2d => Some("insert"),
+            0xbb => Some("="),
+            0xbc => Some(","),
+            0xbd => Some("-"),
+            0xbe => Some("."),
+            0xbf => Some("/"),
+            0xc0 => Some("`"),
+            0xba => Some(";"),
+            0xde => Some("'"),
+            0xdb => Some("["),
+            0xdc => Some("\\"),
+            0xdd => Some("]"),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -1141,5 +1493,23 @@ mod tests {
     fn windows_absolute_coordinate_handles_small_dimensions() {
         assert_eq!(super::windows_absolute_coordinate(0, 1), 0);
         assert_eq!(super::windows_absolute_coordinate(10, 1), 0);
+    }
+
+    #[test]
+    fn all_macos_captured_key_names_are_mapped_by_windows_virtual_key() {
+        let macos_key_names = [
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+            "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5",
+            "6", "7", "8", "9", "space", "enter", "tab", "backspace", "delete", "escape",
+            "meta", "shift", "alt", "control", "home", "pageup", "pagedown", "end", "insert",
+            "left", "right", "down", "up", "=", "-", "]", "[", "'", ";", "\\", ",", "/", ".",
+            "`",
+        ];
+        for key in macos_key_names {
+            assert!(
+                super::windows_virtual_key(key).is_some(),
+                "macOS key name {key:?} is not mapped by windows_virtual_key"
+            );
+        }
     }
 }
