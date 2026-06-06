@@ -867,6 +867,10 @@ function App() {
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState(false);
   const [lastCaptureStopEvidence, setLastCaptureStopEvidence] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showManualIP, setShowManualIP] = useState(false);
+  const [quickManualEndpoint, setQuickManualEndpoint] = useState("");
+  const autoPairAttemptedRef = useRef<Set<string>>(new Set());
 
   function showActionMessage(message: string, error = false) {
     setActionMessage(message);
@@ -985,6 +989,49 @@ function App() {
       return changed ? nextEntries : entries;
     });
   }, [status.pendingPairings]);
+
+  // Auto-pair: after scan discovers a new unpaired device with compatible role
+  useEffect(() => {
+    if (status.pendingPairings.length > 0) return;
+    const unpairedDiscovered = status.devices.filter(
+      (d) => !d.trusted && d.online && d.endpointSource === "discovery" && !autoPairAttemptedRef.current.has(d.id)
+    );
+    const compatible = unpairedDiscovered.find((d) => {
+      if (canSendInput(status.mode) && canReceiveInput(d.role)) return true;
+      if (canReceiveInput(status.mode) && canSendInput(d.role)) return true;
+      return false;
+    });
+    if (compatible) {
+      autoPairAttemptedRef.current.add(compatible.id);
+      void pairDevice(compatible);
+    }
+  }, [status.devices, status.pendingPairings.length, status.mode]);
+
+  // Expand advanced if user already has trusted devices
+  useEffect(() => {
+    if (status.devices.some((d) => d.trusted)) setShowAdvanced(true);
+  }, [status.devices]);
+
+  async function submitQuickManualConnect() {
+    const validation = validateManualEndpoint(quickManualEndpoint, status.privateNetworkOnly);
+    if (!validation.ok) {
+      showActionMessage(validation.message, true);
+      return;
+    }
+    await runExclusiveAction("quick-manual-connect", async () => {
+      setLoading(true);
+      try {
+        const action = await invokeNetworkAction("initiate_pairing", {
+          request: { endpoint: quickManualEndpoint.trim(), manualEndpoint: true }
+        });
+        showActionMessage(action.message, !action.ok);
+        if (action.ok) setShowManualIP(false);
+        await refreshStatus();
+      } finally {
+        setLoading(false);
+      }
+    });
+  }
 
   async function scanLan() {
     await runExclusiveAction("scan-lan", async () => {
@@ -1498,6 +1545,7 @@ function App() {
   );
   const scanLanActive = actionIsActive("scan-lan");
   const manualConnectActive = actionIsActive("manual-connect");
+  const quickManualConnectActive = actionIsActive("quick-manual-connect");
   const clearManualEndpointActive = actionIsActive("clear-manual-endpoint");
   const requestInputPermissionsActive = actionIsActive("request-input-permissions");
   const refreshStatusActive = actionIsActive("refresh-status");
@@ -2052,6 +2100,131 @@ function App() {
           )}
         </section>
 
+        <section className="panel quick-connect-panel" aria-label="Quick Connect">
+          <div className="panel-heading">
+            <div>
+              <h3>Quick Connect</h3>
+            </div>
+          </div>
+          <div className="quick-connect-card">
+            {trustedDevices.length === 0 && !status.capture.active && (
+              <div className="quick-connect-action">
+                <Wifi size={22} />
+                <div>
+                  <h4>Scan for nearby computers</h4>
+                  <p>Find and pair with a computer on your network.</p>
+                </div>
+                <button className="primary-button" onClick={scanLan} disabled={loading || scanLanActive}>
+                  {scanLanActive ? "Scanning..." : "Scan"}
+                </button>
+              </div>
+            )}
+            {trustedDevices.length > 0 && !trustedDevices.some((d) => d.online) && !status.capture.active && (
+              <div className="quick-connect-action">
+                <RefreshCw size={22} />
+                <div>
+                  <h4>Reconnecting...</h4>
+                  <p>Trusted devices are not online yet.</p>
+                </div>
+                <button
+                  className="secondary-button"
+                  disabled={checkingTrustedDevices || !reconnectChecksAvailable}
+                  onClick={checkAllTrustedDevices}
+                  type="button"
+                >
+                  {checkingTrustedDevices ? "Checking..." : "Check Now"}
+                </button>
+              </div>
+            )}
+            {trustedDevices.some((d) => d.online) && !status.capture.active && (
+              <div className="quick-connect-action">
+                <CheckCircle2 size={22} />
+                <div>
+                  <h4>Connected to {trustedDevices.find((d) => d.online)!.name}</h4>
+                  <p>Ready to share keyboard and mouse.</p>
+                </div>
+                <button
+                  className="primary-button"
+                  disabled={
+                    !captureReady ||
+                    !sendRoleReady ||
+                    !trustedDevices.some((d) => d.online && d.inputControlReady && canReceiveInput(d.role))
+                  }
+                  onClick={() => {
+                    const target = trustedDevices.find((d) => d.online && d.inputControlReady && canReceiveInput(d.role));
+                    if (target) startCapture(target);
+                  }}
+                  type="button"
+                >
+                  Start Sharing
+                </button>
+              </div>
+            )}
+            {status.capture.active && (
+              <div className="quick-connect-action">
+                <Keyboard size={22} />
+                <div>
+                  <h4>Sharing with {captureTarget?.name ?? "trusted device"}</h4>
+                  <p>Started {elapsedLabel(status.capture.startedAtMs ?? Date.now())}</p>
+                </div>
+                <button className="secondary-button" disabled={actionIsActive("stop-capture")} onClick={stopCapture} type="button">
+                  Stop
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Prominent pairing code display */}
+          {status.pendingPairings.length > 0 && (
+            <div className="quick-connect-pairing">
+              {status.pendingPairings.map((pairing) => (
+                <div className="quick-pairing-code" key={pairing.id}>
+                  <p className="quick-pairing-instruction">Enter this code on <strong>{pairing.name}</strong></p>
+                  <span className="quick-pairing-code-display">{pairing.code}</span>
+                  <small>{pairingExpiryLabel(pairing, pairingNowMs)}</small>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Manual IP link */}
+          {!showManualIP ? (
+            <button className="link-button" onClick={() => setShowManualIP(true)} type="button">
+              Can't find it? Enter IP
+            </button>
+          ) : (
+            <div className="quick-manual-connect">
+              <input
+                placeholder="IP:port (e.g. 192.168.1.5:44777)"
+                value={quickManualEndpoint}
+                onChange={(e) => setQuickManualEndpoint(e.target.value)}
+                disabled={quickManualConnectActive}
+              />
+              <button
+                className="secondary-button"
+                disabled={quickManualConnectActive || !quickManualEndpoint.trim()}
+                onClick={submitQuickManualConnect}
+                type="button"
+              >
+                {quickManualConnectActive ? "Connecting..." : "Connect"}
+              </button>
+              <button className="link-button" onClick={() => setShowManualIP(false)} type="button">
+                Cancel
+              </button>
+            </div>
+          )}
+        </section>
+
+        <button
+          className="advanced-toggle"
+          onClick={() => setShowAdvanced((v) => !v)}
+          type="button"
+          aria-expanded={showAdvanced}
+        >
+          {showAdvanced ? "▾ Advanced" : "▸ Advanced"}
+        </button>
+
+        {showAdvanced && (<>
         <section className="panel">
           <div className="panel-heading">
             <div>
@@ -2679,6 +2852,7 @@ function App() {
             />
           </label>
         </section>
+        </>)}
       </section>
     </main>
   );

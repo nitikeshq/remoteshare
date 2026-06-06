@@ -13,6 +13,8 @@ use runtime::{
 };
 #[cfg(not(debug_assertions))]
 use tauri::Emitter;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder};
 use tauri::{Manager, State};
 
 #[tauri::command]
@@ -87,6 +89,18 @@ fn stop_capture(store: State<'_, RuntimeStore>) -> NetworkAction {
 }
 
 #[tauri::command]
+fn toggle_capture(store: State<'_, RuntimeStore>) -> NetworkAction {
+    if input::permission_status().capture_engine != EngineState::Ready {
+        return NetworkAction {
+            ok: false,
+            message: "Native input capture is not ready on this platform yet.".to_string(),
+        };
+    }
+
+    store.toggle_capture()
+}
+
+#[tauri::command]
 fn input_permission_status() -> InputPermissionStatus {
     input::permission_status()
 }
@@ -137,6 +151,26 @@ async fn update_trusted_endpoint(
     Ok(network::update_trusted_endpoint(store.inner().clone(), request).await)
 }
 
+#[tauri::command]
+fn sync_clipboard(content: String, store: State<'_, RuntimeStore>) -> NetworkAction {
+    if !store.clipboard_sync_enabled() {
+        return NetworkAction {
+            ok: false,
+            message: "Clipboard sync is not enabled.".to_string(),
+        };
+    }
+    if content.is_empty() {
+        return NetworkAction {
+            ok: false,
+            message: "Clipboard content is empty.".to_string(),
+        };
+    }
+    NetworkAction {
+        ok: true,
+        message: "Clipboard sync ready.".to_string(),
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(RuntimeStore::load_or_init())
@@ -153,17 +187,87 @@ pub fn run() {
             forget_trusted_device,
             start_capture,
             stop_capture,
+            toggle_capture,
             input_permission_status,
             request_input_permissions,
             initiate_pairing,
             confirm_pairing,
             send_test_input,
             check_trusted_device,
-            update_trusted_endpoint
+            update_trusted_endpoint,
+            sync_clipboard
         ])
         .setup(|app| {
             let store = app.state::<RuntimeStore>().inner().clone();
             network::start_supervisor(app.handle().clone(), store.clone());
+
+            // System tray
+            let title = MenuItemBuilder::with_id("title", "RemoteShare")
+                .enabled(false)
+                .build(app)?;
+            let capture_label = if store.status().capture.active {
+                "Stop Capture"
+            } else {
+                "Start Capture"
+            };
+            let capture_item = MenuItemBuilder::with_id("toggle_capture", capture_label).build(app)?;
+            let scan_item = MenuItemBuilder::with_id("scan_lan", "Scan LAN").build(app)?;
+            let show_item = MenuItemBuilder::with_id("show_window", "Show Window").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+            let menu = MenuBuilder::new(app)
+                .item(&title)
+                .separator()
+                .item(&capture_item)
+                .item(&scan_item)
+                .separator()
+                .item(&show_item)
+                .item(&quit_item)
+                .build()?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().unwrap())
+                .menu(&menu)
+                .on_menu_event(move |app, event| {
+                    match event.id().as_ref() {
+                        "toggle_capture" => {
+                            let s = app.state::<RuntimeStore>();
+                            if s.status().capture.active {
+                                s.stop_capture();
+                            } else {
+                                // Cannot start without a target device from tray
+                                let _ = s.stop_capture();
+                            }
+                        }
+                        "scan_lan" => {
+                            let s = app.state::<RuntimeStore>().inner().clone();
+                            tokio::spawn(async move { network::scan_lan(s).await; });
+                        }
+                        "show_window" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "quit" => app.exit(0),
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             #[cfg(not(debug_assertions))]
             {
                 let action = store.sync_startup_registration();

@@ -49,6 +49,8 @@ struct RuntimeState {
     input_events: Vec<InputEventRecord>,
     connection_health: HashMap<String, ConnectionHealth>,
     connection_failures: HashMap<String, ConnectionFailure>,
+    edge_capture_active: bool,
+    edge_direction: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -280,6 +282,8 @@ pub struct SettingsUpdateRequest {
     pub trusted_reconnect: Option<bool>,
     pub private_network_only: Option<bool>,
     pub allow_incoming_control: Option<bool>,
+    pub capture_edge: Option<String>,
+    pub clipboard_sync: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -452,6 +456,8 @@ impl RuntimeStore {
                 input_events: Vec::new(),
                 connection_health: HashMap::new(),
                 connection_failures: HashMap::new(),
+                edge_capture_active: false,
+                edge_direction: None,
             })),
         }
     }
@@ -666,6 +672,12 @@ impl RuntimeStore {
         }
         if let Some(allow_incoming_control) = request.allow_incoming_control {
             persisted.settings.allow_incoming_control = allow_incoming_control;
+        }
+        if let Some(capture_edge) = request.capture_edge {
+            persisted.settings.capture_edge = capture_edge;
+        }
+        if let Some(clipboard_sync) = request.clipboard_sync {
+            persisted.settings.clipboard_sync_enabled = clipboard_sync;
         }
         if !persisted.settings.role.can_receive_input() {
             persisted.settings.allow_incoming_control = false;
@@ -978,6 +990,33 @@ impl RuntimeStore {
         NetworkAction {
             ok: true,
             message: "Capture stopped.".to_string(),
+        }
+    }
+
+    pub fn toggle_capture(&self) -> NetworkAction {
+        let state = self.state.lock().expect("runtime state poisoned");
+        if state.capture.active {
+            drop(state);
+            return self.stop_capture();
+        }
+        // Find first available trusted device that can receive input
+        let target_device_id = state
+            .persisted
+            .trusted_devices
+            .iter()
+            .find(|device| {
+                device.shared_secret.is_some()
+                    && trusted_device_effective_role(&state, device).can_receive_input()
+                    && trusted_device_endpoint(&state, device).is_some()
+            })
+            .map(|device| device.id.clone());
+        drop(state);
+        match target_device_id {
+            Some(device_id) => self.start_capture(CaptureControlRequest { device_id }),
+            None => NetworkAction {
+                ok: false,
+                message: "No available trusted device to target for capture.".to_string(),
+            },
         }
     }
 
@@ -1626,6 +1665,27 @@ impl RuntimeStore {
         state.persisted.settings.private_network_only
     }
 
+    pub fn clipboard_sync_enabled(&self) -> bool {
+        let state = self.state.lock().expect("runtime state poisoned");
+        state.persisted.settings.clipboard_sync_enabled
+    }
+
+    pub fn capture_edge(&self) -> String {
+        let state = self.state.lock().expect("runtime state poisoned");
+        state.persisted.settings.capture_edge.clone()
+    }
+
+    pub fn edge_capture_active(&self) -> bool {
+        let state = self.state.lock().expect("runtime state poisoned");
+        state.edge_capture_active
+    }
+
+    pub fn set_edge_capture_active(&self, active: bool, _edge: Option<String>) {
+        let mut state = self.state.lock().expect("runtime state poisoned");
+        state.edge_capture_active = active;
+        state.edge_direction = if active { _edge } else { None };
+    }
+
     #[cfg_attr(debug_assertions, allow(dead_code))]
     pub fn auto_start_enabled(&self) -> bool {
         let state = self.state.lock().expect("runtime state poisoned");
@@ -1975,6 +2035,38 @@ impl RuntimeStore {
             delta: None,
             pressed: None,
         }
+    }
+}
+
+pub fn should_activate_edge_capture(
+    x: i32,
+    y: i32,
+    screen_width: i32,
+    screen_height: i32,
+    edge: &str,
+) -> bool {
+    match edge {
+        "right" => x >= screen_width - 2,
+        "left" => x <= 2,
+        "top" => y <= 2,
+        "bottom" => y >= screen_height - 2,
+        _ => false,
+    }
+}
+
+pub fn should_deactivate_edge_capture(
+    x: i32,
+    y: i32,
+    screen_width: i32,
+    screen_height: i32,
+    edge: &str,
+) -> bool {
+    match edge {
+        "right" => x <= 2,
+        "left" => x >= screen_width - 2,
+        "top" => y >= screen_height - 2,
+        "bottom" => y <= 2,
+        _ => false,
     }
 }
 
@@ -3217,6 +3309,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(action.ok);
@@ -3237,6 +3331,8 @@ mod tests {
             trusted_reconnect: Some(false),
             private_network_only: Some(false),
             allow_incoming_control: Some(true),
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(!action.ok);
@@ -3260,6 +3356,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(action.ok, "{}", action.message);
@@ -3289,6 +3387,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(!action.ok);
@@ -3321,6 +3421,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(!action.ok);
@@ -3353,6 +3455,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: Some(true),
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(!rejected.ok);
@@ -3368,6 +3472,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: Some(true),
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(accepted.ok);
@@ -3404,6 +3510,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(action.ok);
@@ -3426,6 +3534,8 @@ mod tests {
             trusted_reconnect: Some(false),
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(action.ok);
@@ -3440,6 +3550,8 @@ mod tests {
             trusted_reconnect: Some(true),
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(action.ok);
@@ -3603,6 +3715,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 
@@ -4387,6 +4501,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 
@@ -4411,6 +4527,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 
@@ -4460,6 +4578,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(true),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok, "{}", action.message);
         assert_eq!(
@@ -4503,6 +4623,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 
@@ -4546,6 +4668,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(true),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok, "{}", action.message);
         assert_eq!(
@@ -4634,6 +4758,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(update.ok, "{}", update.message);
         store.record_startup_registration(false, "Previous startup failure.".to_string());
@@ -4858,6 +4984,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
         assert_eq!(
@@ -5130,6 +5258,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 
@@ -7539,6 +7669,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok, "{}", action.message);
         {
@@ -7569,6 +7701,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(true),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(private_guard.ok, "{}", private_guard.message);
 
@@ -7587,6 +7721,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok, "{}", action.message);
         {
@@ -7617,6 +7753,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: Some(true),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(private_guard.ok, "{}", private_guard.message);
 
@@ -7763,6 +7901,8 @@ mod tests {
             trusted_reconnect: None,
             private_network_only: None,
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
 
         assert!(role_change.ok);
@@ -8604,5 +8744,82 @@ mod tests {
             created_at_ms: 0,
             expires_at_ms: 1,
         }
+    }
+
+    #[test]
+    fn should_activate_edge_capture_right_edge() {
+        use super::should_activate_edge_capture;
+        assert!(should_activate_edge_capture(1918, 500, 1920, 1080, "right"));
+        assert!(should_activate_edge_capture(1919, 500, 1920, 1080, "right"));
+        assert!(!should_activate_edge_capture(1917, 500, 1920, 1080, "right"));
+        assert!(!should_activate_edge_capture(500, 500, 1920, 1080, "right"));
+    }
+
+    #[test]
+    fn should_activate_edge_capture_left_edge() {
+        use super::should_activate_edge_capture;
+        assert!(should_activate_edge_capture(0, 500, 1920, 1080, "left"));
+        assert!(should_activate_edge_capture(2, 500, 1920, 1080, "left"));
+        assert!(!should_activate_edge_capture(3, 500, 1920, 1080, "left"));
+    }
+
+    #[test]
+    fn should_activate_edge_capture_top_edge() {
+        use super::should_activate_edge_capture;
+        assert!(should_activate_edge_capture(500, 0, 1920, 1080, "top"));
+        assert!(should_activate_edge_capture(500, 2, 1920, 1080, "top"));
+        assert!(!should_activate_edge_capture(500, 3, 1920, 1080, "top"));
+    }
+
+    #[test]
+    fn should_activate_edge_capture_bottom_edge() {
+        use super::should_activate_edge_capture;
+        assert!(should_activate_edge_capture(500, 1078, 1920, 1080, "bottom"));
+        assert!(should_activate_edge_capture(500, 1079, 1920, 1080, "bottom"));
+        assert!(!should_activate_edge_capture(500, 1077, 1920, 1080, "bottom"));
+    }
+
+    #[test]
+    fn should_activate_edge_capture_invalid_edge() {
+        use super::should_activate_edge_capture;
+        assert!(!should_activate_edge_capture(0, 0, 1920, 1080, "invalid"));
+    }
+
+    #[test]
+    fn should_deactivate_edge_capture_right_returns_to_left() {
+        use super::should_deactivate_edge_capture;
+        assert!(should_deactivate_edge_capture(0, 500, 1920, 1080, "right"));
+        assert!(should_deactivate_edge_capture(2, 500, 1920, 1080, "right"));
+        assert!(!should_deactivate_edge_capture(3, 500, 1920, 1080, "right"));
+    }
+
+    #[test]
+    fn should_deactivate_edge_capture_left_returns_to_right() {
+        use super::should_deactivate_edge_capture;
+        assert!(should_deactivate_edge_capture(1918, 500, 1920, 1080, "left"));
+        assert!(should_deactivate_edge_capture(1919, 500, 1920, 1080, "left"));
+        assert!(!should_deactivate_edge_capture(1917, 500, 1920, 1080, "left"));
+    }
+
+    #[test]
+    fn should_deactivate_edge_capture_top_returns_to_bottom() {
+        use super::should_deactivate_edge_capture;
+        assert!(should_deactivate_edge_capture(500, 1078, 1920, 1080, "top"));
+        assert!(should_deactivate_edge_capture(500, 1079, 1920, 1080, "top"));
+        assert!(!should_deactivate_edge_capture(500, 1077, 1920, 1080, "top"));
+    }
+
+    #[test]
+    fn should_deactivate_edge_capture_bottom_returns_to_top() {
+        use super::should_deactivate_edge_capture;
+        assert!(should_deactivate_edge_capture(500, 0, 1920, 1080, "bottom"));
+        assert!(should_deactivate_edge_capture(500, 2, 1920, 1080, "bottom"));
+        assert!(!should_deactivate_edge_capture(500, 3, 1920, 1080, "bottom"));
+    }
+
+    #[test]
+    fn should_deactivate_edge_capture_invalid_edge() {
+        use super::should_deactivate_edge_capture;
+        assert!(!should_deactivate_edge_capture(0, 0, 1920, 1080, "invalid"));
     }
 }

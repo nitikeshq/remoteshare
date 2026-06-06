@@ -1220,3 +1220,102 @@ input {
     flex-direction: column;
   }
 }
+
+/* Quick Connect */
+.quick-connect-panel {
+  border: 2px solid var(--accent, #4f8cff);
+  border-radius: 12px;
+}
+
+.quick-connect-card {
+  padding: 0.5rem 0;
+}
+
+.quick-connect-action {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+}
+
+.quick-connect-action h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.quick-connect-action p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.quick-connect-action > button {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.quick-connect-pairing {
+  padding: 0.75rem 0;
+  text-align: center;
+}
+
+.quick-pairing-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quick-pairing-instruction {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.quick-pairing-code-display {
+  font-size: 2.5rem;
+  font-weight: bold;
+  letter-spacing: 0.3em;
+  font-family: monospace;
+}
+
+.quick-manual-connect {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  flex-wrap: wrap;
+}
+
+.quick-manual-connect input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent, #4f8cff);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  opacity: 0.8;
+}
+
+.advanced-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.75rem 0;
+  opacity: 0.7;
+  width: 100%;
+  text-align: left;
+}
+
+.advanced-toggle:hover {
+  opacity: 1;
+}

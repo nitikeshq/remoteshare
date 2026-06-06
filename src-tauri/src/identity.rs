@@ -46,6 +46,10 @@ pub struct UserSettings {
     #[serde(default)]
     pub allow_incoming_control: bool,
     #[serde(default)]
+    pub clipboard_sync_enabled: bool,
+    #[serde(default = "default_capture_edge")]
+    pub capture_edge: String,
+    #[serde(default)]
     pub manual_endpoint: Option<String>,
 }
 
@@ -182,6 +186,8 @@ impl PersistedState {
                 trusted_reconnect: true,
                 private_network_only: true,
                 allow_incoming_control: false,
+                clipboard_sync_enabled: false,
+                capture_edge: String::new(),
                 manual_endpoint: None,
             },
             trusted_devices: Vec::new(),
@@ -366,6 +372,10 @@ fn default_true() -> bool {
 
 fn default_computer_role() -> ComputerRole {
     ComputerRole::Main
+}
+
+fn default_capture_edge() -> String {
+    "right".to_string()
 }
 
 fn default_trusted_device_role() -> ComputerRole {

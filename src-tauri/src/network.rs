@@ -20,9 +20,10 @@ use crate::{
     crypto, input,
     runtime::{
         pairing_code, pairing_dh_keypair, pairing_dh_public_key_is_well_formed, pairing_nonce,
-        ConfirmPairingRequest, DeviceEndpointUpdateRequest, DeviceTrustRequest, InputEvent,
-        InputEventKind, NetworkAction, PairRequest, PairingPeer, RuntimeStore, SendInputRequest,
-        TrustedReconnectTarget, TrustedTarget,
+        should_activate_edge_capture, should_deactivate_edge_capture, ConfirmPairingRequest,
+        DeviceEndpointUpdateRequest, DeviceTrustRequest, InputEvent, InputEventKind, NetworkAction,
+        PairRequest, PairingPeer, RuntimeStore, SendInputRequest, TrustedReconnectTarget,
+        TrustedTarget,
     },
 };
 
@@ -682,9 +683,37 @@ fn start_capture_forwarder(app: AppHandle, store: RuntimeStore) {
 
         let mut last_mouse_move_at = Instant::now() - Duration::from_secs(1);
         let mouse_move_in_flight = Arc::new(AtomicBool::new(false));
+        let mut hotkey_tracker = input::HotkeyTracker::new();
         while let Ok(event) = receiver.recv() {
+            // Check for toggle-capture hotkey before forwarding
+            if hotkey_tracker.feed(&event) {
+                let action = store.toggle_capture();
+                let _ = app.emit("remoteshare://devices-changed", ());
+                let _ = app.emit("remoteshare://network-error", action.message);
+                continue; // Do NOT forward the hotkey event
+            }
+
             let is_mouse_move = matches!(event.kind, InputEventKind::MouseMove);
+
             if is_mouse_move {
+                let edge = store.capture_edge();
+                let x = event.x.unwrap_or(0);
+                let y = event.y.unwrap_or(0);
+                let screen_width: i32 = 1920;
+                let screen_height: i32 = 1080;
+
+                if !store.edge_capture_active() {
+                    if should_activate_edge_capture(x, y, screen_width, screen_height, &edge) {
+                        store.set_edge_capture_active(true, Some(edge));
+                    } else {
+                        continue;
+                    }
+                } else if should_deactivate_edge_capture(x, y, screen_width, screen_height, &edge)
+                {
+                    store.set_edge_capture_active(false, None);
+                    continue;
+                }
+
                 let now = Instant::now();
                 if now.duration_since(last_mouse_move_at) < Duration::from_millis(8) {
                     continue;
@@ -1257,6 +1286,63 @@ async fn handle_control_stream(
         ControlMessage::InputAck { .. } => {}
         ControlMessage::PairAck { .. } => {}
         ControlMessage::PairRejected { .. } => {}
+        ControlMessage::ClipboardSync { source, content, content_type } => {
+            let shared_secret = store
+                .trusted_shared_secret(&source.device_id)
+                .ok()
+                .flatten();
+            let auth_ok = shared_secret
+                .as_ref()
+                .map(|secret| {
+                    verify_received_message_with_replay(&received, secret.as_str(), &replay_cache)
+                        .is_ok()
+                })
+                .unwrap_or(false);
+            if !auth_ok {
+                let _ = app.emit(
+                    "remoteshare://network-error",
+                    "Rejected clipboard sync: authentication failed.".to_string(),
+                );
+                return;
+            }
+            if !store.trusted_identity_matches(&source) {
+                let _ = app.emit(
+                    "remoteshare://network-error",
+                    "Rejected clipboard sync: trusted identity mismatch.".to_string(),
+                );
+                return;
+            }
+            if !store.clipboard_sync_enabled() {
+                if let Some(shared_secret) = shared_secret {
+                    let response = ControlMessage::ClipboardAck {
+                        ok: false,
+                        message: "Clipboard sync is not enabled.".to_string(),
+                    };
+                    let _ = write_control_message(&mut stream, &response, Some(&shared_secret)).await;
+                }
+                return;
+            }
+            let result = if content_type == "text/plain" {
+                input::set_clipboard_text(&content)
+            } else {
+                Err("Unsupported clipboard content type.".to_string())
+            };
+            if let Some(shared_secret) = shared_secret {
+                let response = match result {
+                    Ok(()) => ControlMessage::ClipboardAck {
+                        ok: true,
+                        message: "Clipboard updated.".to_string(),
+                    },
+                    Err(error) => ControlMessage::ClipboardAck {
+                        ok: false,
+                        message: error,
+                    },
+                };
+                let _ = write_control_message(&mut stream, &response, Some(&shared_secret)).await;
+            }
+            let _ = app.emit("remoteshare://devices-changed", ());
+        }
+        ControlMessage::ClipboardAck { .. } => {}
     }
 }
 
@@ -1829,6 +1915,15 @@ enum ControlMessage {
         source: PairingPeer,
         challenge: String,
     },
+    ClipboardSync {
+        source: PairingPeer,
+        content: String,
+        content_type: String,
+    },
+    ClipboardAck {
+        ok: bool,
+        message: String,
+    },
 }
 
 async fn send_control_message_for_response(
@@ -2115,8 +2210,11 @@ fn control_message_key_id(message: &ControlMessage) -> Option<String> {
         ControlMessage::PairAccepted { peer, .. }
         | ControlMessage::InputEvent { source: peer, .. }
         | ControlMessage::Ping { source: peer, .. }
-        | ControlMessage::Pong { source: peer, .. } => Some(peer.device_id.clone()),
-        ControlMessage::InputAck { .. } => Some("response".to_string()),
+        | ControlMessage::Pong { source: peer, .. }
+        | ControlMessage::ClipboardSync { source: peer, .. } => Some(peer.device_id.clone()),
+        ControlMessage::InputAck { .. } | ControlMessage::ClipboardAck { .. } => {
+            Some("response".to_string())
+        }
         ControlMessage::PairRequest { .. }
         | ControlMessage::PairAck { .. }
         | ControlMessage::PairRejected { .. } => None,
@@ -3210,6 +3308,8 @@ Wireless LAN adapter Wi-Fi:
             trusted_reconnect: None,
             private_network_only: Some(false),
             allow_incoming_control: None,
+            capture_edge: None,
+            clipboard_sync: None,
         });
         assert!(action.ok);
 

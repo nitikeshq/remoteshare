@@ -75,6 +75,87 @@ pub fn apply_event(event: &InputEvent) -> Result<(), InputError> {
     platform_apply_event(event)
 }
 
+pub fn set_clipboard_text(text: &str) -> Result<(), String> {
+    platform_set_clipboard_text(text)
+}
+
+#[cfg(target_os = "macos")]
+fn platform_set_clipboard_text(text: &str) -> Result<(), String> {
+    use std::process::Command;
+    let mut child = Command::new("pbcopy")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn pbcopy: {e}"))?;
+    use std::io::Write;
+    child
+        .stdin
+        .as_mut()
+        .ok_or_else(|| "Failed to open pbcopy stdin.".to_string())?
+        .write_all(text.as_bytes())
+        .map_err(|e| format!("Failed to write to pbcopy: {e}"))?;
+    let status = child.wait().map_err(|e| format!("pbcopy failed: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("pbcopy exited with error.".to_string())
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn platform_set_clipboard_text(text: &str) -> Result<(), String> {
+    use std::ffi::c_void;
+    use std::ptr;
+
+    const GMEM_MOVEABLE: u32 = 0x0002;
+    const CF_UNICODETEXT: u32 = 13;
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn OpenClipboard(hwnd: *mut c_void) -> i32;
+        fn EmptyClipboard() -> i32;
+        fn SetClipboardData(format: u32, mem: *mut c_void) -> *mut c_void;
+        fn CloseClipboard() -> i32;
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GlobalAlloc(flags: u32, bytes: usize) -> *mut c_void;
+        fn GlobalLock(mem: *mut c_void) -> *mut c_void;
+        fn GlobalUnlock(mem: *mut c_void) -> i32;
+    }
+
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    let size = wide.len() * 2;
+    unsafe {
+        if OpenClipboard(ptr::null_mut()) == 0 {
+            return Err("Failed to open clipboard.".to_string());
+        }
+        EmptyClipboard();
+        let hmem = GlobalAlloc(GMEM_MOVEABLE, size);
+        if hmem.is_null() {
+            CloseClipboard();
+            return Err("Failed to allocate clipboard memory.".to_string());
+        }
+        let ptr = GlobalLock(hmem);
+        if ptr.is_null() {
+            CloseClipboard();
+            return Err("Failed to lock clipboard memory.".to_string());
+        }
+        ptr::copy_nonoverlapping(wide.as_ptr() as *const u8, ptr as *mut u8, size);
+        GlobalUnlock(hmem);
+        if SetClipboardData(CF_UNICODETEXT, hmem).is_null() {
+            CloseClipboard();
+            return Err("Failed to set clipboard data.".to_string());
+        }
+        CloseClipboard();
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn platform_set_clipboard_text(_text: &str) -> Result<(), String> {
+    Err("Clipboard is not supported on this platform yet.".to_string())
+}
+
 pub fn start_capture_stream() -> Result<mpsc::Receiver<InputEvent>, InputError> {
     platform_start_capture_stream()
 }
@@ -1421,6 +1502,55 @@ mod windows_capture {
             0xdc => Some("\\"),
             0xdd => Some("]"),
             _ => None,
+        }
+    }
+}
+
+// --- Hotkey detection ---
+
+/// Tracks modifier state from the input event stream and returns true when
+/// the toggle-capture hotkey combo (Cmd+Shift+Space on macOS, Ctrl+Shift+Space on Windows) is detected.
+pub struct HotkeyTracker {
+    ctrl_or_cmd_down: bool,
+    shift_down: bool,
+}
+
+impl HotkeyTracker {
+    pub fn new() -> Self {
+        Self {
+            ctrl_or_cmd_down: false,
+            shift_down: false,
+        }
+    }
+
+    /// Feed an event. Returns true if this event completes the hotkey combo.
+    pub fn feed(&mut self, event: &InputEvent) -> bool {
+        if event.kind != InputEventKind::KeyPress {
+            return false;
+        }
+        let key = match event.key.as_deref() {
+            Some(k) => k,
+            None => return false,
+        };
+        let pressed = event.pressed.unwrap_or(false);
+
+        match key {
+            #[cfg(target_os = "macos")]
+            "meta" => {
+                self.ctrl_or_cmd_down = pressed;
+                false
+            }
+            #[cfg(not(target_os = "macos"))]
+            "control" => {
+                self.ctrl_or_cmd_down = pressed;
+                false
+            }
+            "shift" => {
+                self.shift_down = pressed;
+                false
+            }
+            "space" if pressed => self.ctrl_or_cmd_down && self.shift_down,
+            _ => false,
         }
     }
 }
